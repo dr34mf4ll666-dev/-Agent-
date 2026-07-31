@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-当前处于第 0 周：项目规范和目录骨架已建立，尚未进入金融数据接入和多 Agent 业务实现。
+当前已完成第一周：Echo Agent 和最小 Harness 闭环已经可以离线运行，尚未进入金融数据接入和多 Agent 业务实现。
 
 核心关系：
 
@@ -44,6 +44,7 @@ python -m pytest
 ├── MCP/                    # 外部数据与工具适配层
 ├── SubAgents/              # 专业 Agent 定义
 ├── src/agent_platform/     # Python 平台代码
+│   └── core/               # 第一周的契约、Echo Agent 和 Harness
 └── tests/                  # 自动化测试
 ```
 
@@ -57,3 +58,11 @@ python -m pytest
 - 功能清单能区分已完成、进行中和待办事项。
 - 最小 Python 包可以被测试发现。
 - 骨架测试可以在本地离线运行。
+
+## 第一周的完成定义
+
+- `AgentRequest`、`AgentResponse` 和 `Agent` 接口已经确定。
+- `EchoAgent` 可以在没有网络和模型的情况下运行。
+- `AgentHarness` 可以执行前置检查、Agent 调用、后置检查和 trace 记录。
+- 空任务、错误输出和 Agent 异常都会被拦截或保留失败 trace。
+- Guardrail 可以通过接口注入，而不需要修改 Harness 主流程。

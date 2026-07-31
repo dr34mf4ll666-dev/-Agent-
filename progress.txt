@@ -14,3 +14,13 @@
 
 下一步
 - 进入阶段一：先实现 Echo Agent，再实现最小 Harness 和 Loop 闭环。
+
+[2026-07-31] 第一周完成
+- 定义 `AgentRequest`、`AgentResponse`、`Agent`、`Guardrail` 和 `HarnessResult` 公共契约。
+- 实现确定性的 `EchoAgent`，不依赖网络、模型或金融数据。
+- 实现 `AgentHarness`：前置检查、Agent 执行、后置检查、可插拔 Guardrail 和有序 trace。
+- 失败时保留失败阶段、原始异常和已有 trace；本地文档仍保持不被 Git 跟踪。
+- 验证结果：10 项 unittest 全部通过。
+
+下一步
+- 第二周实现 Loop 的多步运行、最大步数和失败重试。

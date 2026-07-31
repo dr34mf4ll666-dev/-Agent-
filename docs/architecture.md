@@ -17,6 +17,26 @@ flowchart TB
 - **Graph**：负责多个 Agent 的节点关系、并行、条件分支和恢复。
 - **Harness**：负责输入和输出校验、来源检查、限流、审计、熔断和人工确认。
 
+## 第一周公共接口
+
+```text
+AgentRequest ──> Agent.run ──> AgentResponse
+      │                              │
+      └──── AgentHarness.run ─────────┘
+                         │
+                    HarnessResult
+                  (response + trace)
+```
+
+第一周的 Harness 执行顺序固定为：
+
+1. `preflight.started`：开始检查请求；
+2. `preflight.passed`：请求和输入 Guardrail 通过；
+3. `agent.started` / `agent.finished`：执行 Agent；
+4. `postflight.passed`：输出和输出 Guardrail 通过。
+
+任何一步失败都会记录对应的 `*.failed` 事件，并通过 `HarnessExecutionError` 暴露原始异常和已有 trace。
+
 ## 第 0 周的实现边界
 
-现在只建立目录和约束，不提前实现这些运行层。后续先用确定性的 Echo Agent 验证接口，再逐层加入 Loop、Graph 和金融场景。
+现在已经用确定性的 Echo Agent 验证了接口和 Harness 闭环。下一步先加入带最大步数的 Loop，再进入 Graph 和金融场景。

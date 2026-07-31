@@ -9,23 +9,23 @@
 - 输出结构化、数据可追溯、行为可约束、过程可审计；
 - 在不接入真实下单的前提下完成分析、风控、模拟执行和回测。
 
-## 2. 当前阶段：第 0 周
+## 2. 当前阶段：阶段一第一周
 
-第 0 周只完成项目入口和工程约束，不实现完整 Loop、Graph、MCP 或金融 Agent。
+第 0 周的项目入口已经完成。本周只实现一个离线、确定性的 Agent 闭环，不接入金融数据、LLM API、Loop 或 Graph。
 
 ### 必须完成
 
-1. 建立项目目录和每个目录的职责说明。
-2. 建立规范、功能清单、进度日志和协作约定。
-3. 建立可被测试发现的最小 Python 包。
-4. 建立离线可运行的骨架测试。
-5. 明确真实交易、外部数据和 LLM 使用边界。
+1. 定义 `AgentRequest`、`AgentResponse` 和 `Agent.run` 公共接口。
+2. 实现不依赖网络的 `EchoAgent`。
+3. 实现 `AgentHarness.run`：前置检查、执行、后置检查和 trace。
+4. 支持 Guardrail 通过接口注入。
+5. 失败时保留失败阶段、原始异常和已有 trace。
 
 ### 明确不做
 
-- 不在第 0 周接入 AKShare、Tushare 或券商接口。
-- 不在第 0 周实现交易决策、回测指标或真实下单。
-- 不为了建立目录而创建尚未定义的复杂类和空接口。
+- 不在本周接入 AKShare、Tushare 或券商接口。
+- 不在本周实现 Loop 的多步规划、重试或记忆。
+- 不在本周实现 Graph/DAG、并行调度或 Checkpoint。
 - 不把 API 密钥或账户信息写入项目。
 
 ## 3. 架构原则
@@ -38,7 +38,24 @@ Model/Tools → Loop → Graph → Harness
 
 这里的 `Harness` 不是最后才添加的外壳，而是贯穿输入检查、工具调用、输出验证、日志追踪和人工确认的可靠性层。
 
-## 4. 后续阶段的成功标准
+## 4. 第一周公共接口
+
+调用方只需要知道三个接口事实：
+
+```python
+request = AgentRequest(task="hello")
+result = AgentHarness(EchoAgent()).run(request)
+result.response.content  # "hello"
+result.trace             # 有序的生命周期事件
+```
+
+- `Agent.run(request) -> AgentResponse`：Agent 的最小执行接口。
+- `AgentHarness.run(request) -> HarnessResult`：统一的可靠性入口。
+- `HarnessExecutionError.trace`：失败时读取已经发生的事件，不需要访问 Harness 内部状态。
+
+第一周不承诺持久化时间戳、分布式调度或自动重试；这些属于后续 Loop/Graph 和工程化阶段。
+
+## 5. 后续阶段的成功标准
 
 ### 平台层
 
@@ -60,13 +77,13 @@ Model/Tools → Loop → Graph → Harness
 - 具备日志追踪、失败恢复、质量评估和熔断能力。
 - 能用实验数据比较 Harness 对幻觉率、无效调用和成功率的影响。
 
-## 5. 当前验收命令
+## 6. 当前验收命令
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-## 6. 安全底线
+## 7. 安全底线
 
 - `ALLOW_LIVE_TRADING` 默认必须为 `false`。
 - 真实交易能力未列入当前交付范围。
