@@ -23,6 +23,9 @@ checkpoints/
 # Temporary document review output
 .docx_review/
 
+# Local task brief; keep it outside the remote repository
+构建通用Agent平台及证券金融分析应用.docx
+
 # IDE and OS files
 .vscode/
 .idea/
