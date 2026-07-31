@@ -23,7 +23,7 @@
       "id": "W0-003",
       "phase": "第 0 周",
       "title": "最小 Python 包和离线测试入口",
-      "status": "in_progress",
+      "status": "done",
       "evidence": ["src/agent_platform/__init__.py", "tests/test_project_bootstrap.py"]
     },
     {
@@ -37,8 +37,8 @@
       "id": "W0-005",
       "phase": "第 0 周",
       "title": "Git 仓库初始化",
-      "status": "pending",
-      "evidence": []
+      "status": "done",
+      "evidence": ["Git commit 6b7769f"]
     },
     {
       "id": "W1-001",
