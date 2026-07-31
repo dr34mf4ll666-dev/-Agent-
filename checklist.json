@@ -1,0 +1,79 @@
+{
+  "project": "通用 Agent 平台及证券金融分析应用",
+  "version": "0.1.0",
+  "updated_at": "2026-07-31",
+  "current_week": 0,
+  "status": "in_progress",
+  "items": [
+    {
+      "id": "W0-001",
+      "phase": "第 0 周",
+      "title": "项目规范和安全边界",
+      "status": "done",
+      "evidence": ["SPEC.md", "AGENTS.md"]
+    },
+    {
+      "id": "W0-002",
+      "phase": "第 0 周",
+      "title": "目录骨架和职责说明",
+      "status": "done",
+      "evidence": ["README.md", "Rule/README.md", "Skill/README.md", "Workflow/README.md", "Scripts/README.md", "MCP/README.md", "SubAgents/README.md"]
+    },
+    {
+      "id": "W0-003",
+      "phase": "第 0 周",
+      "title": "最小 Python 包和离线测试入口",
+      "status": "in_progress",
+      "evidence": ["src/agent_platform/__init__.py", "tests/test_project_bootstrap.py"]
+    },
+    {
+      "id": "W0-004",
+      "phase": "第 0 周",
+      "title": "功能清单和进度记录机制",
+      "status": "done",
+      "evidence": ["checklist.json", "progress.txt"]
+    },
+    {
+      "id": "W0-005",
+      "phase": "第 0 周",
+      "title": "Git 仓库初始化",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "W1-001",
+      "phase": "阶段一",
+      "title": "Agent、Harness 和 Loop 最小运行时",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "W1-002",
+      "phase": "阶段一",
+      "title": "Graph/DAG 执行和 Checkpoint",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "W2-001",
+      "phase": "阶段二",
+      "title": "金融数据契约和四类分析 Agent",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "W3-001",
+      "phase": "阶段三",
+      "title": "综合研判、交易建议和风险控制",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "W4-001",
+      "phase": "阶段四",
+      "title": "回测、可观测性和 Harness 对比实验",
+      "status": "pending",
+      "evidence": []
+    }
+  ]
+}

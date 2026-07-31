@@ -1,0 +1,30 @@
+# Python caches and build outputs
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Local environments and secrets
+.venv/
+venv/
+.env
+
+# Local runtime outputs
+logs/
+artifacts/
+reports/
+checkpoints/
+*.log
+
+# Temporary document review output
+.docx_review/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
