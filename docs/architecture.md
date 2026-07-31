@@ -1,4 +1,4 @@
-# 第 0 周架构说明
+# 阶段一架构说明
 
 ## 运行关系
 
@@ -37,6 +37,22 @@ AgentRequest ──> Agent.run ──> AgentResponse
 
 任何一步失败都会记录对应的 `*.failed` 事件，并通过 `HarnessExecutionError` 暴露原始异常和已有 trace。
 
-## 第 0 周的实现边界
+## 第二周 Loop
 
-现在已经用确定性的 Echo Agent 验证了接口和 Harness 闭环。下一步先加入带最大步数的 Loop，再进入 Graph 和金融场景。
+Loop 不直接调用 Agent，而是持有一个 `AgentHarness`。每次循环都创建带有当前步数和历史响应的请求：
+
+```text
+LoopState
+   ↓ 生成本步 AgentRequest
+AgentHarness.run()
+   ↓ 返回 HarnessResult
+completion_checker 判断是否完成
+   ├── 是：LoopResult
+   └── 否：更新 LoopState，进入下一步
+```
+
+Loop 的安全边界是 `max_steps` 和 `max_retries`。循环不会无限执行，失败重试耗尽后会保留失败状态和 trace。
+
+## 当前实现边界
+
+现在已经用确定性的 Echo Agent 验证了接口、Harness 和 Loop 闭环。下一步是实现 Graph/DAG，再进入金融数据和专业 Agent。

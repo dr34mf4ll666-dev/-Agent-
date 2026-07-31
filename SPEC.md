@@ -9,22 +9,22 @@
 - 输出结构化、数据可追溯、行为可约束、过程可审计；
 - 在不接入真实下单的前提下完成分析、风控、模拟执行和回测。
 
-## 2. 当前阶段：阶段一第一周
+## 2. 当前阶段：阶段一第二周
 
-第 0 周的项目入口已经完成。本周只实现一个离线、确定性的 Agent 闭环，不接入金融数据、LLM API、Loop 或 Graph。
+第 0 周的项目入口和第一周的 Echo/Harness 闭环已经完成。本周在 Harness 之上实现一个离线、确定性的 Loop，不接入金融数据、LLM API 或 Graph。
 
 ### 必须完成
 
-1. 定义 `AgentRequest`、`AgentResponse` 和 `Agent.run` 公共接口。
-2. 实现不依赖网络的 `EchoAgent`。
-3. 实现 `AgentHarness.run`：前置检查、执行、后置检查和 trace。
-4. 支持 Guardrail 通过接口注入。
-5. 失败时保留失败阶段、原始异常和已有 trace。
+1. 定义 `LoopState`，保存步数、历史响应和完成状态。
+2. 实现 `LoopRunner.run(request)` 公共入口。
+3. 让每个 Loop step 都经过已有的 `AgentHarness`。
+4. 支持外部传入完成条件、最大步数和失败重试。
+5. 失败时保留 Loop 状态、已有步骤结果、Loop trace 和原始异常。
 
 ### 明确不做
 
 - 不在本周接入 AKShare、Tushare 或券商接口。
-- 不在本周实现 Loop 的多步规划、重试或记忆。
+- 不在本周接入真实 LLM 或实现复杂的计划器、长期记忆。
 - 不在本周实现 Graph/DAG、并行调度或 Checkpoint。
 - 不把 API 密钥或账户信息写入项目。
 
@@ -53,9 +53,29 @@ result.trace             # 有序的生命周期事件
 - `AgentHarness.run(request) -> HarnessResult`：统一的可靠性入口。
 - `HarnessExecutionError.trace`：失败时读取已经发生的事件，不需要访问 Harness 内部状态。
 
-第一周不承诺持久化时间戳、分布式调度或自动重试；这些属于后续 Loop/Graph 和工程化阶段。
+当前实现不承诺持久化时间戳、分布式调度或长期记忆；这些属于后续 Graph 和工程化阶段。
 
-## 5. 后续阶段的成功标准
+## 5. 第二周公共接口
+
+```python
+runner = LoopRunner(
+    AgentHarness(agent),
+    completion_checker=lambda response: response.metadata.get("done", False),
+    max_steps=3,
+    max_retries=1,
+)
+result = runner.run(AgentRequest(task="complete the task"))
+```
+
+- `LoopState`：保存当前请求、已执行步数、响应历史和是否完成。
+- `LoopRunner.run()`：重复执行有限步，并把每步交给 Harness。
+- `completion_checker`：由调用方决定什么结果算完成。
+- `LoopResult`：返回最终响应、最终状态、每步 Harness 结果和 Loop trace。
+- `LoopExecutionError`：失败时暴露失败状态、已经完成的步骤和原始异常。
+
+第二周的重试只针对 Harness 执行失败；达到 `max_steps` 时安全停止，不允许无限循环。
+
+## 6. 后续阶段的成功标准
 
 ### 平台层
 
@@ -77,13 +97,13 @@ result.trace             # 有序的生命周期事件
 - 具备日志追踪、失败恢复、质量评估和熔断能力。
 - 能用实验数据比较 Harness 对幻觉率、无效调用和成功率的影响。
 
-## 6. 当前验收命令
+## 7. 当前验收命令
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-## 7. 安全底线
+## 8. 安全底线
 
 - `ALLOW_LIVE_TRADING` 默认必须为 `false`。
 - 真实交易能力未列入当前交付范围。

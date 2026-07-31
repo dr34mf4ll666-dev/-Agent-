@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-当前已完成第一周：Echo Agent 和最小 Harness 闭环已经可以离线运行，尚未进入金融数据接入和多 Agent 业务实现。
+当前已完成第二周：Loop 已在 Harness 之上实现了状态、完成条件、最大步数和失败重试，尚未进入 Graph 和金融数据接入。
 
 核心关系：
 
@@ -66,3 +66,10 @@ python -m pytest
 - `AgentHarness` 可以执行前置检查、Agent 调用、后置检查和 trace 记录。
 - 空任务、错误输出和 Agent 异常都会被拦截或保留失败 trace。
 - Guardrail 可以通过接口注入，而不需要修改 Harness 主流程。
+
+## 第二周的完成定义
+
+- `LoopState` 能保存当前步数、历史响应和完成状态。
+- `LoopRunner` 会让每一步都经过 `AgentHarness`。
+- Loop 支持外部传入完成条件，不把业务判断写死在运行器里。
+- Loop 支持最大步数、失败重试和重试耗尽后的错误追踪。

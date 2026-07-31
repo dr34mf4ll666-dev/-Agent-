@@ -2,7 +2,7 @@
   "project": "通用 Agent 平台及证券金融分析应用",
   "version": "0.1.0",
   "updated_at": "2026-07-31",
-  "current_week": 1,
+  "current_week": 2,
   "status": "in_progress",
   "items": [
     {
@@ -51,8 +51,8 @@
       "id": "W1-002",
       "phase": "阶段一第二周",
       "title": "Loop 多步运行、最大步数和失败重试",
-      "status": "pending",
-      "evidence": []
+      "status": "done",
+      "evidence": ["src/agent_platform/core/loop.py", "tests/test_loop.py"]
     },
     {
       "id": "W1-003",

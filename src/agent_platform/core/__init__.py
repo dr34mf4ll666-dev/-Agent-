@@ -11,6 +11,14 @@ from .contracts import (
 )
 from .echo import EchoAgent
 from .harness import AgentHarness
+from .loop import (
+    LoopEvent,
+    LoopExecutionError,
+    LoopMaxStepsExceeded,
+    LoopResult,
+    LoopRunner,
+    LoopState,
+)
 
 __all__ = [
     "AgentHarness",
@@ -21,5 +29,11 @@ __all__ = [
     "GuardrailViolation",
     "HarnessExecutionError",
     "HarnessResult",
+    "LoopEvent",
+    "LoopExecutionError",
+    "LoopMaxStepsExceeded",
+    "LoopResult",
+    "LoopRunner",
+    "LoopState",
     "TraceEvent",
 ]
