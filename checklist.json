@@ -62,6 +62,13 @@
       "evidence": ["src/agent_platform/core/graph.py", "src/agent_platform/core/checkpoint.py", "tests/test_graph.py", "Workflow/README.md"]
     },
     {
+      "id": "W1-004",
+      "phase": "阶段一第三周",
+      "title": "可直接运行的 Graph 故障恢复演示",
+      "status": "done",
+      "evidence": ["Scripts/demo_graph.py", "tests/test_demo_graph.py", "README.md", "Scripts/README.md"]
+    },
+    {
       "id": "W2-001",
       "phase": "阶段二",
       "title": "金融数据契约和四类分析 Agent",

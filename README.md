@@ -28,6 +28,24 @@ python -m unittest discover -s tests -v
 python -m pytest
 ```
 
+## 直接运行 Graph 演示
+
+在项目根目录运行：
+
+```powershell
+python Scripts\demo_graph.py
+```
+
+默认演示会进入 `approved` 条件分支，让 `recoverable` 节点第一次执行失败，然后自动从 JSON Checkpoint 恢复。运行结果会显示节点执行顺序、各节点状态和最终共享状态。
+
+也可以关闭故障，观察 `rejected` 分支：
+
+```powershell
+python Scripts\demo_graph.py --route rejected --no-failure
+```
+
+演示产生的 `checkpoints/demo_graph.json` 是本地运行文件，已由 `.gitignore` 排除。
+
 ## 项目结构
 
 ```text

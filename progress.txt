@@ -43,3 +43,12 @@
 
 下一步
 - 进入阶段二：先定义带 `source`、`timestamp`、`as_of` 的金融数据契约，再实现第一个离线专业 Agent。
+
+[2026-08-03] Graph 可运行演示完成
+- 新增 `Scripts/demo_graph.py`，可以直接从命令行观察节点执行、条件分支、节点状态和共享状态。
+- 默认模拟 `recoverable` 节点首次失败，并自动从 JSON Checkpoint 恢复；已完成节点不会重复运行。
+- Checkpoint 默认写入已忽略的 `checkpoints/`，不会进入 Git；支持切换分支、关闭故障和自定义存档路径。
+- 新增子进程集成测试，验证真实命令、终端输出和最终 Checkpoint；验证结果：20 项 unittest 全部通过，源码、测试和脚本编译检查通过。
+
+下一步
+- 进入阶段二的第一个小任务：定义金融数据契约和离线 fixture，暂不接入真实行情 API。
