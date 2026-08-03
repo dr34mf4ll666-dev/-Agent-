@@ -33,3 +33,13 @@
 
 下一步
 - 第三周实现最小 Graph/DAG：节点、条件分支和 Checkpoint 的边界。
+
+[2026-08-03] 第三周完成
+- 定义 `GraphState`、`GraphEdge`、`GraphDefinition`、`GraphResult` 和 Graph 错误类型。
+- 实现确定性的 DAG 运行器：执行前校验、拓扑顺序、状态合并、条件分支和跳过传播。
+- 实现 JSON Checkpoint：节点完成、跳过或失败后保存，恢复时不重复运行已完成节点。
+- 验证正常 DAG、环检测、条件分支和失败恢复；本地任务书文档继续保持不被 Git 跟踪。
+- 验证结果：19 项 unittest 全部通过，源码和测试编译检查通过。
+
+下一步
+- 进入阶段二：先定义带 `source`、`timestamp`、`as_of` 的金融数据契约，再实现第一个离线专业 Agent。

@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
   "version": "0.1.0",
-  "updated_at": "2026-07-31",
-  "current_week": 2,
+  "updated_at": "2026-08-03",
+  "current_week": 3,
   "status": "in_progress",
   "items": [
     {
@@ -58,8 +58,8 @@
       "id": "W1-003",
       "phase": "阶段一第三周",
       "title": "Graph/DAG 执行和 Checkpoint",
-      "status": "pending",
-      "evidence": []
+      "status": "done",
+      "evidence": ["src/agent_platform/core/graph.py", "src/agent_platform/core/checkpoint.py", "tests/test_graph.py", "Workflow/README.md"]
     },
     {
       "id": "W2-001",

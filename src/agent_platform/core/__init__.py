@@ -1,4 +1,4 @@
-"""Agent 平台第一周可供调用的公共模块。"""
+"""Agent 平台核心公共接口。"""
 
 from .contracts import (
     AgentRequest,
@@ -9,7 +9,22 @@ from .contracts import (
     HarnessResult,
     TraceEvent,
 )
+from .checkpoint import (
+    GraphCheckpoint,
+    GraphCheckpointError,
+    JsonCheckpointStore,
+)
 from .echo import EchoAgent
+from .graph import (
+    GraphContractError,
+    GraphDefinition,
+    GraphEdge,
+    GraphExecutionError,
+    GraphResult,
+    GraphRunner,
+    GraphState,
+    GraphValidationError,
+)
 from .harness import AgentHarness
 from .loop import (
     LoopEvent,
@@ -25,6 +40,17 @@ __all__ = [
     "AgentRequest",
     "AgentResponse",
     "EchoAgent",
+    "GraphCheckpoint",
+    "GraphCheckpointError",
+    "GraphContractError",
+    "GraphDefinition",
+    "GraphEdge",
+    "GraphExecutionError",
+    "GraphResult",
+    "GraphRunner",
+    "GraphState",
+    "GraphValidationError",
+    "JsonCheckpointStore",
     "Guardrail",
     "GuardrailViolation",
     "HarnessExecutionError",

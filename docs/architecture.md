@@ -53,6 +53,24 @@ completion_checker 判断是否完成
 
 Loop 的安全边界是 `max_steps` 和 `max_retries`。循环不会无限执行，失败重试耗尽后会保留失败状态和 trace。
 
+## 第三周 Graph/DAG
+
+Graph 由一个入口节点、节点映射和有向边组成。运行前先做拓扑排序；如果入口不存在、边引用未知节点或图中有环，会在任何节点运行前拒绝执行。
+
+```text
+GraphDefinition
+   ↓ 校验并生成拓扑顺序
+GraphRunner 逐个执行激活节点
+   ↓ 节点返回字段更新
+GraphState 合并新状态
+   ↓ 计算条件边
+保存 JSON Checkpoint
+```
+
+每个节点只有四种状态：`pending`、`completed`、`skipped`、`failed`。条件边未激活的分支会标记为 `skipped`，并继续向后传播“不激活”信息，避免错误执行支路。
+
+Checkpoint 保存图结构签名、共享状态、节点状态和执行顺序。恢复时会核对图结构，跳过已经完成或已经确定跳过的节点，只重新运行失败或尚未执行的节点。
+
 ## 当前实现边界
 
-现在已经用确定性的 Echo Agent 验证了接口、Harness 和 Loop 闭环。下一步是实现 Graph/DAG，再进入金融数据和专业 Agent。
+现在已经用确定性的 Echo Agent 验证了 Harness、Loop 和可恢复 Graph 闭环。当前 Graph 是单进程顺序执行，不包含真正的并行调度、外部工作流文件解析和图形化编辑。下一步进入金融数据契约和第一个专业 Agent。

@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-当前已完成第二周：Loop 已在 Harness 之上实现了状态、完成条件、最大步数和失败重试，尚未进入 Graph 和金融数据接入。
+当前已完成第三周：平台已经具备确定性的 DAG 执行、条件分支、状态合并，以及基于 JSON Checkpoint 的失败恢复。尚未接入金融数据和真实 LLM。
 
 核心关系：
 
@@ -44,7 +44,7 @@ python -m pytest
 ├── MCP/                    # 外部数据与工具适配层
 ├── SubAgents/              # 专业 Agent 定义
 ├── src/agent_platform/     # Python 平台代码
-│   └── core/               # 第一周的契约、Echo Agent 和 Harness
+│   └── core/               # 契约、Harness、Loop、Graph 和 Checkpoint
 └── tests/                  # 自动化测试
 ```
 
@@ -73,3 +73,12 @@ python -m pytest
 - `LoopRunner` 会让每一步都经过 `AgentHarness`。
 - Loop 支持外部传入完成条件，不把业务判断写死在运行器里。
 - Loop 支持最大步数、失败重试和重试耗尽后的错误追踪。
+
+## 第三周的完成定义
+
+- `GraphDefinition` 用节点和有向边描述一个无环工作流。
+- `GraphRunner` 按拓扑顺序运行节点，并合并节点返回的状态更新。
+- 条件边只激活满足条件的分支；未选中的节点会标记为 `skipped`。
+- 图在执行前检查入口、边端点和环，非法图不会执行任何节点。
+- `JsonCheckpointStore` 在节点完成、跳过或失败后保存状态。
+- 失败恢复会从 Checkpoint 继续，不重复运行已经完成的节点。

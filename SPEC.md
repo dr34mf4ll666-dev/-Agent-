@@ -9,23 +9,24 @@
 - 输出结构化、数据可追溯、行为可约束、过程可审计；
 - 在不接入真实下单的前提下完成分析、风控、模拟执行和回测。
 
-## 2. 当前阶段：阶段一第二周
+## 2. 当前阶段：阶段一第三周
 
-第 0 周的项目入口和第一周的 Echo/Harness 闭环已经完成。本周在 Harness 之上实现一个离线、确定性的 Loop，不接入金融数据、LLM API 或 Graph。
+第 0 周的项目入口、第一周的 Echo/Harness 闭环和第二周的 Loop 已经完成。本周实现一个离线、确定性的 Graph/DAG 运行器，并加入最小 Checkpoint 恢复能力。
 
 ### 必须完成
 
-1. 定义 `LoopState`，保存步数、历史响应和完成状态。
-2. 实现 `LoopRunner.run(request)` 公共入口。
-3. 让每个 Loop step 都经过已有的 `AgentHarness`。
-4. 支持外部传入完成条件、最大步数和失败重试。
-5. 失败时保留 Loop 状态、已有步骤结果、Loop trace 和原始异常。
+1. 定义 Graph 状态、节点、边和运行结果的稳定契约。
+2. 在执行前校验入口、边端点和 DAG 无环性。
+3. 按拓扑顺序执行节点，并合并节点返回的状态更新。
+4. 支持条件边和未选中分支的跳过传播。
+5. 将执行状态保存到 JSON Checkpoint，失败后可以继续执行。
 
 ### 明确不做
 
 - 不在本周接入 AKShare、Tushare 或券商接口。
 - 不在本周接入真实 LLM 或实现复杂的计划器、长期记忆。
-- 不在本周实现 Graph/DAG、并行调度或 Checkpoint。
+- 不在本周实现真正的并行调度、分布式执行或超时控制。
+- 不在本周实现 YAML/JSON 工作流解析器和图形化编辑器。
 - 不把 API 密钥或账户信息写入项目。
 
 ## 3. 架构原则
@@ -75,7 +76,28 @@ result = runner.run(AgentRequest(task="complete the task"))
 
 第二周的重试只针对 Harness 执行失败；达到 `max_steps` 时安全停止，不允许无限循环。
 
-## 6. 后续阶段的成功标准
+## 6. 第三周公共接口
+
+```python
+graph = GraphDefinition(
+    start="prepare",
+    nodes={"prepare": prepare, "finish": finish},
+    edges=(GraphEdge("prepare", "finish"),),
+)
+runner = GraphRunner(
+    graph,
+    checkpoint_store=JsonCheckpointStore("checkpoints/demo.json"),
+)
+result = runner.run({"request_id": "demo"})
+```
+
+- 节点接收只读的 `GraphState`，返回需要合并到状态中的字段映射。
+- `GraphRunner.run(initial_state)`：从头执行确定性的 DAG。
+- `GraphRunner.run(resume=True)`：读取 Checkpoint，从未完成或失败的节点继续。
+- `GraphExecutionError`：失败时暴露状态、节点状态、执行顺序和原始异常。
+- 当前实现为单进程顺序执行；拓扑排序保证依赖顺序，但不承诺并行。
+
+## 7. 后续阶段的成功标准
 
 ### 平台层
 
@@ -97,13 +119,13 @@ result = runner.run(AgentRequest(task="complete the task"))
 - 具备日志追踪、失败恢复、质量评估和熔断能力。
 - 能用实验数据比较 Harness 对幻觉率、无效调用和成功率的影响。
 
-## 7. 当前验收命令
+## 8. 当前验收命令
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-## 8. 安全底线
+## 9. 安全底线
 
 - `ALLOW_LIVE_TRADING` 默认必须为 `false`。
 - 真实交易能力未列入当前交付范围。
