@@ -28,3 +28,17 @@ series = MarketDataSeries.from_records(records)
 ## 离线 fixture
 
 `tests/fixtures/synthetic_market_bars.json` 是人工构造的练习数据，`dataset_type` 和每条记录的 `source` 都标记为 `synthetic_fixture`。它不代表真实证券、真实行情或投资收益。
+
+`tests/fixtures/synthetic_market_bars_30.csv` 提供 30 根严格递增的模拟日线，供 `TechnicalAnalysisAgent` 计算 SMA5 和 SMA20。CSV 中每条记录同样保留 `source`、`timestamp` 和 `as_of`。
+
+## 技术分析输出
+
+`TechnicalAnalysisAgent` 只接收已经通过契约校验的 `MarketDataSeries`。当前确定性计算包括：
+
+```text
+daily_return = latest_close / previous_close - 1
+sma_5 = 最近 5 根收盘价之和 / 5
+sma_20 = 最近 20 根收盘价之和 / 20
+```
+
+趋势分类会同时返回标签和触发规则，方便审计。它只描述这套简化规则下的价格与均线关系，不输出交易建议。

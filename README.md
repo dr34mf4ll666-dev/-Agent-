@@ -4,9 +4,9 @@
 
 ## 项目进度
 
-阶段一已经完成，现有平台包括 Harness、Loop、Graph/DAG、条件分支和 JSON Checkpoint。项目目前进入阶段二，第一步金融行情数据契约也已完成。
+阶段一已经完成，现有平台包括 Harness、Loop、Graph/DAG、条件分支和 JSON Checkpoint。项目目前进入阶段二，金融行情数据契约和第一个确定性技术分析 Agent 已经完成。
 
-当前仍使用离线模拟数据，尚未接入真实行情 API、专业分析 Agent 和真实 LLM。真实交易始终关闭。
+当前仍使用离线模拟数据，尚未接入真实行情 API、其他专业分析 Agent 和真实 LLM。真实交易始终关闭。
 
 ## 快速开始
 
@@ -38,6 +38,14 @@ python Scripts\demo_graph.py --route rejected --no-failure
 
 演示产生的 `checkpoints/demo_graph.json` 仅用于本地运行，已经通过 `.gitignore` 排除。
 
+### 运行技术分析演示
+
+```powershell
+python Scripts\demo_technical_analysis.py
+```
+
+该演示会读取 30 根人工构造的日线，通过 Harness 运行 `TechnicalAnalysisAgent`，并输出单日收益率、SMA5、SMA20、趋势标签、触发规则、数据来源和 trace。
+
 ## 已实现的能力
 
 ### Harness：一次调用的可靠性入口
@@ -64,6 +72,16 @@ python Scripts\demo_graph.py --route rejected --no-failure
 - 时间必须包含时区，且 `as_of` 不能晚于 `timestamp`。
 
 `MarketDataSeries` 只接受同一证券的数据，并要求 `as_of` 严格递增。测试使用的 `synthetic_market_bars.json` 是人工构造的练习数据，不代表真实证券、真实行情或投资结果。
+
+### TechnicalAnalysisAgent：确定性的技术指标
+
+`TechnicalAnalysisAgent` 从 `AgentRequest.context["market_data"]` 读取经过校验的行情序列，计算最新单日收益率、SMA5 和 SMA20。当前趋势规则为：
+
+- `bullish`：`latest_close > sma_5 > sma_20`；
+- `bearish`：`latest_close < sma_5 < sma_20`；
+- `mixed`：均线没有形成以上严格关系。
+
+结果通过 `AgentResponse.metadata["analysis"]` 返回，价格和指标转换为 JSON 兼容的十进制字符串。数据不足 20 根或输入类型错误时，Harness 会保留稳定错误和失败 trace。趋势标签只描述当前规则下的技术状态，不构成投资建议。
 
 ## 模块关系
 
@@ -110,6 +128,6 @@ Harness 负责校验、追踪和错误保留
 
 ## 下一步
 
-下一项任务是实现确定性的 `TechnicalAnalysisAgent`。它会读取已经通过校验的离线行情序列，计算收益率和简单移动平均线，再输出结构化分析结果。这个阶段仍不接 LLM，也不接真实行情 API。
+下一项任务是把行情读取、`TechnicalAnalysisAgent` 和结果汇总接成一个最小 Graph 工作流，验证金融模块能够真正使用阶段一的平台能力。这个阶段仍不接 LLM，也不接真实行情 API。
 
 更详细的阶段边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，当前验收状态见 `checklist.json` 和 `progress.txt`。

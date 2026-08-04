@@ -17,3 +17,11 @@ python Scripts\demo_graph.py
 - `--route approved|rejected`：选择条件分支；
 - `--no-failure`：关闭首次模拟故障；
 - `--checkpoint PATH`：指定 Checkpoint 文件位置。
+
+## 技术分析演示
+
+```powershell
+python Scripts\demo_technical_analysis.py
+```
+
+该脚本读取 30 根离线模拟日线，通过 Harness 运行 `TechnicalAnalysisAgent`，并打印结构化指标、趋势规则、数据来源和 Harness trace。它不调用网络、LLM 或真实交易接口。

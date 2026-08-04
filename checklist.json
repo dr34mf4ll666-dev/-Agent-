@@ -79,8 +79,8 @@
       "id": "W2-002",
       "phase": "阶段二",
       "title": "确定性的技术分析 Agent",
-      "status": "pending",
-      "evidence": []
+      "status": "done",
+      "evidence": ["src/agent_platform/finance/technical.py", "tests/fixtures/synthetic_market_bars_30.csv", "tests/test_technical_analysis_agent.py", "Scripts/demo_technical_analysis.py", "tests/test_demo_technical_analysis.py"]
     },
     {
       "id": "W2-003",

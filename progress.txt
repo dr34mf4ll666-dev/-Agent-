@@ -62,3 +62,14 @@
 
 下一步
 - 使用当前离线数据实现确定性的 `TechnicalAnalysisAgent`，先计算收益率和简单移动平均线，不接 LLM。
+
+[2026-08-04] 第 4 周技术分析 Agent 完成
+- 将离线模拟行情扩充为 30 根日线，覆盖 2026 年 6 月 22 日至 7 月 31 日，全部标注为 `synthetic_fixture`。
+- 新增 `TechnicalAnalysisAgent`，通过现有 Harness 计算最新单日收益率、SMA5 和 SMA20。
+- 输出 `bullish`、`bearish` 或 `mixed`，并附带触发规则、样本数量、数据时间和来源；结果明确不构成投资建议。
+- 数据不足 20 根或 `market_data` 类型错误时抛出稳定错误，Harness 会保留失败 trace 和原始原因。
+- 新增可直接运行的 `Scripts/demo_technical_analysis.py`，终端可查看结构化指标和 Harness trace。
+- 验证结果：新增 5 项 Agent 与演示测试，项目共 35 项 unittest 全部通过；源码、测试和脚本编译检查通过。
+
+下一步
+- 把离线行情读取、技术分析和结果汇总接成最小 Graph 工作流，验证金融模块与阶段一平台骨架的组合。

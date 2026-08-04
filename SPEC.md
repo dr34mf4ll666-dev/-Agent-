@@ -9,24 +9,25 @@
 - 输出结构化、数据可追溯、行为可约束、过程可审计；
 - 在不接入真实下单的前提下完成分析、风控、模拟执行和回测。
 
-## 2. 当前阶段：阶段二第一步
+## 2. 当前阶段：阶段二第二步（第 4 周）
 
-阶段一的平台骨架和可运行 Graph 演示已经完成。当前先建立可追溯、可校验的金融行情数据契约，为后续专业 Agent 提供稳定输入。
+阶段一的平台骨架和阶段二的金融行情数据契约已经完成。当前实现第一个确定性的金融专业 Agent，让离线行情能够产生可验证、可解释的技术指标结果。
 
 ### 必须完成
 
-1. 定义单根 OHLCV K 线 `MarketBar` 和单证券序列 `MarketDataSeries`。
-2. 每条数据必须保留 `source`、`timestamp` 和 `as_of`。
-3. 价格使用 `Decimal`，并校验正数、有限值和 OHLC 范围。
-4. 时间必须带时区，且 `as_of` 不得晚于数据获取时间 `timestamp`。
-5. 序列必须属于同一证券，并按 `as_of` 严格递增。
-6. 使用明确标注为模拟数据的离线 fixture 验证契约。
+1. 将离线模拟行情扩充到 30 根日线，继续保留来源和时间语义。
+2. 实现满足现有 `Agent` 接口的 `TechnicalAnalysisAgent`，并通过 Harness 执行。
+3. 使用 `Decimal` 计算最新单日收益率、SMA5 和 SMA20。
+4. 按固定关系输出 `bullish`、`bearish` 或 `mixed`，同时保留触发规则。
+5. 数据少于 20 根或输入类型错误时，返回稳定错误并保留 Harness trace。
+6. 提供可直接运行的离线技术分析演示。
 
 ### 明确不做
 
 - 不在本步接入 AKShare、Tushare 或券商接口。
-- 不在本步计算技术指标或实现专业 Agent。
 - 不在本步接入真实 LLM、数据库或真实交易能力。
+- 不在本步输出买入、卖出或仓位建议。
+- 不在本步增加 MACD、RSI 等额外指标，也不接入 Graph 工作流。
 - 不把 API 密钥或账户信息写入项目。
 
 ## 3. 架构原则
@@ -113,7 +114,23 @@ first_bar.timestamp  # 数据获取时间
 - `MarketDataValidationError`：统一暴露缺失字段、错误格式和不变量错误。
 - 当前 fixture 是人工构造的练习数据，不代表任何真实证券或投资结果。
 
-## 8. 后续阶段的成功标准
+## 8. 阶段二技术分析接口
+
+```python
+request = AgentRequest(
+    task="analyze the latest technical trend",
+    context={"market_data": series},
+)
+result = AgentHarness(TechnicalAnalysisAgent()).run(request)
+analysis = result.response.metadata["analysis"]
+```
+
+- 输入必须是 `MarketDataSeries`，并至少包含 20 根 K 线。
+- 输出包含 `daily_return`、`sma_5`、`sma_20`、趋势标签和明确的趋势规则。
+- 所有指标由确定性 `Decimal` 运算得到，LLM 不参与计算。
+- 趋势标签只是简化的技术状态，不是投资建议。
+
+## 9. 后续阶段的成功标准
 
 ### 平台层
 
@@ -135,13 +152,13 @@ first_bar.timestamp  # 数据获取时间
 - 具备日志追踪、失败恢复、质量评估和熔断能力。
 - 能用实验数据比较 Harness 对幻觉率、无效调用和成功率的影响。
 
-## 9. 当前验收命令
+## 10. 当前验收命令
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-## 10. 安全底线
+## 11. 安全底线
 
 - `ALLOW_LIVE_TRADING` 默认必须为 `false`。
 - 真实交易能力未列入当前交付范围。
