@@ -1,107 +1,271 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "updated_at": "2026-08-04",
-  "current_week": 4,
+  "current_week": 5,
+  "current_focus": "T1.4 Harness SDK",
+  "tracking_model": "official_tasks_with_internal_milestones",
   "status": "in_progress",
   "items": [
     {
-      "id": "W0-001",
-      "phase": "第 0 周",
-      "title": "项目规范和安全边界",
+      "id": "T1.1",
+      "phase": "阶段一",
+      "title": "Harness 规范落地",
       "status": "done",
-      "evidence": ["SPEC.md", "AGENTS.md"]
+      "completed_slices": [
+        "建立 Harness 九类根目录及职责说明",
+        "使用 JSON checklist、progress.txt 和 Git 跟踪进度",
+        "形成一次只处理一个可验收小功能的协作约定"
+      ],
+      "remaining": [],
+      "evidence": [
+        "AGENTS.md",
+        "README.md",
+        "checklist.json",
+        "progress.txt",
+        "Rule/README.md",
+        "Skill/README.md",
+        "Workflow/README.md",
+        "Scripts/README.md",
+        "MCP/README.md",
+        "SubAgents/README.md"
+      ]
     },
     {
-      "id": "W0-002",
-      "phase": "第 0 周",
-      "title": "目录骨架和职责说明",
-      "status": "done",
-      "evidence": ["README.md", "Rule/README.md", "Skill/README.md", "Workflow/README.md", "Scripts/README.md", "MCP/README.md", "SubAgents/README.md"]
+      "id": "T1.2",
+      "phase": "阶段一",
+      "title": "Loop Engineering",
+      "status": "in_progress",
+      "completed_slices": [
+        "有限步循环",
+        "响应历史和外部完成条件",
+        "Harness 失败重试和安全停止"
+      ],
+      "remaining": [
+        "计划、行动、观察、反思五要素和工具调用",
+        "Heartbeat/Cron 与递归目标循环",
+        "工作区或 worktree 隔离",
+        "Skill 和上下文注入",
+        "工作记忆、项目记忆和组织记忆"
+      ],
+      "evidence": [
+        "src/agent_platform/core/loop.py",
+        "tests/test_loop.py"
+      ]
     },
     {
-      "id": "W0-003",
-      "phase": "第 0 周",
-      "title": "最小 Python 包和离线测试入口",
-      "status": "done",
-      "evidence": ["src/agent_platform/__init__.py", "tests/test_project_bootstrap.py"]
+      "id": "T1.3",
+      "phase": "阶段一",
+      "title": "Graph Engineering",
+      "status": "in_progress",
+      "completed_slices": [
+        "DAG 校验和拓扑顺序",
+        "条件分支、状态合并和跳过传播",
+        "JSON Checkpoint 和故障恢复演示"
+      ],
+      "remaining": [
+        "YAML/JSON 工作流定义",
+        "并行执行",
+        "节点重试和超时",
+        "熔断",
+        "Graph 可视化"
+      ],
+      "evidence": [
+        "src/agent_platform/core/graph.py",
+        "src/agent_platform/core/checkpoint.py",
+        "tests/test_graph.py",
+        "Scripts/demo_graph.py",
+        "tests/test_demo_graph.py"
+      ]
     },
     {
-      "id": "W0-004",
-      "phase": "第 0 周",
-      "title": "功能清单和进度记录机制",
-      "status": "done",
-      "evidence": ["checklist.json", "progress.txt"]
+      "id": "T1.4",
+      "phase": "阶段一",
+      "title": "Harness SDK",
+      "status": "in_progress",
+      "completed_slices": [
+        "AgentHarness 统一入口",
+        "可插拔 Guardrail 契约",
+        "成功和失败 trace"
+      ],
+      "remaining": [
+        "JSONSchemaValidator",
+        "SourceAttributionFilter",
+        "RateLimiter",
+        "KeywordBlocker",
+        "CrossValidator",
+        "五类 Guardrail 的配置、测试和演示"
+      ],
+      "evidence": [
+        "src/agent_platform/core/harness.py",
+        "src/agent_platform/core/contracts.py",
+        "tests/test_echo_harness.py"
+      ]
     },
     {
-      "id": "W0-005",
-      "phase": "第 0 周",
-      "title": "Git 仓库初始化",
-      "status": "done",
-      "evidence": ["Git commit 6b7769f"]
+      "id": "T2.1",
+      "phase": "阶段二",
+      "title": "金融数据基础设施",
+      "status": "in_progress",
+      "completed_slices": [
+        "可追溯的 MarketBar 和 MarketDataSeries 契约",
+        "人工模拟日线 fixture"
+      ],
+      "remaining": [
+        "AKShare/Tushare MCP 工具适配",
+        "日线、周线、分钟、实时行情和资金流",
+        "财务报表和指标",
+        "宏观和行业数据",
+        "新闻、公告和研报摘要",
+        "真实外部数据的来源和时间验证"
+      ],
+      "evidence": [
+        "src/agent_platform/finance/contracts.py",
+        "tests/test_finance_contracts.py",
+        "tests/fixtures/synthetic_market_bars.json",
+        "docs/finance-data-contract.md"
+      ]
     },
     {
-      "id": "W1-001",
-      "phase": "阶段一第一周",
-      "title": "Echo Agent 和 Harness 最小运行时",
-      "status": "done",
-      "evidence": ["src/agent_platform/core/contracts.py", "src/agent_platform/core/echo.py", "src/agent_platform/core/harness.py", "tests/test_echo_harness.py"]
+      "id": "T2.2",
+      "phase": "阶段二",
+      "title": "四类分析 Agent",
+      "status": "in_progress",
+      "completed_slices": [
+        "简化版确定性技术分析 Agent",
+        "SMA5、SMA20 和最新单日收益率",
+        "离线技术分析演示"
+      ],
+      "remaining": [
+        "技术 Agent 的完整 Loop 和 Harness 配置",
+        "基本面 Agent",
+        "行业 Agent",
+        "大盘/宏观 Agent",
+        "四个 Agent 的单元测试和样例报告"
+      ],
+      "evidence": [
+        "src/agent_platform/finance/technical.py",
+        "tests/test_technical_analysis_agent.py",
+        "Scripts/demo_technical_analysis.py",
+        "tests/test_demo_technical_analysis.py"
+      ]
     },
     {
-      "id": "W1-002",
-      "phase": "阶段一第二周",
-      "title": "Loop 多步运行、最大步数和失败重试",
+      "id": "T3.1",
+      "phase": "阶段三",
+      "title": "综合研判与辩论",
+      "status": "pending",
+      "completed_slices": [],
+      "remaining": [
+        "多 Agent 结果汇总",
+        "分歧识别和辩论",
+        "Harness 偏差控制"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "T3.2",
+      "phase": "阶段三",
+      "title": "Trader 与 Risk Manager",
+      "status": "pending",
+      "completed_slices": [],
+      "remaining": [
+        "模拟交易建议",
+        "确定性仓位和风控校验",
+        "人工确认和真实交易关闭边界"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "T3.3",
+      "phase": "阶段三",
+      "title": "完整金融 Graph",
+      "status": "pending",
+      "completed_slices": [],
+      "remaining": [
+        "完整节点编排和条件流转",
+        "至少 20 只股票端到端验证",
+        "Checkpoint 故障恢复"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "T4.1",
+      "phase": "阶段四",
+      "title": "回测系统",
+      "status": "pending",
+      "completed_slices": [],
+      "remaining": [
+        "信号时间和执行时间分离",
+        "交易成本和核心绩效指标",
+        "无未来数据的回测报告"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "T4.2",
+      "phase": "阶段四",
+      "title": "工业化 Harness",
+      "status": "pending",
+      "completed_slices": [],
+      "remaining": [
+        "可观测性和评估器",
+        "熔断和最小权限",
+        "Harness 对幻觉率、无效调用和成功率的对比实验"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "T4.3",
+      "phase": "阶段四",
+      "title": "模拟运行与最终交付",
+      "status": "pending",
+      "completed_slices": [],
+      "remaining": [
+        "模拟盘运行",
+        "完整运行和设计文档",
+        "可复现实验",
+        "可选的非金融迁移案例"
+      ],
+      "evidence": []
+    }
+  ],
+  "milestones": [
+    {
+      "id": "W0",
+      "title": "项目初始化和协作骨架",
+      "status": "done",
+      "evidence": ["SPEC.md", "AGENTS.md", "README.md", "tests/test_project_bootstrap.py"]
+    },
+    {
+      "id": "W1",
+      "title": "Echo Agent 和最小 Harness 原型",
+      "status": "done",
+      "evidence": ["src/agent_platform/core/harness.py", "tests/test_echo_harness.py"]
+    },
+    {
+      "id": "W2",
+      "title": "有限步 Loop 原型",
       "status": "done",
       "evidence": ["src/agent_platform/core/loop.py", "tests/test_loop.py"]
     },
     {
-      "id": "W1-003",
-      "phase": "阶段一第三周",
-      "title": "Graph/DAG 执行和 Checkpoint",
+      "id": "W3",
+      "title": "顺序 Graph 和 Checkpoint 原型",
       "status": "done",
-      "evidence": ["src/agent_platform/core/graph.py", "src/agent_platform/core/checkpoint.py", "tests/test_graph.py", "Workflow/README.md"]
+      "evidence": ["src/agent_platform/core/graph.py", "src/agent_platform/core/checkpoint.py", "tests/test_graph.py"]
     },
     {
-      "id": "W1-004",
-      "phase": "阶段一第三周",
-      "title": "可直接运行的 Graph 故障恢复演示",
+      "id": "W4-A",
+      "title": "金融数据契约和模拟 fixture",
       "status": "done",
-      "evidence": ["Scripts/demo_graph.py", "tests/test_demo_graph.py", "README.md", "Scripts/README.md"]
+      "evidence": ["src/agent_platform/finance/contracts.py", "tests/test_finance_contracts.py"]
     },
     {
-      "id": "W2-001",
-      "phase": "阶段二",
-      "title": "金融数据契约和离线 fixture",
+      "id": "W4-B",
+      "title": "简化版技术分析 Agent",
       "status": "done",
-      "evidence": ["src/agent_platform/finance/contracts.py", "tests/fixtures/synthetic_market_bars.json", "tests/test_finance_contracts.py", "docs/finance-data-contract.md"]
-    },
-    {
-      "id": "W2-002",
-      "phase": "阶段二",
-      "title": "确定性的技术分析 Agent",
-      "status": "done",
-      "evidence": ["src/agent_platform/finance/technical.py", "tests/fixtures/synthetic_market_bars_30.csv", "tests/test_technical_analysis_agent.py", "Scripts/demo_technical_analysis.py", "tests/test_demo_technical_analysis.py"]
-    },
-    {
-      "id": "W2-003",
-      "phase": "阶段二",
-      "title": "基本面、行业和大盘分析 Agent",
-      "status": "pending",
-      "evidence": []
-    },
-    {
-      "id": "W3-001",
-      "phase": "阶段三",
-      "title": "综合研判、交易建议和风险控制",
-      "status": "pending",
-      "evidence": []
-    },
-    {
-      "id": "W4-001",
-      "phase": "阶段四",
-      "title": "回测、可观测性和 Harness 对比实验",
-      "status": "pending",
-      "evidence": []
+      "evidence": ["src/agent_platform/finance/technical.py", "tests/test_technical_analysis_agent.py"]
     }
   ]
 }

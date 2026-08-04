@@ -4,9 +4,11 @@
 
 ## 项目进度
 
-阶段一已经完成，现有平台包括 Harness、Loop、Graph/DAG、条件分支和 JSON Checkpoint。项目目前进入阶段二，金融行情数据契约和第一个确定性技术分析 Agent 已经完成。
+项目已经形成 Harness、Loop、Graph/DAG、Checkpoint、金融数据契约和简化技术分析 Agent 等可运行原型，但这不等于任务书中的阶段一和阶段二已经完成。重新对齐后，只有任务 1.1 达到正式完成口径；1.2、1.3、1.4、2.1 和 2.2 均为部分完成。
 
-当前仍使用离线模拟数据，尚未接入真实行情 API、其他专业分析 Agent 和真实 LLM。真实交易始终关闭。
+当前主线回到任务 1.4，先补齐五类 Guardrail，再关闭 Loop 和 Graph 的剩余缺口。金融模块仍使用离线模拟数据，尚未接入真实行情 API、其他专业分析 Agent 和真实 LLM。真实交易始终关闭。
+
+完整任务映射、阶段门槛和修正版周计划见 [`ROADMAP.md`](ROADMAP.md)。
 
 ## 快速开始
 
@@ -52,9 +54,13 @@ python Scripts\demo_technical_analysis.py
 
 `AgentHarness` 负责输入检查、Agent 调用、输出检查、可插拔 Guardrail 和有序 trace。调用失败时会保留原始异常和已经发生的生命周期事件，便于定位问题。
 
+当前 Guardrail 只有公共契约和注入机制，任务书要求的 JSON Schema、来源过滤、限流、关键词阻断和交叉验证尚未补齐。
+
 ### Loop：受控的多步运行
 
 `LoopRunner` 让每一步都经过 Harness，并通过外部完成条件决定何时结束。它支持最大步数和有限重试，不允许任务无限循环。
+
+当前版本还不是任务书要求的完整 Agent Loop：计划、行动、观察、反思、工具调用、三层记忆和定时/递归运行仍待实现。
 
 ### Graph：节点编排与恢复
 
@@ -88,7 +94,7 @@ python Scripts\demo_technical_analysis.py
 ```text
 金融数据契约
       ↓
-专业分析节点（下一步）
+专业分析节点（已有技术分析原型）
       ↓
 Graph 组织依赖、分支和恢复
       ↓
@@ -104,6 +110,7 @@ Harness 负责校验、追踪和错误保留
 ```text
 .
 ├── SPEC.md                 # 当前阶段的目标与明确边界
+├── ROADMAP.md              # 正式任务、阶段门槛和修正版周计划
 ├── AGENTS.md               # 项目协作约定
 ├── checklist.json          # 功能状态与验收证据
 ├── progress.txt            # 按日期记录的进度
@@ -128,6 +135,6 @@ Harness 负责校验、追踪和错误保留
 
 ## 下一步
 
-下一项任务是把行情读取、`TechnicalAnalysisAgent` 和结果汇总接成一个最小 Graph 工作流，验证金融模块能够真正使用阶段一的平台能力。这个阶段仍不接 LLM，也不接真实行情 API。
+下一项任务是完成任务 1.4 的五类 Guardrail：JSON Schema 校验、来源过滤、限流、关键词阻断和交叉验证。此前计划的最小金融 Graph 暂缓，避免在平台验收缺口尚未关闭时继续扩大阶段二原型。
 
-更详细的阶段边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，当前验收状态见 `checklist.json` 和 `progress.txt`。
+完整路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。
