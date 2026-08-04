@@ -105,3 +105,15 @@
 
 下一步
 - 继续完成 T1.2，先实现规划、行动、观察、反思和受控工具调用闭环。
+
+[2026-08-04] 任务 1.2 认知 Loop 与受控工具切片完成
+- 新增 Plan、Action、Observation 和 Reflection 稳定契约，Reflection 明确区分继续、修正和完成。
+- 新增 ToolRegistry 工具允许列表；未知工具不能执行，每次 Action 的参数和工具结果都经过 Harness 前后校验。
+- 工具异常或 Guardrail 拒绝会形成失败 Observation，Agent 可以根据真实失败修正下一步；同一 Action 支持有限重试。
+- 新增 CognitiveLoopState、工具执行记录和认知 trace；超过最大步数时安全停止，并保留状态、Harness trace 和原始原因。
+- 新增离线计算演示：第一次参数校验失败，Reflection 修正后第二次调用已注册工具并完成。
+- 验证结果：新增 7 项认知 Loop 与演示测试，项目共 58 项 unittest 全部通过；源码、测试和脚本编译检查及 checklist JSON 解析通过。
+- T1.2 仍为进行中：工作/项目/组织记忆、三类调度、任务隔离、上下文注入、Model Gateway 和非金融 Demo 尚未完成。
+
+下一步
+- 为认知 Loop 增加有容量边界、可 JSON 快照恢复的工作记忆，再逐步扩展项目记忆和组织记忆。

@@ -53,6 +53,25 @@ completion_checker 判断是否完成
 
 Loop 的安全边界是 `max_steps` 和 `max_retries`。循环不会无限执行，失败重试耗尽后会保留失败状态和 trace。
 
+### 认知 Loop 与受控工具
+
+`CognitiveLoopRunner` 保留有限步和失败 trace，并把每步明确拆成 `Action → Observation → Reflection`。初始 `Plan`、全部动作、观察和反思都累计在不可变的 `CognitiveLoopState` 中。
+
+```text
+Plan
+  ↓
+Action ──> Harness 输入检查 ──> ToolRegistry ──> Tool
+                                                ↓
+Reflection <── Observation <── Harness 输出检查
+   ├── continue
+   ├── revise
+   └── complete
+```
+
+`ToolRegistry` 是允许列表和唯一分发点。未知工具以及工具或 Guardrail 失败都会变成失败 Observation，让 Agent 有机会纠偏；只有通过后置检查的结果才是成功 Observation。`max_steps` 仍是硬停止边界，`max_tool_retries` 只允许对同一个 Action 做有限次重试。
+
+当前状态尚未包含持久化记忆。三层记忆、调度、进程或 worktree 隔离和真实模型调用仍属于后续任务。
+
 ## 第三周 Graph/DAG
 
 Graph 由一个入口节点、节点映射和有向边组成。运行前先做拓扑排序；如果入口不存在、边引用未知节点或图中有环，会在任何节点运行前拒绝执行。
@@ -73,4 +92,4 @@ Checkpoint 保存图结构签名、共享状态、节点状态和执行顺序。
 
 ## 当前实现边界
 
-现在已经用确定性的 Echo Agent 验证了 Harness、Loop 和可恢复 Graph 闭环。当前 Graph 是单进程顺序执行，不包含真正的并行调度、外部工作流文件解析和图形化编辑。下一步进入金融数据契约和第一个专业 Agent。
+现在已经用确定性的 Echo Agent 验证了 Harness 和有限步 Loop，用离线计算 Agent 验证了认知 Loop 与受控工具，并实现了可恢复 Graph 原型。当前 Graph 是单进程顺序执行，不包含真正的并行调度、外部工作流文件解析和图形化编辑。认知 Loop 也尚未包含三层记忆、调度和真实模型。

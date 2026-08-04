@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "updated_at": "2026-08-04",
-  "current_focus": "T1.2 Loop 五要素与受控工具调用",
+  "current_focus": "T1.2 工作记忆最小闭环",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "in_progress",
   "items": [
@@ -37,11 +37,12 @@
       "completed_slices": [
         "有限步循环",
         "响应历史和外部完成条件",
-        "Harness 失败重试和安全停止"
+        "Harness 失败重试和安全停止",
+        "Plan、Action、Observation 和 Reflection 稳定契约",
+        "受控 Tool 注册表、Harness 前后校验和未注册工具拒绝",
+        "工具失败 Observation、Reflection 纠偏和离线演示"
       ],
       "remaining": [
-        "规划、行动、观察、反思、记忆五要素",
-        "受控工具调用和 Observation 后验证",
         "Heartbeat/Cron、Hook 事件触发和递归目标循环",
         "工作记忆、项目记忆和组织记忆",
         "独立工作目录或 worktree 隔离",
@@ -51,7 +52,12 @@
       ],
       "evidence": [
         "src/agent_platform/core/loop.py",
-        "tests/test_loop.py"
+        "tests/test_loop.py",
+        "src/agent_platform/core/cognitive_loop.py",
+        "tests/test_cognitive_loop.py",
+        "Scripts/demo_cognitive_loop.py",
+        "tests/test_demo_cognitive_loop.py",
+        "docs/cognitive-loop.md"
       ]
     },
     {
@@ -312,6 +318,12 @@
       "title": "Harness SDK 五类 Guardrail",
       "status": "done",
       "evidence": ["src/agent_platform/core/guardrails.py", "tests/test_guardrails.py", "Scripts/demo_guardrails.py", "docs/harness-guardrails.md"]
+    },
+    {
+      "id": "M1.2-A",
+      "title": "认知 Loop 与受控工具切片",
+      "status": "done",
+      "evidence": ["src/agent_platform/core/cognitive_loop.py", "tests/test_cognitive_loop.py", "Scripts/demo_cognitive_loop.py", "docs/cognitive-loop.md"]
     }
   ]
 }

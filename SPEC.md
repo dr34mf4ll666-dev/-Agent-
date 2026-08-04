@@ -9,24 +9,24 @@
 - 输出结构化、数据可追溯、行为可约束、过程可审计；
 - 在不接入真实下单的前提下完成分析、风控、模拟执行和回测。
 
-## 2. 当前小功能：任务 1.2 的 Loop 五要素与受控工具调用
+## 2. 当前小功能：任务 1.2 的工作记忆最小闭环
 
-任务 1.4 的五类 Guardrail 已完成。当前把现有“重复调用 Agent”的有限步循环扩展为真正的认知闭环，让单个 Agent 能规划、调用受控工具、观察结果并反思下一步。最终成果、正式任务状态和验收条件以 `ROADMAP.md` 与 `checklist.json` 为准。
+Plan、Action、Observation、Reflection 和受控工具调用切片已经完成。下一小步为认知 Loop 增加有明确容量和恢复边界的工作记忆，让当前任务中的事实、工具结果和纠偏理由不只依赖完整状态元组。最终成果、正式任务状态和验收条件以 `ROADMAP.md` 与 `checklist.json` 为准。
 
 ### 必须完成
 
-1. 定义规划、行动、观察和反思的稳定数据契约。
-2. 定义受控工具接口和注册表，未注册工具不得调用。
-3. 每次行动前经过 Harness 检查，工具结果作为 Observation 返回 Loop。
-4. 反思步骤根据目标、历史和 Observation 决定继续、调整计划或完成。
-5. 保留现有最大步数、有限重试、失败 trace 和安全停止。
-6. 提供不依赖网络或真实 LLM 的离线 Agent 和工具演示。
-7. 覆盖正常完成、未知工具、工具失败、校验失败和最大步数停止。
+1. 定义工作记忆条目和快照的稳定数据契约。
+2. 明确容量上限和淘汰顺序，避免任务运行越久内存无限增长。
+3. 将 Plan、Action、Observation 和 Reflection 的必要摘要写入工作记忆。
+4. Agent 选择 Action 和执行 Reflection 时能读取当前工作记忆视图。
+5. 支持离线 JSON 快照和恢复，并拒绝损坏或不兼容的快照。
+6. 保留现有最大步数、有限重试、失败 trace 和安全停止。
+7. 覆盖写入、淘汰、恢复、损坏快照和 Loop 集成测试。
 
 ### 明确不做
 
 - 不在本步接入 Heartbeat/Cron、Hook 或递归目标调度。
-- 不在本步实现三层持久化记忆、worktree 隔离或真实 LLM。
+- 不在本步实现项目记忆、组织记忆、向量检索、worktree 隔离或真实 LLM。
 - 不补做 Graph 的并行、边 Schema、超时、熔断和可视化。
 - 不扩展金融指标、专业 Agent、真实行情或交易能力。
 - 不把 API 密钥或账户信息写入项目。
@@ -77,6 +77,24 @@ result = runner.run(AgentRequest(task="complete the task"))
 - `LoopExecutionError`：失败时暴露失败状态、已经完成的步骤和原始异常。
 
 当前重试只针对 Harness 执行失败；达到 `max_steps` 时安全停止，不允许无限循环。
+
+认知闭环使用 `CognitiveLoopRunner`：
+
+```python
+runner = CognitiveLoopRunner(
+    agent=cognitive_agent,
+    tools=ToolRegistry([tool]),
+    tool_guardrails=(tool_schema,),
+    max_steps=3,
+)
+result = runner.run(AgentRequest(task="use a controlled tool"))
+```
+
+- `Plan`、`Action`、`Observation` 和 `Reflection` 是稳定数据契约。
+- `ToolRegistry` 只分发已注册工具，未知工具返回失败 Observation。
+- Action 输入和工具输出通过内部 `AgentHarness` 做前后检查。
+- `ReflectionDecision` 只能是 `continue`、`revise` 或 `complete`。
+- `CognitiveLoopExecutionError` 保留状态、工具记录、Harness trace 和原始原因。
 
 ## 6. 现有 Graph 接口
 

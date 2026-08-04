@@ -47,7 +47,7 @@
 | 正式任务 | 当前状态 | 已有成果 | 主要缺口 |
 | --- | --- | --- | --- |
 | 1.1 Harness 规范落地 | 已完成 | 九类项目组件的目录和职责、Git、清单、进度记录 | 阶段验收时继续检查九类组件是否有实际证据 |
-| 1.2 Loop Engineering | 进行中 | 有限步循环、历史、完成条件、失败重试 | Loop 五要素、工具调用、Heartbeat、Hook、目标循环、三层记忆、任务隔离、Skill/上下文注入、真实模型调用 |
+| 1.2 Loop Engineering | 进行中 | 有限步循环、Plan/Action/Observation/Reflection、受控工具、Harness 前后校验、失败纠偏 | 记忆要素、Heartbeat、Hook、目标循环、三层记忆持久化、任务隔离、Skill/上下文注入、真实模型调用 |
 | 1.3 Graph Engineering | 进行中 | DAG、拓扑顺序、条件分支、状态合并、JSON Checkpoint | 外部工作流定义、边数据 Schema、并行、节点重试、超时、熔断、可视化 |
 | 1.4 Harness SDK | 已完成 | 统一 Harness、五类 Guardrail、配置注册表、自定义插件、分阶段 trace、测试和离线演示 | 后续 Agent 只需按各自 Schema、来源和交叉验证规则配置 |
 | 2.1 数据基础设施 | 进行中 | 数据契约和人工模拟行情 | AKShare/Tushare MCP、任务书要求的真实数据类别、异常降级和来源时间验证 |

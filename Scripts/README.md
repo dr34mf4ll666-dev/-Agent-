@@ -33,3 +33,11 @@ python Scripts\demo_technical_analysis.py
 ```
 
 该脚本读取 30 根离线模拟日线，通过 Harness 运行 `TechnicalAnalysisAgent`，并打印结构化指标、趋势规则、数据来源和 Harness trace。它不调用网络、LLM 或真实交易接口。
+
+## 认知 Loop 演示
+
+```powershell
+python Scripts\demo_cognitive_loop.py
+```
+
+该脚本演示 Plan、Action、Observation 和 Reflection 闭环。第一次 Action 的参数类型不合法，会在工具执行前被 Harness 拒绝；Agent 根据失败 Observation 修正参数，第二次只通过 `ToolRegistry` 调用已注册工具，并在输出校验通过后结束。演示完全离线，不调用真实 LLM。
