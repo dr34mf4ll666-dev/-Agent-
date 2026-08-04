@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-当前已完成第三周：平台已经具备确定性的 DAG 执行、条件分支、状态合并，以及基于 JSON Checkpoint 的失败恢复。尚未接入金融数据和真实 LLM。
+阶段一已经完成，目前进入阶段二第一步：新增可追溯的金融 K 线数据契约和离线模拟 fixture。尚未接入真实行情 API、专业分析 Agent 和真实 LLM。
 
 核心关系：
 
@@ -62,7 +62,8 @@ python Scripts\demo_graph.py --route rejected --no-failure
 ├── MCP/                    # 外部数据与工具适配层
 ├── SubAgents/              # 专业 Agent 定义
 ├── src/agent_platform/     # Python 平台代码
-│   └── core/               # 契约、Harness、Loop、Graph 和 Checkpoint
+│   ├── core/               # 契约、Harness、Loop、Graph 和 Checkpoint
+│   └── finance/            # 金融行情数据契约与后续专业分析模块
 └── tests/                  # 自动化测试
 ```
 
@@ -100,3 +101,11 @@ python Scripts\demo_graph.py --route rejected --no-failure
 - 图在执行前检查入口、边端点和环，非法图不会执行任何节点。
 - `JsonCheckpointStore` 在节点完成、跳过或失败后保存状态。
 - 失败恢复会从 Checkpoint 继续，不重复运行已经完成的节点。
+
+## 阶段二第一步的完成定义
+
+- `MarketBar` 保存 OHLCV、证券代码、来源、获取时间和数据对应时间。
+- 外部价格会转换为 `Decimal`，避免直接把二进制浮点误差带入金融计算。
+- 不合理价格、负成交量、缺失来源、无时区时间和未来 `as_of` 会被拒绝。
+- `MarketDataSeries` 只接受同一证券且按 `as_of` 严格递增的数据。
+- 离线 fixture 明确标注为人工模拟数据，不依赖网络或真实行情。

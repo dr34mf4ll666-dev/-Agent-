@@ -1,0 +1,61 @@
+{
+  "dataset_type": "synthetic_fixture",
+  "description": "用于金融数据契约测试的人工构造日线数据，不代表任何真实证券。",
+  "bars": [
+    {
+      "symbol": "DEMO.SH",
+      "open": "10.00",
+      "high": "10.30",
+      "low": "9.90",
+      "close": "10.20",
+      "volume": 100000,
+      "source": "synthetic_fixture",
+      "timestamp": "2026-07-27T16:00:00+08:00",
+      "as_of": "2026-07-27T15:00:00+08:00"
+    },
+    {
+      "symbol": "DEMO.SH",
+      "open": "10.20",
+      "high": "10.50",
+      "low": "10.10",
+      "close": "10.40",
+      "volume": 120000,
+      "source": "synthetic_fixture",
+      "timestamp": "2026-07-28T16:00:00+08:00",
+      "as_of": "2026-07-28T15:00:00+08:00"
+    },
+    {
+      "symbol": "DEMO.SH",
+      "open": "10.40",
+      "high": "10.60",
+      "low": "10.20",
+      "close": "10.30",
+      "volume": 110000,
+      "source": "synthetic_fixture",
+      "timestamp": "2026-07-29T16:00:00+08:00",
+      "as_of": "2026-07-29T15:00:00+08:00"
+    },
+    {
+      "symbol": "DEMO.SH",
+      "open": "10.30",
+      "high": "10.80",
+      "low": "10.25",
+      "close": "10.70",
+      "volume": 150000,
+      "source": "synthetic_fixture",
+      "timestamp": "2026-07-30T16:00:00+08:00",
+      "as_of": "2026-07-30T15:00:00+08:00"
+    },
+    {
+      "symbol": "DEMO.SH",
+      "open": "10.70",
+      "high": "11.00",
+      "low": "10.60",
+      "close": "10.90",
+      "volume": 180000,
+      "source": "synthetic_fixture",
+      "timestamp": "2026-07-31T16:00:00+08:00",
+      "as_of": "2026-07-31T15:00:00+08:00"
+    }
+  ]
+}

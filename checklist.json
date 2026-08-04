@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
   "version": "0.1.0",
-  "updated_at": "2026-08-03",
-  "current_week": 3,
+  "updated_at": "2026-08-04",
+  "current_week": 4,
   "status": "in_progress",
   "items": [
     {
@@ -71,7 +71,21 @@
     {
       "id": "W2-001",
       "phase": "阶段二",
-      "title": "金融数据契约和四类分析 Agent",
+      "title": "金融数据契约和离线 fixture",
+      "status": "done",
+      "evidence": ["src/agent_platform/finance/contracts.py", "tests/fixtures/synthetic_market_bars.json", "tests/test_finance_contracts.py", "docs/finance-data-contract.md"]
+    },
+    {
+      "id": "W2-002",
+      "phase": "阶段二",
+      "title": "确定性的技术分析 Agent",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "W2-003",
+      "phase": "阶段二",
+      "title": "基本面、行业和大盘分析 Agent",
       "status": "pending",
       "evidence": []
     },
