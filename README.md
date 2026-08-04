@@ -1,111 +1,115 @@
 # 通用 Agent 平台及证券金融分析应用
 
-这是一个以证券分析为验证场景的通用 Agent 平台实践项目。目标不是让 LLM 直接“炒股”，而是验证一套可编排、可验证、可恢复、可审计的 Agent 工程骨架。
+这是一个用证券分析检验 Agent 工程能力的实践项目。项目先搭建可编排、可验证、可恢复、可审计的平台骨架，再逐步接入金融数据和专业分析流程。LLM 只负责解释或提出候选方案，指标计算、数据校验、仓位和风控由确定性代码完成。
 
-## 当前状态
+## 项目进度
 
-阶段一已经完成，目前进入阶段二第一步：新增可追溯的金融 K 线数据契约和离线模拟 fixture。尚未接入真实行情 API、专业分析 Agent 和真实 LLM。
+阶段一已经完成，现有平台包括 Harness、Loop、Graph/DAG、条件分支和 JSON Checkpoint。项目目前进入阶段二，第一步金融行情数据契约也已完成。
 
-核心关系：
+当前仍使用离线模拟数据，尚未接入真实行情 API、专业分析 Agent 和真实 LLM。真实交易始终关闭。
 
-```text
-Harness 负责可靠性与审计
-    └── Graph 负责多 Agent 编排
-            └── Loop 负责单个 Agent 的多步运行
-```
+## 快速开始
 
-## 快速验证
-
-在项目根目录运行：
+项目要求 Python 3.11 或更高版本。在项目根目录运行全部测试：
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-后续安装开发依赖后，也可以运行：
+安装开发依赖后也可以使用 pytest：
 
 ```powershell
 python -m pytest
 ```
 
-## 直接运行 Graph 演示
-
-在项目根目录运行：
+### 运行 Graph 演示
 
 ```powershell
 python Scripts\demo_graph.py
 ```
 
-默认演示会进入 `approved` 条件分支，让 `recoverable` 节点第一次执行失败，然后自动从 JSON Checkpoint 恢复。运行结果会显示节点执行顺序、各节点状态和最终共享状态。
+默认演示会进入 `approved` 分支，让 `recoverable` 节点在第一次执行时产生预期故障，然后读取 Checkpoint 继续运行。终端会显示节点执行顺序、节点状态和最终的共享状态。
 
-也可以关闭故障，观察 `rejected` 分支：
+如果只想观察另一条条件分支，可以关闭故障模拟：
 
 ```powershell
 python Scripts\demo_graph.py --route rejected --no-failure
 ```
 
-演示产生的 `checkpoints/demo_graph.json` 是本地运行文件，已由 `.gitignore` 排除。
+演示产生的 `checkpoints/demo_graph.json` 仅用于本地运行，已经通过 `.gitignore` 排除。
+
+## 已实现的能力
+
+### Harness：一次调用的可靠性入口
+
+`AgentHarness` 负责输入检查、Agent 调用、输出检查、可插拔 Guardrail 和有序 trace。调用失败时会保留原始异常和已经发生的生命周期事件，便于定位问题。
+
+### Loop：受控的多步运行
+
+`LoopRunner` 让每一步都经过 Harness，并通过外部完成条件决定何时结束。它支持最大步数和有限重试，不允许任务无限循环。
+
+### Graph：节点编排与恢复
+
+`GraphRunner` 按 DAG 依赖顺序执行节点，支持状态合并、条件边、分支跳过和环检测。`JsonCheckpointStore` 会保存共享状态和节点进度，失败恢复时不会重复运行已经完成的节点。
+
+当前 Graph 是单进程顺序执行版本，还没有真正的并行调度、超时控制或外部工作流文件解析。
+
+### Finance：可追溯的行情数据契约
+
+`MarketBar` 统一表示一根 OHLCV K 线，同时保留证券代码、数据来源、获取时间 `timestamp` 和行情对应时间 `as_of`。价格使用 `Decimal`，输入会经过以下检查：
+
+- OHLC 必须是有限正数，并满足最高价和最低价的范围关系；
+- 成交量必须是大于等于零的整数；
+- `source`、`timestamp` 和 `as_of` 不能为空；
+- 时间必须包含时区，且 `as_of` 不能晚于 `timestamp`。
+
+`MarketDataSeries` 只接受同一证券的数据，并要求 `as_of` 严格递增。测试使用的 `synthetic_market_bars.json` 是人工构造的练习数据，不代表真实证券、真实行情或投资结果。
+
+## 模块关系
+
+```text
+金融数据契约
+      ↓
+专业分析节点（下一步）
+      ↓
+Graph 组织依赖、分支和恢复
+      ↓
+Loop 管理单个 Agent 的有限多步运行
+      ↓
+Harness 负责校验、追踪和错误保留
+```
+
+当前 Graph 节点仍是通用 Python 函数，尚未自动强制所有节点使用 Harness 或 Loop。后续接入专业 Agent 时，会在明确的节点接口中完成组合。
 
 ## 项目结构
 
 ```text
 .
-├── SPEC.md                 # 当前可执行的项目规范与验收边界
-├── AGENTS.md               # 协作者和 Agent 的工作约定
-├── checklist.json          # 功能清单与证据索引
-├── progress.txt            # 按日期记录的进度日志
-├── docs/                   # 架构和设计说明
-├── Rule/                   # 行为边界和 Guardrail 规则
-├── Skill/                  # 可复用技能和标准动作
-├── Workflow/               # Graph/DAG 工作流定义
-├── Scripts/                # 自动化验证和辅助脚本
+├── SPEC.md                 # 当前阶段的目标与明确边界
+├── AGENTS.md               # 项目协作约定
+├── checklist.json          # 功能状态与验收证据
+├── progress.txt            # 按日期记录的进度
+├── docs/                   # 架构和数据契约说明
+├── Rule/                   # Guardrail 和行为规则
+├── Skill/                  # 可复用技能说明
+├── Workflow/               # Graph/DAG 工作流说明
+├── Scripts/                # 可直接运行的演示和辅助脚本
 ├── MCP/                    # 外部数据与工具适配层
-├── SubAgents/              # 专业 Agent 定义
-├── src/agent_platform/     # Python 平台代码
-│   ├── core/               # 契约、Harness、Loop、Graph 和 Checkpoint
-│   └── finance/            # 金融行情数据契约与后续专业分析模块
-└── tests/                  # 自动化测试
+├── SubAgents/              # 后续专业 Agent 定义
+├── src/agent_platform/
+│   ├── core/               # Harness、Loop、Graph 和 Checkpoint
+│   └── finance/            # 金融数据契约与后续分析逻辑
+└── tests/                  # 自动化测试和离线 fixture
 ```
 
-## 推进方式
+## 开发约束
 
-每个阶段都必须留下四类结果：可运行代码、自动化测试、文档说明、进度证据。先用离线 fixture 和 mock 验证流程，再接入真实数据；真实交易在整个项目中保持关闭，只做模拟执行和回测。
+每个小功能都要留下可运行代码、自动化测试、文档说明和进度证据。外部数据必须保留 `source`、`timestamp` 和 `as_of`；回测必须区分信号时间与执行时间，禁止使用未来数据。
 
-## 第 0 周的完成定义
+真实交易默认关闭，仓库中不保存 API 密钥、真实账户信息或本地 `.env`。当前阶段只允许模拟撮合和离线验证。
 
-- 项目规范、目录职责和安全边界已经写明。
-- 功能清单能区分已完成、进行中和待办事项。
-- 最小 Python 包可以被测试发现。
-- 骨架测试可以在本地离线运行。
+## 下一步
 
-## 第一周的完成定义
+下一项任务是实现确定性的 `TechnicalAnalysisAgent`。它会读取已经通过校验的离线行情序列，计算收益率和简单移动平均线，再输出结构化分析结果。这个阶段仍不接 LLM，也不接真实行情 API。
 
-- `AgentRequest`、`AgentResponse` 和 `Agent` 接口已经确定。
-- `EchoAgent` 可以在没有网络和模型的情况下运行。
-- `AgentHarness` 可以执行前置检查、Agent 调用、后置检查和 trace 记录。
-- 空任务、错误输出和 Agent 异常都会被拦截或保留失败 trace。
-- Guardrail 可以通过接口注入，而不需要修改 Harness 主流程。
-
-## 第二周的完成定义
-
-- `LoopState` 能保存当前步数、历史响应和完成状态。
-- `LoopRunner` 会让每一步都经过 `AgentHarness`。
-- Loop 支持外部传入完成条件，不把业务判断写死在运行器里。
-- Loop 支持最大步数、失败重试和重试耗尽后的错误追踪。
-
-## 第三周的完成定义
-
-- `GraphDefinition` 用节点和有向边描述一个无环工作流。
-- `GraphRunner` 按拓扑顺序运行节点，并合并节点返回的状态更新。
-- 条件边只激活满足条件的分支；未选中的节点会标记为 `skipped`。
-- 图在执行前检查入口、边端点和环，非法图不会执行任何节点。
-- `JsonCheckpointStore` 在节点完成、跳过或失败后保存状态。
-- 失败恢复会从 Checkpoint 继续，不重复运行已经完成的节点。
-
-## 阶段二第一步的完成定义
-
-- `MarketBar` 保存 OHLCV、证券代码、来源、获取时间和数据对应时间。
-- 外部价格会转换为 `Decimal`，避免直接把二进制浮点误差带入金融计算。
-- 不合理价格、负成交量、缺失来源、无时区时间和未来 `as_of` 会被拒绝。
-- `MarketDataSeries` 只接受同一证券且按 `as_of` 严格递增的数据。
-- 离线 fixture 明确标注为人工模拟数据，不依赖网络或真实行情。
+更详细的阶段边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，当前验收状态见 `checklist.json` 和 `progress.txt`。
