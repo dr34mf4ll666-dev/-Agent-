@@ -8,7 +8,7 @@
 
 当前主线回到任务 1.4，先补齐五类 Guardrail，再关闭 Loop 和 Graph 的剩余缺口。金融模块仍使用离线模拟数据，尚未接入真实行情 API、其他专业分析 Agent 和真实 LLM。真实交易始终关闭。
 
-完整任务映射、阶段门槛和修正版周计划见 [`ROADMAP.md`](ROADMAP.md)。
+完整任务映射、最终成果和验收条件见 [`ROADMAP.md`](ROADMAP.md)。
 
 ## 快速开始
 
@@ -110,7 +110,7 @@ Harness 负责校验、追踪和错误保留
 ```text
 .
 ├── SPEC.md                 # 当前阶段的目标与明确边界
-├── ROADMAP.md              # 正式任务、阶段门槛和修正版周计划
+├── ROADMAP.md              # 最终成果、正式任务和验收条件
 ├── AGENTS.md               # 项目协作约定
 ├── checklist.json          # 功能状态与验收证据
 ├── progress.txt            # 按日期记录的进度
@@ -137,4 +137,4 @@ Harness 负责校验、追踪和错误保留
 
 下一项任务是完成任务 1.4 的五类 Guardrail：JSON Schema 校验、来源过滤、限流、关键词阻断和交叉验证。此前计划的最小金融 Graph 暂缓，避免在平台验收缺口尚未关闭时继续扩大阶段二原型。
 
-完整路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。
+最终交付路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。

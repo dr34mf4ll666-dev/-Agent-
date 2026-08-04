@@ -9,9 +9,9 @@
 - 输出结构化、数据可追溯、行为可约束、过程可审计；
 - 在不接入真实下单的前提下完成分析、风控、模拟执行和回测。
 
-## 2. 当前阶段：对齐修正后的第 5 周（任务 1.4）
+## 2. 当前小功能：任务 1.4 的五类 Guardrail
 
-现有 Harness、Loop、Graph 和金融模块都是可运行的阶段性原型，但阶段一尚未通过任务书整体验收。当前先补齐 Harness SDK 要求的五类 Guardrail，再继续扩展金融流程。正式任务状态和阶段门槛以 `ROADMAP.md` 与 `checklist.json` 为准。
+现有 Harness、Loop、Graph 和金融模块都是可运行的局部原型，但距离任务书最终验收仍有缺口。当前先补齐 Harness SDK 要求的五类 Guardrail。最终成果、正式任务状态和验收条件以 `ROADMAP.md` 与 `checklist.json` 为准。
 
 ### 必须完成
 
@@ -41,7 +41,7 @@ Model/Tools → Loop → Graph → Harness
 
 这里的 `Harness` 不是最后才添加的外壳，而是贯穿输入检查、工具调用、输出验证、日志追踪和人工确认的可靠性层。
 
-## 4. 第一周公共接口
+## 4. 现有 Echo Agent 与 Harness 接口
 
 调用方只需要知道三个接口事实：
 
@@ -58,7 +58,7 @@ result.trace             # 有序的生命周期事件
 
 当前实现不承诺持久化时间戳、分布式调度或长期记忆；这些属于后续 Graph 和工程化阶段。
 
-## 5. 第二周公共接口
+## 5. 现有 Loop 接口
 
 ```python
 runner = LoopRunner(
@@ -76,9 +76,9 @@ result = runner.run(AgentRequest(task="complete the task"))
 - `LoopResult`：返回最终响应、最终状态、每步 Harness 结果和 Loop trace。
 - `LoopExecutionError`：失败时暴露失败状态、已经完成的步骤和原始异常。
 
-第二周的重试只针对 Harness 执行失败；达到 `max_steps` 时安全停止，不允许无限循环。
+当前重试只针对 Harness 执行失败；达到 `max_steps` 时安全停止，不允许无限循环。
 
-## 6. 第三周公共接口
+## 6. 现有 Graph 接口
 
 ```python
 graph = GraphDefinition(
@@ -131,14 +131,14 @@ analysis = result.response.metadata["analysis"]
 - 所有指标由确定性 `Decimal` 运算得到，LLM 不参与计算。
 - 趋势标签只是简化的技术状态，不是投资建议。
 
-## 9. 后续阶段的成功标准
+## 9. 最终成功标准摘要
 
 ### 平台层
 
 - `AgentHarness` 支持可插拔 Guardrail。
-- Loop 支持计划、行动、观察、反思和记忆。
-- Graph 支持并行、条件边、重试、超时和 Checkpoint。
-- 非金融 demo 可以在两天内接入平台。
+- Loop 支持计划、行动、观察、反思、三层记忆、三类调度和真实模型调用。
+- Graph 支持边 Schema、并行、条件边、重试、超时、熔断、Checkpoint 和可视化。
+- 一个非金融 Demo 复用同一平台，并能在两天内完成最小接入。
 
 ### 应用层
 
@@ -150,8 +150,10 @@ analysis = result.response.metadata["analysis"]
 ### 工程层
 
 - 回测明确区分信号时间与执行时间，并计入交易成本。
-- 具备日志追踪、失败恢复、质量评估和熔断能力。
-- 能用实验数据比较 Harness 对幻觉率、无效调用和成功率的影响。
+- 具备 token、耗时和失败率可观测性，以及失败恢复、质量评估和熔断能力。
+- 能用固定实验比较 Harness 对幻觉率、无效调用、成功率、成本和恢复率的影响。
+
+以上只作摘要，完整必做项和验收证据以 `ROADMAP.md` 与 `checklist.json` 为准。
 
 ## 10. 当前验收命令
 

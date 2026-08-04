@@ -1,24 +1,23 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "updated_at": "2026-08-04",
-  "current_week": 5,
-  "current_focus": "T1.4 Harness SDK",
-  "tracking_model": "official_tasks_with_internal_milestones",
+  "current_focus": "T1.4 Harness SDK 五类 Guardrail",
+  "tracking_model": "official_tasks_and_final_acceptance",
   "status": "in_progress",
   "items": [
     {
       "id": "T1.1",
-      "phase": "阶段一",
       "title": "Harness 规范落地",
       "status": "done",
       "completed_slices": [
-        "建立 Harness 九类根目录及职责说明",
-        "使用 JSON checklist、progress.txt 和 Git 跟踪进度",
+        "建立 SPEC、Rule、Skill、Workflow、Scripts、MCP、SubAgent、dev-map 和任务看板结构",
+        "使用 checklist、progress.txt 和 Git 跟踪进度",
         "形成一次只处理一个可验收小功能的协作约定"
       ],
       "remaining": [],
       "evidence": [
+        "SPEC.md",
         "AGENTS.md",
         "README.md",
         "checklist.json",
@@ -33,7 +32,6 @@
     },
     {
       "id": "T1.2",
-      "phase": "阶段一",
       "title": "Loop Engineering",
       "status": "in_progress",
       "completed_slices": [
@@ -42,11 +40,14 @@
         "Harness 失败重试和安全停止"
       ],
       "remaining": [
-        "计划、行动、观察、反思五要素和工具调用",
-        "Heartbeat/Cron 与递归目标循环",
-        "工作区或 worktree 隔离",
-        "Skill 和上下文注入",
-        "工作记忆、项目记忆和组织记忆"
+        "规划、行动、观察、反思、记忆五要素",
+        "受控工具调用和 Observation 后验证",
+        "Heartbeat/Cron、Hook 事件触发和递归目标循环",
+        "工作记忆、项目记忆和组织记忆",
+        "独立工作目录或 worktree 隔离",
+        "Skill、项目约定和任务上下文注入",
+        "统一 Mock/真实 LLM API 的 Model Gateway",
+        "复用平台的非金融 Demo，并验证新领域可在两天内接入"
       ],
       "evidence": [
         "src/agent_platform/core/loop.py",
@@ -55,7 +56,6 @@
     },
     {
       "id": "T1.3",
-      "phase": "阶段一",
       "title": "Graph Engineering",
       "status": "in_progress",
       "completed_slices": [
@@ -65,10 +65,12 @@
       ],
       "remaining": [
         "YAML/JSON 工作流定义",
+        "Graph 边输入输出 Schema 和传递校验",
         "并行执行",
         "节点重试和超时",
         "熔断",
-        "Graph 可视化"
+        "Graph 结构和运行状态可视化",
+        "与 LangGraph 的概念映射或最小兼容示例"
       ],
       "evidence": [
         "src/agent_platform/core/graph.py",
@@ -80,7 +82,6 @@
     },
     {
       "id": "T1.4",
-      "phase": "阶段一",
       "title": "Harness SDK",
       "status": "in_progress",
       "completed_slices": [
@@ -94,7 +95,7 @@
         "RateLimiter",
         "KeywordBlocker",
         "CrossValidator",
-        "五类 Guardrail 的配置、测试和演示"
+        "五类 Guardrail 的插件配置、通过/拒绝测试和演示"
       ],
       "evidence": [
         "src/agent_platform/core/harness.py",
@@ -104,20 +105,20 @@
     },
     {
       "id": "T2.1",
-      "phase": "阶段二",
       "title": "金融数据基础设施",
       "status": "in_progress",
       "completed_slices": [
-        "可追溯的 MarketBar 和 MarketDataSeries 契约",
-        "人工模拟日线 fixture"
+        "MarketBar 和 MarketDataSeries 数据契约",
+        "带 source、timestamp、as_of 的人工模拟行情"
       ],
       "remaining": [
-        "AKShare/Tushare MCP 工具适配",
-        "日线、周线、分钟、实时行情和资金流",
-        "财务报表和指标",
-        "宏观和行业数据",
-        "新闻、公告和研报摘要",
-        "真实外部数据的来源和时间验证"
+        "AKShare/Tushare MCP 工具和最小真实调用验证",
+        "日线、周线、分钟线、实时报价和资金流向",
+        "三大财务报表以及 PE、PB、PS、ROE、资产负债率",
+        "指数、板块、政策、利率和行业数据",
+        "财经新闻、公告和研报摘要",
+        "字段映射、缓存、限流、重试、超时和统一异常",
+        "真实数据来源时间验证和离线回放"
       ],
       "evidence": [
         "src/agent_platform/finance/contracts.py",
@@ -128,7 +129,6 @@
     },
     {
       "id": "T2.2",
-      "phase": "阶段二",
       "title": "四类分析 Agent",
       "status": "in_progress",
       "completed_slices": [
@@ -137,11 +137,12 @@
         "离线技术分析演示"
       ],
       "remaining": [
-        "技术 Agent 的完整 Loop 和 Harness 配置",
-        "基本面 Agent",
-        "行业 Agent",
-        "大盘/宏观 Agent",
-        "四个 Agent 的单元测试和样例报告"
+        "技术 Agent：MA、MACD、RSI、KDJ、布林带、支撑阻力和信号评分",
+        "基本面 Agent：三大报表、估值分位、DCF、安全边际和成长性",
+        "行业 Agent：产业链、竞争格局、政策、景气度和龙头排序",
+        "大盘/宏观 Agent：指数趋势、资金面、情绪、Market Regime 和风险偏好",
+        "四个 Agent 各自的自治 Loop 和 Harness 配置",
+        "四个 Agent 的 Schema、来源校验、代码交叉验证、单元测试和样例报告"
       ],
       "evidence": [
         "src/agent_platform/finance/technical.py",
@@ -152,83 +153,117 @@
     },
     {
       "id": "T3.1",
-      "phase": "阶段三",
       "title": "综合研判与辩论",
       "status": "pending",
       "completed_slices": [],
       "remaining": [
-        "多 Agent 结果汇总",
-        "分歧识别和辩论",
-        "Harness 偏差控制"
+        "Planner 组织四类分析并行执行",
+        "Bull/Bear 进行 2–3 轮 Claim-Evidence-Reasoning 辩论",
+        "Synthesis 输出综合倾向、目标价区间和 0–100% 置信度",
+        "Market Regime 门控",
+        "Consistency Check 和 Bias Detector"
       ],
       "evidence": []
     },
     {
       "id": "T3.2",
-      "phase": "阶段三",
       "title": "Trader 与 Risk Manager",
       "status": "pending",
       "completed_slices": [],
       "remaining": [
-        "模拟交易建议",
-        "确定性仓位和风控校验",
-        "人工确认和真实交易关闭边界"
+        "Trader 输出买入、卖出或持有的模拟信号、目标价区间和置信度",
+        "单笔亏损不超过 2%、单行业不超过 30%、总回撤超过 15% 强制减仓",
+        "交易时间、Market Regime、流动性和止损止盈检查",
+        "仓位超过 10% 的人工确认",
+        "真实交易默认关闭"
       ],
       "evidence": []
     },
     {
       "id": "T3.3",
-      "phase": "阶段三",
       "title": "完整金融 Graph",
       "status": "pending",
       "completed_slices": [],
       "remaining": [
-        "完整节点编排和条件流转",
-        "至少 20 只股票端到端验证",
-        "Checkpoint 故障恢复"
+        "编排 Planner、四类分析、辩论、Synthesis、Trader 和 Risk Manager",
+        "大盘看空时跳过买入建议等条件边",
+        "节点失败后的 Checkpoint 恢复",
+        "不少于 20 只股票的标准化投研报告、交易建议清单和 Harness 审计日志"
       ],
       "evidence": []
     },
     {
       "id": "T4.1",
-      "phase": "阶段四",
       "title": "回测系统",
       "status": "pending",
       "completed_slices": [],
       "remaining": [
-        "信号时间和执行时间分离",
-        "交易成本和核心绩效指标",
-        "无未来数据的回测报告"
+        "Backtrader 或自研回测框架",
+        "信号时间和下一可执行时间分离，禁止未来数据",
+        "佣金、印花税、滑点、复权、停牌和涨跌停约束",
+        "夏普比率、最大回撤、胜率、盈亏比和滑点分析",
+        "夏普比率大于 0.5 的基线目标和未达标原因分析",
+        "固定股票池、时间区间、基准、参数和可复现实验配置"
       ],
       "evidence": []
     },
     {
       "id": "T4.2",
-      "phase": "阶段四",
       "title": "工业化 Harness",
       "status": "pending",
       "completed_slices": [],
       "remaining": [
-        "可观测性和评估器",
-        "熔断和最小权限",
-        "Harness 对幻觉率、无效调用和成功率的对比实验"
+        "调用链、token、耗时和失败率可观测面板",
+        "固定数据集和评分规则的独立 Evaluator",
+        "连续失败 N 次自动熔断、暂停和告警",
+        "每个 Agent 的最小工具权限白名单",
+        "同任务、数据和模型配置下的 Harness 对比实验",
+        "幻觉率、无效 API 调用、端到端成功率、耗时、token 成本和恢复成功率",
+        "稳定 CLI/API、配置校验、依赖锁定和持续集成"
       ],
       "evidence": []
     },
     {
       "id": "T4.3",
-      "phase": "阶段四",
       "title": "模拟运行与最终交付",
       "status": "pending",
       "completed_slices": [],
       "remaining": [
-        "模拟盘运行",
-        "完整运行和设计文档",
-        "可复现实验",
-        "可选的非金融迁移案例"
+        "券商模拟盘或本地模拟撮合使用真实行情连续运行 1–2 周",
+        "运行、失败、人工确认和复盘记录",
+        "架构图、Graph Schema、Agent 卡片和数据字典",
+        "运行手册、回测报告、Harness 对比实验和复盘报告",
+        "从环境检查开始复现主要结果的主命令或短流程"
       ],
       "evidence": []
     }
+  ],
+  "final_acceptance": [
+    {
+      "id": "PLATFORM",
+      "status": "pending",
+      "required_result": "九类 Harness 组件、AgentHarness、完整 Loop、Graph、记忆、Model Gateway 和非金融 Demo 全部可运行"
+    },
+    {
+      "id": "FINANCE_APPLICATION",
+      "status": "pending",
+      "required_result": "真实金融数据、四类 Agent、辩论、Trader、Risk Manager 和不少于 20 只股票的完整流程全部跑通"
+    },
+    {
+      "id": "ENGINEERING",
+      "status": "pending",
+      "required_result": "回测、可观测性、Evaluator、熔断、最小权限、Harness 对比实验、模拟运行和完整文档全部可复现"
+    }
+  ],
+  "enhancements_to_preserve": [
+    "金融数值使用 Decimal",
+    "数据保留 source、timestamp 和 as_of",
+    "外部 API 与离线 fixture 共用数据契约",
+    "Harness 失败时保留原始异常和 trace",
+    "Checkpoint 恢复不重复完成节点",
+    "回测区分信号时间和执行时间",
+    "确定性代码执行指标、估值、仓位和风控硬规则",
+    "真实交易默认关闭"
   ],
   "milestones": [
     {

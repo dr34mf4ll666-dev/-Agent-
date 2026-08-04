@@ -77,6 +77,33 @@ class ProjectBootstrapTests(unittest.TestCase):
             all(not item["remaining"] for item in items if item["status"] == "done")
         )
 
+        acceptance_ids = {item["id"] for item in checklist["final_acceptance"]}
+        self.assertEqual(
+            acceptance_ids,
+            {"PLATFORM", "FINANCE_APPLICATION", "ENGINEERING"},
+        )
+
+    def test_roadmap_preserves_task_brief_acceptance_requirements(self):
+        roadmap = (PROJECT_ROOT / "ROADMAP.md").read_text(encoding="utf-8")
+        required_terms = [
+            "非金融 Demo",
+            "Model Gateway",
+            "Hook 事件触发循环",
+            "边数据 Schema",
+            "MACD",
+            "2–3 轮结构化辩论",
+            "单笔亏损不超过 2%",
+            "不少于 20 只股票",
+            "夏普比率大于 0.5",
+            "连续运行 1–2 周",
+            "幻觉率",
+            "token 消耗",
+        ]
+
+        for required_term in required_terms:
+            with self.subTest(required_term=required_term):
+                self.assertIn(required_term, roadmap)
+
     def test_live_trading_is_disabled_in_example_config(self):
         env_example = (PROJECT_ROOT / ".env.example").read_text(encoding="utf-8")
         self.assertIn("ALLOW_LIVE_TRADING=false", env_example)
