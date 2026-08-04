@@ -1,4 +1,4 @@
-"""第一周的公共契约：Agent 输入、输出、追踪和 Guardrail 接口。"""
+"""Agent 输入、输出、追踪和 Guardrail 公共契约。"""
 
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -60,6 +60,10 @@ class HarnessResult:
 
 class GuardrailViolation(ValueError):
     """输入或输出违反了 Harness 规则。"""
+
+
+class GuardrailConfigurationError(ValueError):
+    """Guardrail 配置无效，无法安全创建规则。"""
 
 
 class HarnessExecutionError(RuntimeError):

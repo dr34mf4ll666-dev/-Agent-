@@ -94,3 +94,14 @@
 
 下一步
 - 当前仍先完成 T1.4 的五类 Guardrail；后续实现顺序可按依赖调整，但最终验收项不得省略。
+
+[2026-08-04] 任务 1.4 Harness SDK 完成
+- 实现 JSONSchemaValidator、SourceAttributionFilter、RateLimiter、KeywordBlocker 和 CrossValidator 五类内置 Guardrail。
+- 新增 GuardrailRegistry：可以从统一配置创建五类规则，也支持注册自定义 Guardrail 插件。
+- Harness trace 现在记录每条规则在输入和输出阶段的开始、通过或失败；配置错误与运行时违规使用不同错误类型。
+- JSON Schema 使用明确的确定性子集，不支持的关键字会在配置阶段拒绝；限流器明确为单进程滑动窗口，不冒充分布式限流。
+- 新增离线演示，展示五类规则全部通过、误导性关键词在输出阶段被拦截，以及超额调用在输入阶段被限流。
+- 验证结果：新增 15 项 Guardrail 和演示测试，项目共 51 项 unittest 全部通过；源码、测试和脚本编译检查通过。
+
+下一步
+- 继续完成 T1.2，先实现规划、行动、观察、反思和受控工具调用闭环。

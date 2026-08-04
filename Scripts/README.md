@@ -18,6 +18,14 @@ python Scripts\demo_graph.py
 - `--no-failure`：关闭首次模拟故障；
 - `--checkpoint PATH`：指定 Checkpoint 文件位置。
 
+## Guardrail 演示
+
+```powershell
+python Scripts\demo_guardrails.py
+```
+
+该脚本通过统一配置注册五类 Guardrail，先展示一次正常通过，再展示误导性关键词被输出检查拦截，以及第三次调用被限流器拦截。终端会显示每条规则的输入和输出 trace。演示完全离线运行。
+
 ## 技术分析演示
 
 ```powershell

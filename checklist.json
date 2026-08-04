@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "updated_at": "2026-08-04",
-  "current_focus": "T1.4 Harness SDK 五类 Guardrail",
+  "current_focus": "T1.2 Loop 五要素与受控工具调用",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "in_progress",
   "items": [
@@ -83,24 +83,29 @@
     {
       "id": "T1.4",
       "title": "Harness SDK",
-      "status": "in_progress",
+      "status": "done",
       "completed_slices": [
         "AgentHarness 统一入口",
         "可插拔 Guardrail 契约",
-        "成功和失败 trace"
-      ],
-      "remaining": [
+        "成功和失败 trace",
         "JSONSchemaValidator",
         "SourceAttributionFilter",
         "RateLimiter",
         "KeywordBlocker",
         "CrossValidator",
-        "五类 Guardrail 的插件配置、通过/拒绝测试和演示"
+        "五类 Guardrail 的统一配置注册表、自定义插件、测试和离线演示"
       ],
+      "remaining": [],
       "evidence": [
         "src/agent_platform/core/harness.py",
         "src/agent_platform/core/contracts.py",
-        "tests/test_echo_harness.py"
+        "src/agent_platform/core/guardrails.py",
+        "tests/test_echo_harness.py",
+        "tests/test_guardrails.py",
+        "Scripts/demo_guardrails.py",
+        "tests/test_demo_guardrails.py",
+        "docs/harness-guardrails.md",
+        "Rule/README.md"
       ]
     },
     {
@@ -301,6 +306,12 @@
       "title": "简化版技术分析 Agent",
       "status": "done",
       "evidence": ["src/agent_platform/finance/technical.py", "tests/test_technical_analysis_agent.py"]
+    },
+    {
+      "id": "M1.4",
+      "title": "Harness SDK 五类 Guardrail",
+      "status": "done",
+      "evidence": ["src/agent_platform/core/guardrails.py", "tests/test_guardrails.py", "Scripts/demo_guardrails.py", "docs/harness-guardrails.md"]
     }
   ]
 }

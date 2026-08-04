@@ -6,7 +6,7 @@
 
 项目已经形成 Harness、Loop、Graph/DAG、Checkpoint、金融数据契约和简化技术分析 Agent 等可运行原型，但这不等于任务书中的阶段一和阶段二已经完成。重新对齐后，只有任务 1.1 达到正式完成口径；1.2、1.3、1.4、2.1 和 2.2 均为部分完成。
 
-当前主线回到任务 1.4，先补齐五类 Guardrail，再关闭 Loop 和 Graph 的剩余缺口。金融模块仍使用离线模拟数据，尚未接入真实行情 API、其他专业分析 Agent 和真实 LLM。真实交易始终关闭。
+任务 1.4 的五类 Guardrail 已完成。当前主线转向任务 1.2，把现有有限步循环扩展为包含规划、行动、观察和反思的受控工具闭环。金融模块仍使用离线模拟数据，尚未接入真实行情 API、其他专业分析 Agent 和真实 LLM。真实交易始终关闭。
 
 完整任务映射、最终成果和验收条件见 [`ROADMAP.md`](ROADMAP.md)。
 
@@ -48,13 +48,21 @@ python Scripts\demo_technical_analysis.py
 
 该演示会读取 30 根人工构造的日线，通过 Harness 运行 `TechnicalAnalysisAgent`，并输出单日收益率、SMA5、SMA20、趋势标签、触发规则、数据来源和 trace。
 
+### 运行 Guardrail 演示
+
+```powershell
+python Scripts\demo_guardrails.py
+```
+
+该演示使用统一配置注册 JSON Schema、来源校验、限流、关键词阻断和交叉验证五类规则，并展示正常通过、输出被拦截和输入被限流时的 Harness trace。
+
 ## 已实现的能力
 
 ### Harness：一次调用的可靠性入口
 
 `AgentHarness` 负责输入检查、Agent 调用、输出检查、可插拔 Guardrail 和有序 trace。调用失败时会保留原始异常和已经发生的生命周期事件，便于定位问题。
 
-当前 Guardrail 只有公共契约和注入机制，任务书要求的 JSON Schema、来源过滤、限流、关键词阻断和交叉验证尚未补齐。
+任务书要求的五类 Guardrail 已完成。`GuardrailRegistry` 可以从统一配置创建内置规则，也允许注册自定义插件；配置错误与运行时违规使用不同错误类型。每条规则都会在 trace 中记录输入和输出阶段的开始、通过或失败。具体接口和当前限制见 `docs/harness-guardrails.md`。
 
 ### Loop：受控的多步运行
 
@@ -135,6 +143,6 @@ Harness 负责校验、追踪和错误保留
 
 ## 下一步
 
-下一项任务是完成任务 1.4 的五类 Guardrail：JSON Schema 校验、来源过滤、限流、关键词阻断和交叉验证。此前计划的最小金融 Graph 暂缓，避免在平台验收缺口尚未关闭时继续扩大阶段二原型。
+下一项任务是继续完成任务 1.2：为 Loop 增加规划、行动、观察、反思和受控工具调用，同时保留现有最大步数、失败重试和安全停止。金融 Graph 继续暂缓，等单 Agent Loop 完整后再收口多 Agent Graph。
 
 最终交付路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。
