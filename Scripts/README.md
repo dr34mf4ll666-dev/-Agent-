@@ -49,3 +49,11 @@ python Scripts\demo_cognitive_loop.py
 ```
 
 该脚本演示 Plan、Action、Observation 和 Reflection 闭环。第一次 Action 的参数类型不合法，会在工具执行前被 Harness 拒绝；Agent 根据失败 Observation 修正参数，第二次只通过 `ToolRegistry` 调用已注册工具，并在输出校验通过后结束。演示完全离线，不调用真实 LLM。
+
+## 工作记忆演示
+
+```powershell
+python Scripts\demo_working_memory.py
+```
+
+该脚本把认知摘要写入容量为 5 的工作记忆。Agent 会读取失败 Observation 并修正工具参数；结束后脚本从 `checkpoints/working_memory.json` 恢复快照，并展示 FIFO 淘汰后的最近条目。可以用 `--snapshot PATH` 指定快照位置。

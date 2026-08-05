@@ -15,6 +15,12 @@ from .contracts import (
     TraceEvent,
 )
 from .harness import AgentHarness
+from .memory import (
+    MemoryKind,
+    WorkingMemory,
+    WorkingMemoryStore,
+    WorkingMemoryView,
+)
 
 
 class CognitiveContractError(ValueError):
@@ -221,9 +227,26 @@ class CognitiveLoopState:
     observations: tuple[Observation, ...] = ()
     reflections: tuple[Reflection, ...] = ()
     done: bool = False
+    memory: WorkingMemoryView = field(default_factory=WorkingMemoryView)
 
     def with_plan(self, plan: Plan) -> CognitiveLoopState:
-        return CognitiveLoopState(request=self.request, plan=plan)
+        return CognitiveLoopState(
+            request=self.request,
+            plan=plan,
+            memory=self.memory,
+        )
+
+    def with_memory(self, memory: WorkingMemoryView) -> CognitiveLoopState:
+        return CognitiveLoopState(
+            request=self.request,
+            plan=self.plan,
+            step_count=self.step_count,
+            actions=self.actions,
+            observations=self.observations,
+            reflections=self.reflections,
+            done=self.done,
+            memory=memory,
+        )
 
     def record_action(self, action: Action) -> CognitiveLoopState:
         return CognitiveLoopState(
@@ -234,6 +257,7 @@ class CognitiveLoopState:
             observations=self.observations,
             reflections=self.reflections,
             done=self.done,
+            memory=self.memory,
         )
 
     def record_observation(self, observation: Observation) -> CognitiveLoopState:
@@ -245,6 +269,7 @@ class CognitiveLoopState:
             observations=(*self.observations, observation),
             reflections=self.reflections,
             done=self.done,
+            memory=self.memory,
         )
 
     def record_reflection(self, reflection: Reflection) -> CognitiveLoopState:
@@ -257,6 +282,7 @@ class CognitiveLoopState:
             observations=self.observations,
             reflections=(*self.reflections, reflection),
             done=done,
+            memory=self.memory,
         )
 
 
@@ -347,11 +373,16 @@ class CognitiveLoopRunner:
         tool_guardrails: Iterable[Guardrail] = (),
         max_steps: int = 5,
         max_tool_retries: int = 0,
+        working_memory: WorkingMemory | None = None,
+        memory_store: WorkingMemoryStore | None = None,
+        memory_capacity: int = 20,
     ) -> None:
         if max_steps < 1:
             raise ValueError("max_steps must be at least 1")
         if max_tool_retries < 0:
             raise ValueError("max_tool_retries must not be negative")
+        if memory_capacity < 1:
+            raise ValueError("memory_capacity must be at least 1")
         for method_name in ("create_plan", "choose_action", "reflect"):
             if not callable(getattr(agent, method_name, None)):
                 raise CognitiveContractError(
@@ -364,9 +395,13 @@ class CognitiveLoopRunner:
         )
         self._max_steps = max_steps
         self._max_tool_retries = max_tool_retries
+        self._working_memory = working_memory
+        self._memory_store = memory_store
+        self._memory_capacity = memory_capacity
 
     def run(self, request: AgentRequest) -> CognitiveLoopResult:
-        state = CognitiveLoopState(request=request)
+        memory = self._working_memory or WorkingMemory(self._memory_capacity)
+        state = CognitiveLoopState(request=request, memory=memory.view())
         records: list[ToolExecutionRecord] = []
         current_step = 0
         trace: list[CognitiveLoopEvent] = [
@@ -378,6 +413,14 @@ class CognitiveLoopRunner:
             if not isinstance(plan, Plan):
                 raise CognitiveContractError("create_plan must return Plan")
             state = state.with_plan(plan)
+            state = self._remember(
+                state,
+                memory,
+                MemoryKind.PLAN,
+                summary=f"Goal: {_shorten(plan.goal)}",
+                step=0,
+                data={"steps": list(plan.steps)},
+            )
             trace.append(
                 CognitiveLoopEvent(event="cognitive_loop.plan.created", step=0)
             )
@@ -395,6 +438,14 @@ class CognitiveLoopRunner:
                 if not isinstance(action, Action):
                     raise CognitiveContractError("choose_action must return Action")
                 state = state.record_action(action)
+                state = self._remember(
+                    state,
+                    memory,
+                    MemoryKind.ACTION,
+                    summary=f"Tool: {action.tool}; {_shorten(action.rationale or 'no rationale')}",
+                    step=step,
+                    data={"tool": action.tool},
+                )
                 trace.append(
                     CognitiveLoopEvent(
                         event="cognitive_loop.action.selected",
@@ -406,6 +457,22 @@ class CognitiveLoopRunner:
                 observation, record = self._execute_action(action, step, trace)
                 records.append(record)
                 state = state.record_observation(observation)
+                observation_summary = (
+                    f"Tool {observation.tool} succeeded: {_shorten(observation.output)}"
+                    if observation.success
+                    else f"Tool {observation.tool} failed: {_shorten(observation.error)}"
+                )
+                state = self._remember(
+                    state,
+                    memory,
+                    MemoryKind.OBSERVATION,
+                    summary=observation_summary,
+                    step=step,
+                    data={
+                        "tool": observation.tool,
+                        "success": observation.success,
+                    },
+                )
                 trace.append(
                     CognitiveLoopEvent(
                         event="cognitive_loop.observation.recorded",
@@ -418,6 +485,17 @@ class CognitiveLoopRunner:
                 if not isinstance(reflection, Reflection):
                     raise CognitiveContractError("reflect must return Reflection")
                 state = state.record_reflection(reflection)
+                state = self._remember(
+                    state,
+                    memory,
+                    MemoryKind.REFLECTION,
+                    summary=(
+                        f"Decision: {reflection.decision.value}; "
+                        f"{_shorten(reflection.reason)}"
+                    ),
+                    step=step,
+                    data={"decision": reflection.decision.value},
+                )
                 trace.append(
                     CognitiveLoopEvent(
                         event="cognitive_loop.reflection.recorded",
@@ -563,6 +641,22 @@ class CognitiveLoopRunner:
 
         raise AssertionError("unreachable tool attempt state")
 
+    def _remember(
+        self,
+        state: CognitiveLoopState,
+        memory: WorkingMemory,
+        kind: MemoryKind,
+        *,
+        summary: str,
+        step: int,
+        data: Mapping[str, Any],
+    ) -> CognitiveLoopState:
+        memory.append(kind, summary, step=step, data=data)
+        updated_state = state.with_memory(memory.view())
+        if self._memory_store is not None:
+            self._memory_store.save(memory.snapshot())
+        return updated_state
+
     @staticmethod
     def _raise_execution_error(
         *,
@@ -579,3 +673,10 @@ class CognitiveLoopRunner:
             trace=tuple(trace),
             cause=cause,
         ) from cause
+
+
+def _shorten(value: Any, limit: int = 240) -> str:
+    text = str(value).replace("\n", " ").strip()
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3] + "..."

@@ -70,7 +70,9 @@ Reflection <── Observation <── Harness 输出检查
 
 `ToolRegistry` 是允许列表和唯一分发点。未知工具以及工具或 Guardrail 失败都会变成失败 Observation，让 Agent 有机会纠偏；只有通过后置检查的结果才是成功 Observation。`max_steps` 仍是硬停止边界，`max_tool_retries` 只允许对同一个 Action 做有限次重试。
 
-当前状态尚未包含持久化记忆。三层记忆、调度、进程或 worktree 隔离和真实模型调用仍属于后续任务。
+`WorkingMemory` 在上述状态旁保存当前任务最近的认知摘要，并通过不可变 `WorkingMemoryView` 提供给 Agent。容量满时按 FIFO 淘汰；每次写入可通过统一 Store 接口保存版本化快照，当前提供内存和 JSON 两种适配器。完整认知历史仍保留在 `CognitiveLoopState`，工作记忆只负责有限的近期上下文。
+
+项目记忆、组织记忆、调度、进程或 worktree 隔离和真实模型调用仍属于后续任务。
 
 ## 第三周 Graph/DAG
 
@@ -96,4 +98,4 @@ YAML/JSON 工作流只通过 `NodeRegistry` 绑定允许的 Python 处理函数�
 
 ## 当前实现边界
 
-现在已经用确定性的 Echo Agent 验证了 Harness 和有限步 Loop，用离线计算 Agent 验证了认知 Loop 与受控工具，并完成 Graph Engineering。Graph 当前采用单进程线程池，超时属于拒绝迟到结果的软超时，不强杀执行线程；可拖拽的图形化编辑器不在 A2 范围。认知 Loop 仍尚未包含三层记忆、调度和真实模型。
+现在已经用确定性的 Echo Agent 验证了 Harness 和有限步 Loop，用离线计算 Agent 验证了认知 Loop、受控工具和有界工作记忆，并完成 Graph Engineering。Graph 当前采用单进程线程池，超时属于拒绝迟到结果的软超时，不强杀执行线程；可拖拽的图形化编辑器不在 A2 范围。认知 Loop 仍尚未包含项目/组织记忆、三类调度和真实模型。

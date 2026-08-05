@@ -133,3 +133,16 @@
 
 下一步
 - 返回当前主线 T1.2，完成有容量边界、可 JSON 快照恢复的工作记忆最小闭环。
+
+[2026-08-05] 任务 1.2 工作记忆最小闭环完成
+- 新增稳定的 MemoryEntry、WorkingMemoryView 和版本 1 WorkingMemorySnapshot 契约，只接受可序列化、有限数值的 JSON 数据。
+- 新增容量固定的 WorkingMemory；容量满后按 FIFO 淘汰最旧条目，并持续记录已淘汰数量和单调递增序号。
+- CognitiveLoopRunner 会把 Plan、Action、Observation 和 Reflection 摘要写入工作记忆；Agent 在选择动作和反思时读取同一份不可变视图。
+- 新增统一 WorkingMemoryStore 接口以及内存、JSON 两种实现；JSON 使用临时文件替换，支持跨运行恢复并拒绝损坏或不兼容的快照。
+- 新增离线纠偏演示：第一次参数校验失败，Agent 根据工作记忆修正参数；容量 5 时淘汰最旧两条，随后从 JSON 快照恢复最近条目。
+- 保留完整 CognitiveLoopState 历史、最大步数、有限重试、Harness 失败 trace 和安全停止；工作记忆不替代审计历史。
+- 验证结果：新增 7 项工作记忆与演示测试，项目共 76 项 unittest 全部通过；源码、测试和脚本编译检查、依赖检查及 checklist JSON 解析通过。
+- T1.2 仍为进行中：项目/组织记忆、三类调度、任务隔离、上下文注入、Model Gateway 和非金融 Demo 尚未完成。
+
+下一步
+- 为 T1.2 增加按 project_id 隔离、可跨 Loop 运行持久化的项目记忆最小闭环。

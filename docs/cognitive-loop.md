@@ -11,7 +11,7 @@
 3. `Observation`：工具结果或受控失败；
 4. `Reflection`：看到结果后选择 `continue`、`revise` 或 `complete`。
 
-三层记忆不属于本次切片，后续会在这些稳定状态之上增加，因此任务 1.2 仍是进行中。
+工作记忆已经在这些稳定状态之上接入；项目记忆和组织记忆仍待实现，因此任务 1.2 仍是进行中。
 
 ## 一步是怎样运行的
 
@@ -45,11 +45,17 @@ CognitiveAgent.choose_action()
 
 工具失败在认知层面是一条可反思的 Observation，不会自动冒充成功结果。达到最大步数后则一定安全停止，不会无限循环。
 
+## 工作记忆
+
+Plan 创建后，以及每次 Action、Observation、Reflection 产生后，Loop 都会写入一条简短、JSON 兼容的工作记忆。Agent 在 `choose_action(state)` 和 `reflect(state, observation)` 中通过 `state.memory` 读取当前视图，因此能根据最近一次失败调整后续动作。
+
+工作记忆有固定容量，满后淘汰最旧条目；它不是完整审计日志。完整历史仍在 `CognitiveLoopState`，工作记忆负责给当前任务提供有限的近期上下文。快照、恢复和存储适配器见 [`working-memory.md`](working-memory.md)。
+
 ## 当前边界
 
 - 演示 Agent 是确定性 Python 逻辑，不是真实 LLM；
 - 工具在当前 Python 进程执行，尚无进程、容器或 worktree 隔离；
-- 尚未实现工作记忆、项目记忆和组织记忆；
+- 尚未实现项目记忆和组织记忆；
 - 尚未实现 Model Gateway、定时调度、Hook 和递归目标循环。
 
 运行离线演示：

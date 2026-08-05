@@ -6,7 +6,7 @@
 
 项目已经形成 Harness、Loop、Graph/DAG、Checkpoint、金融数据契约和简化技术分析 Agent 等可运行能力，但这不等于任务书中的整个阶段一和阶段二已经完成。当前任务 1.1、1.3 和 1.4 达到正式完成口径；1.2、2.1 和 2.2 仍为部分完成。
 
-任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、重试、超时、熔断、Checkpoint、Mermaid 可视化和 LangGraph 概念映射。任务 1.2 已有认知闭环，下一步继续补工作记忆。金融模块仍使用离线模拟数据，尚未接入真实行情 API、其他专业分析 Agent 和真实 LLM。真实交易始终关闭。
+任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、重试、超时、熔断、Checkpoint、Mermaid 可视化和 LangGraph 概念映射。任务 1.2 已有认知闭环和有界工作记忆，下一步继续补项目记忆。金融模块仍使用离线模拟数据，尚未接入真实行情 API、其他专业分析 Agent 和真实 LLM。真实交易始终关闭。
 
 完整任务映射、最终成果和验收条件见 [`ROADMAP.md`](ROADMAP.md)。
 
@@ -78,6 +78,14 @@ python Scripts\demo_cognitive_loop.py
 
 该演示先提交一个类型错误的工具参数，Harness 会在执行工具前拒绝它。Agent 根据失败 Observation 选择 `revise`，修正参数后再次调用允许列表中的工具，并在输出校验通过后完成任务。
 
+### 运行工作记忆演示
+
+```powershell
+python Scripts\demo_working_memory.py
+```
+
+该演示在认知 Loop 中记录 Plan、Action、Observation 和 Reflection 摘要。工作记忆容量固定为 5；Agent 读取第一次失败的 Observation 后修正参数，运行结束后再从版本化 JSON 快照恢复最近记忆。
+
 ## 已实现的能力
 
 ### Harness：一次调用的可靠性入口
@@ -92,7 +100,9 @@ python Scripts\demo_cognitive_loop.py
 
 `CognitiveLoopRunner` 在此基础上增加 `Plan`、`Action`、`Observation` 和 `Reflection`。`ToolRegistry` 是工具允许列表：未注册工具会被拒绝；每次 Action 的参数在执行前由 Harness 检查，工具结果在成为成功 Observation 前再经过输出检查。工具失败会成为可反思的失败 Observation，Agent 可以继续、修正或完成。
 
-当前版本仍不是任务书要求的完整 Agent Loop：工作记忆、项目记忆、组织记忆、三类调度、任务隔离、上下文注入和真实 Model Gateway 尚未实现。接口、执行顺序和当前边界见 `docs/cognitive-loop.md`。
+`WorkingMemory` 保存当前任务最近的认知摘要，使用固定容量和 FIFO 淘汰，不会随循环无限增长。Agent 在选择 Action 和 Reflection 时读取不可变视图；内存存储与 JSON 存储通过同一快照接口装配。
+
+当前版本仍不是任务书要求的完整 Agent Loop：项目记忆、组织记忆、三类调度、任务隔离、上下文注入和真实 Model Gateway 尚未实现。接口、执行顺序和当前边界见 `docs/cognitive-loop.md` 与 `docs/working-memory.md`。
 
 ### Graph：节点编排与恢复
 
@@ -167,6 +177,6 @@ Graph 节点仍是受注册表控制的 Python 函数；后续专业 Agent 可�
 
 ## 下一步
 
-下一项任务是继续完成任务 1.2：先增加有容量边界、可快照恢复的工作记忆，并把它接入 Action 和 Reflection；项目记忆、组织记忆及其生命周期在后续小步完成。金融端到端 Graph 要等真实数据和四类专业 Agent 就绪后再组装，但平台 A2 Graph Engineering 已正式完成。
+下一项任务是继续完成任务 1.2：增加跨一次 Loop 运行、按项目隔离和持久化的项目记忆；组织记忆及其生命周期在后续小步完成。金融端到端 Graph 要等真实数据和四类专业 Agent 就绪后再组装，但平台 A2 Graph Engineering 已正式完成。
 
 最终交付路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。
