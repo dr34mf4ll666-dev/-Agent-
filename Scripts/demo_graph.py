@@ -21,6 +21,20 @@ from agent_platform.core import (  # noqa: E402
 )
 
 
+EDGE_SCHEMA = {"type": "object"}
+
+
+def edge(source, target, *, condition=None, condition_label=""):
+    return GraphEdge(
+        source,
+        target,
+        condition=condition,
+        output_schema=EDGE_SCHEMA,
+        input_schema=EDGE_SCHEMA,
+        condition_label=condition_label,
+    )
+
+
 def build_demo_graph(route_choice: str, *, simulate_failure: bool) -> GraphDefinition:
     """创建一个包含条件分支和一次可恢复故障的离线 Graph。"""
 
@@ -64,20 +78,22 @@ def build_demo_graph(route_choice: str, *, simulate_failure: bool) -> GraphDefin
             "finish": finish,
         },
         edges=(
-            GraphEdge("prepare", "route"),
-            GraphEdge(
+            edge("prepare", "route"),
+            edge(
                 "route",
                 "approved",
                 condition=lambda state: state["route"] == "approved",
+                condition_label="route == approved",
             ),
-            GraphEdge(
+            edge(
                 "route",
                 "rejected",
                 condition=lambda state: state["route"] == "rejected",
+                condition_label="route == rejected",
             ),
-            GraphEdge("approved", "recoverable"),
-            GraphEdge("recoverable", "finish"),
-            GraphEdge("rejected", "finish"),
+            edge("approved", "recoverable"),
+            edge("recoverable", "finish"),
+            edge("rejected", "finish"),
         ),
     )
 

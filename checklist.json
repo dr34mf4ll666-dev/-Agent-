@@ -1,6 +1,6 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "updated_at": "2026-08-04",
   "current_focus": "T1.2 工作记忆最小闭环",
   "tracking_model": "official_tasks_and_final_acceptance",
@@ -63,27 +63,33 @@
     {
       "id": "T1.3",
       "title": "Graph Engineering",
-      "status": "in_progress",
+      "status": "done",
       "completed_slices": [
         "DAG 校验和拓扑顺序",
         "条件分支、状态合并和跳过传播",
-        "JSON Checkpoint 和故障恢复演示"
-      ],
-      "remaining": [
-        "YAML/JSON 工作流定义",
+        "JSON Checkpoint 和故障恢复演示",
+        "YAML/JSON 工作流定义和受控节点注册表",
         "Graph 边输入输出 Schema 和传递校验",
-        "并行执行",
-        "节点重试和超时",
-        "熔断",
-        "Graph 结构和运行状态可视化",
-        "与 LangGraph 的概念映射或最小兼容示例"
+        "并行拓扑波次和确定性状态合并",
+        "节点重试、软超时和持久化熔断",
+        "Graph Mermaid 结构和运行状态可视化",
+        "与 LangGraph 的概念映射"
       ],
+      "remaining": [],
       "evidence": [
         "src/agent_platform/core/graph.py",
         "src/agent_platform/core/checkpoint.py",
+        "src/agent_platform/core/workflow.py",
+        "src/agent_platform/core/graph_visualization.py",
         "tests/test_graph.py",
+        "tests/test_graph_engineering.py",
         "Scripts/demo_graph.py",
-        "tests/test_demo_graph.py"
+        "tests/test_demo_graph.py",
+        "Scripts/demo_graph_engineering.py",
+        "tests/test_demo_graph_engineering.py",
+        "Workflow/examples/parallel_analysis.yaml",
+        "docs/graph-engineering.md",
+        "docs/langgraph-mapping.md"
       ]
     },
     {
@@ -324,6 +330,12 @@
       "title": "认知 Loop 与受控工具切片",
       "status": "done",
       "evidence": ["src/agent_platform/core/cognitive_loop.py", "tests/test_cognitive_loop.py", "Scripts/demo_cognitive_loop.py", "docs/cognitive-loop.md"]
+    },
+    {
+      "id": "M1.3-B",
+      "title": "Graph Engineering 完整能力",
+      "status": "done",
+      "evidence": ["src/agent_platform/core/graph.py", "src/agent_platform/core/workflow.py", "tests/test_graph_engineering.py", "Scripts/demo_graph_engineering.py", "docs/graph-engineering.md"]
     }
   ]
 }

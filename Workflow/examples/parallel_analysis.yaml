@@ -1,0 +1,97 @@
+version: 1
+start: prepare
+
+execution:
+  strategy: parallel
+  max_workers: 2
+
+nodes:
+  prepare:
+    handler: prepare
+    timeout_seconds: 1
+  fundamental:
+    handler: fundamental
+    timeout_seconds: 1
+    retry:
+      max_retries: 1
+      delay_seconds: 0
+    circuit_breaker:
+      failure_threshold: 2
+      reset_timeout_seconds: 5
+  technical:
+    handler: technical
+    timeout_seconds: 1
+  synthesize:
+    handler: synthesize
+    timeout_seconds: 1
+
+edges:
+  - source: prepare
+    target: fundamental
+    condition:
+      path: prepared
+      operator: eq
+      value: true
+    output_schema:
+      type: object
+      required: [subject, prepared]
+      properties:
+        subject: {type: string}
+        prepared: {const: true}
+      additionalProperties: false
+    input_schema:
+      type: object
+      required: [subject, prepared]
+      properties:
+        subject: {type: string}
+        prepared: {const: true}
+
+  - source: prepare
+    target: technical
+    condition:
+      path: prepared
+      operator: eq
+      value: true
+    output_schema:
+      type: object
+      required: [subject, prepared]
+      properties:
+        subject: {type: string}
+        prepared: {const: true}
+      additionalProperties: false
+    input_schema:
+      type: object
+      required: [subject, prepared]
+      properties:
+        subject: {type: string}
+        prepared: {const: true}
+
+  - source: fundamental
+    target: synthesize
+    output_schema:
+      type: object
+      required: [fundamental_score]
+      properties:
+        fundamental_score: {type: integer, minimum: 0, maximum: 100}
+      additionalProperties: false
+    input_schema:
+      type: object
+      required: [fundamental_score, technical_score]
+      properties:
+        fundamental_score: {type: integer, minimum: 0, maximum: 100}
+        technical_score: {type: integer, minimum: 0, maximum: 100}
+
+  - source: technical
+    target: synthesize
+    output_schema:
+      type: object
+      required: [technical_score]
+      properties:
+        technical_score: {type: integer, minimum: 0, maximum: 100}
+      additionalProperties: false
+    input_schema:
+      type: object
+      required: [fundamental_score, technical_score]
+      properties:
+        fundamental_score: {type: integer, minimum: 0, maximum: 100}
+        technical_score: {type: integer, minimum: 0, maximum: 100}

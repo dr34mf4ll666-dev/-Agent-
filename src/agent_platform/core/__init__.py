@@ -37,15 +37,24 @@ from .cognitive_loop import (
 )
 from .echo import EchoAgent
 from .graph import (
+    CircuitBreakerPolicy,
     GraphContractError,
+    GraphCircuitOpenError,
     GraphDefinition,
     GraphEdge,
+    GraphEvent,
+    GraphExecutionPolicy,
     GraphExecutionError,
+    GraphMergeConflictError,
+    GraphNodeTimeoutError,
     GraphResult,
     GraphRunner,
+    GraphSchemaError,
     GraphState,
     GraphValidationError,
+    NodeExecutionPolicy,
 )
+from .graph_visualization import GraphVisualizer
 from .harness import AgentHarness
 from .guardrails import (
     CrossValidationResult,
@@ -64,6 +73,11 @@ from .loop import (
     LoopRunner,
     LoopState,
 )
+from .workflow import (
+    GraphWorkflowLoader,
+    NodeRegistry,
+    WorkflowConfigurationError,
+)
 
 __all__ = [
     "Action",
@@ -80,17 +94,26 @@ __all__ = [
     "CognitiveLoopRunner",
     "CognitiveLoopState",
     "CognitiveMaxStepsExceeded",
+    "CircuitBreakerPolicy",
     "EchoAgent",
     "GraphCheckpoint",
     "GraphCheckpointError",
+    "GraphCircuitOpenError",
     "GraphContractError",
     "GraphDefinition",
     "GraphEdge",
+    "GraphEvent",
+    "GraphExecutionPolicy",
     "GraphExecutionError",
+    "GraphMergeConflictError",
+    "GraphNodeTimeoutError",
     "GraphResult",
     "GraphRunner",
+    "GraphSchemaError",
     "GraphState",
     "GraphValidationError",
+    "GraphVisualizer",
+    "GraphWorkflowLoader",
     "Guardrail",
     "GuardrailConfigurationError",
     "GuardrailRegistry",
@@ -106,6 +129,8 @@ __all__ = [
     "LoopResult",
     "LoopRunner",
     "LoopState",
+    "NodeExecutionPolicy",
+    "NodeRegistry",
     "Observation",
     "Plan",
     "RateLimiter",
@@ -118,4 +143,5 @@ __all__ = [
     "ToolExecutionRecord",
     "ToolRegistry",
     "UnknownToolError",
+    "WorkflowConfigurationError",
 ]

@@ -4,15 +4,21 @@
 
 ## 项目进度
 
-项目已经形成 Harness、Loop、Graph/DAG、Checkpoint、金融数据契约和简化技术分析 Agent 等可运行原型，但这不等于任务书中的阶段一和阶段二已经完成。重新对齐后，任务 1.1 和 1.4 达到正式完成口径；1.2、1.3、2.1 和 2.2 仍为部分完成。
+项目已经形成 Harness、Loop、Graph/DAG、Checkpoint、金融数据契约和简化技术分析 Agent 等可运行能力，但这不等于任务书中的整个阶段一和阶段二已经完成。当前任务 1.1、1.3 和 1.4 达到正式完成口径；1.2、2.1 和 2.2 仍为部分完成。
 
-任务 1.4 的五类 Guardrail 已完成。任务 1.2 已新增规划、行动、观察、反思和受控工具闭环；下一步继续补工作记忆，随后再扩展项目记忆和组织记忆。金融模块仍使用离线模拟数据，尚未接入真实行情 API、其他专业分析 Agent 和真实 LLM。真实交易始终关闭。
+任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、重试、超时、熔断、Checkpoint、Mermaid 可视化和 LangGraph 概念映射。任务 1.2 已有认知闭环，下一步继续补工作记忆。金融模块仍使用离线模拟数据，尚未接入真实行情 API、其他专业分析 Agent 和真实 LLM。真实交易始终关闭。
 
 完整任务映射、最终成果和验收条件见 [`ROADMAP.md`](ROADMAP.md)。
 
 ## 快速开始
 
-项目要求 Python 3.11 或更高版本。在项目根目录运行全部测试：
+项目要求 Python 3.11 或更高版本。先安装项目依赖：
+
+```powershell
+python -m pip install -e .
+```
+
+然后在项目根目录运行全部测试：
 
 ```powershell
 python -m unittest discover -s tests -v
@@ -39,6 +45,14 @@ python Scripts\demo_graph.py --route rejected --no-failure
 ```
 
 演示产生的 `checkpoints/demo_graph.json` 仅用于本地运行，已经通过 `.gitignore` 排除。
+
+### 运行完整 Graph Engineering 演示
+
+```powershell
+python Scripts\demo_graph_engineering.py
+```
+
+该演示从 `Workflow/examples/parallel_analysis.yaml` 加载工作流，展示边输入输出 Schema、并行波次、节点重试、超时和熔断配置、版本 2 Checkpoint，并把带运行状态的 Mermaid 图写入 `artifacts/a2_graph.mmd`。
 
 ### 运行技术分析演示
 
@@ -82,9 +96,9 @@ python Scripts\demo_cognitive_loop.py
 
 ### Graph：节点编排与恢复
 
-`GraphRunner` 按 DAG 依赖顺序执行节点，支持状态合并、条件边、分支跳过和环检测。`JsonCheckpointStore` 会保存共享状态和节点进度，失败恢复时不会重复运行已经完成的节点。
+`GraphWorkflowLoader` 可以从版本化 YAML/JSON 加载工作流，节点处理函数只能来自 `NodeRegistry` 允许列表。每条边必须声明 source 输出 Schema 和 target 输入 Schema，状态传递不符合约定时会在下游节点执行前拒绝。
 
-当前 Graph 是单进程顺序执行版本，还没有真正的并行调度、超时控制或外部工作流文件解析。
+`GraphRunner` 支持顺序或并行拓扑波次、确定性状态合并、条件分支、跳过传播、节点重试、软超时、持久化熔断和 Checkpoint 恢复。并行节点写入同一状态键时会拒绝合并，不依赖线程完成先后静默覆盖。`GraphVisualizer` 可以输出静态或按运行状态着色的 Mermaid。完整配置、错误语义和当前超时边界见 `docs/graph-engineering.md`，与 LangGraph 的关系见 `docs/langgraph-mapping.md`。
 
 ### Finance：可追溯的行情数据契约
 
@@ -114,14 +128,14 @@ python Scripts\demo_cognitive_loop.py
       ↓
 专业分析节点（已有技术分析原型）
       ↓
-Graph 组织依赖、分支和恢复
+Graph 组织 Schema、并行、分支、可靠性策略和恢复
       ↓
 Loop 管理单个 Agent 的计划、受控工具和有限多步运行
       ↓
 Harness 负责校验、追踪和错误保留
 ```
 
-当前 Graph 节点仍是通用 Python 函数，尚未自动强制所有节点使用 Harness 或 Loop。后续接入专业 Agent 时，会在明确的节点接口中完成组合。
+Graph 节点仍是受注册表控制的 Python 函数；后续专业 Agent 可以把自身的 Harness 或 Loop 作为节点处理函数接入，不需要改写 Graph 调度器。
 
 ## 项目结构
 
@@ -153,6 +167,6 @@ Harness 负责校验、追踪和错误保留
 
 ## 下一步
 
-下一项任务是继续完成任务 1.2：先增加有容量边界、可快照恢复的工作记忆，并把它接入 Action 和 Reflection；项目记忆、组织记忆及其生命周期在后续小步完成。金融 Graph 继续暂缓，等单 Agent Loop 完整后再收口多 Agent Graph。
+下一项任务是继续完成任务 1.2：先增加有容量边界、可快照恢复的工作记忆，并把它接入 Action 和 Reflection；项目记忆、组织记忆及其生命周期在后续小步完成。金融端到端 Graph 要等真实数据和四类专业 Agent 就绪后再组装，但平台 A2 Graph Engineering 已正式完成。
 
 最终交付路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。

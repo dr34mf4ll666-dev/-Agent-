@@ -18,6 +18,14 @@ python Scripts\demo_graph.py
 - `--no-failure`：关闭首次模拟故障；
 - `--checkpoint PATH`：指定 Checkpoint 文件位置。
 
+## 完整 Graph Engineering 演示
+
+```powershell
+python Scripts\demo_graph_engineering.py
+```
+
+该脚本加载 `Workflow/examples/parallel_analysis.yaml`，运行两个并行节点，让其中一个节点经历一次可重试故障，然后输出尝试次数、熔断状态、版本 2 Checkpoint 和 Mermaid 运行状态图。可以用 `--workflow`、`--checkpoint` 和 `--mermaid` 指定输入输出路径。
+
 ## Guardrail 演示
 
 ```powershell

@@ -102,7 +102,13 @@ result = runner.run(AgentRequest(task="use a controlled tool"))
 graph = GraphDefinition(
     start="prepare",
     nodes={"prepare": prepare, "finish": finish},
-    edges=(GraphEdge("prepare", "finish"),),
+    edges=(GraphEdge(
+        "prepare",
+        "finish",
+        output_schema={"type": "object"},
+        input_schema={"type": "object"},
+    ),),
+    execution=GraphExecutionPolicy(strategy="parallel", max_workers=4),
 )
 runner = GraphRunner(
     graph,
@@ -112,10 +118,14 @@ result = runner.run({"request_id": "demo"})
 ```
 
 - 节点接收只读的 `GraphState`，返回需要合并到状态中的字段映射。
+- YAML/JSON 工作流通过 `NodeRegistry` 绑定允许的处理函数，不执行任意配置代码。
+- 每条边必须声明 source 输出 Schema 和 target 输入 Schema，传递前自动校验。
 - `GraphRunner.run(initial_state)`：从头执行确定性的 DAG。
 - `GraphRunner.run(resume=True)`：读取 Checkpoint，从未完成或失败的节点继续。
 - `GraphExecutionError`：失败时暴露状态、节点状态、执行顺序和原始异常。
-- 当前实现为单进程顺序执行；拓扑排序保证依赖顺序，但不承诺并行。
+- 支持顺序或并行拓扑波次、确定性合并、节点重试、软超时和持久化熔断。
+- `GraphVisualizer` 输出静态或按运行状态着色的 Mermaid。
+- 自研接口与 LangGraph 的概念映射见 `docs/langgraph-mapping.md`。
 
 ## 7. 阶段二金融数据接口
 

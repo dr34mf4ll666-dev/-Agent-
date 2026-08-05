@@ -117,3 +117,19 @@
 
 下一步
 - 为认知 Loop 增加有容量边界、可 JSON 快照恢复的工作记忆，再逐步扩展项目记忆和组织记忆。
+
+[2026-08-05] A2 / 任务 1.3 Graph Engineering 完成
+- 新增版本 1 YAML/JSON 工作流加载器和 NodeRegistry；配置只能绑定允许列表中的处理函数，条件使用固定操作符，不执行任意表达式。
+- 每条 GraphEdge 强制声明 source 输出 Schema 和 target 输入 Schema，复用 Harness SDK 的确定性 JSON Schema 子集做传递校验。
+- GraphRunner 支持顺序或并行拓扑波次；并行节点读取同一状态快照，按声明顺序合并，重复写入同一状态键会明确拒绝。
+- 新增节点级有限重试和软超时；新增 closed/open/half_open 熔断状态，并把节点尝试次数和熔断状态写入版本 2 Checkpoint。
+- 保留条件分支、跳过传播和故障恢复；并行波次中已成功节点可以进入 Checkpoint，恢复时不重复执行。
+- 新增 GraphVisualizer，可输出静态 DAG 或按 pending/completed/skipped/failed 着色的 Mermaid。
+- 新增自研 Graph 与 LangGraph 的概念映射，明确当前不引入 LangGraph 运行依赖。
+- 新增完整离线演示：从 YAML 加载两个并行分析节点，其中一个节点首次失败后重试，最终输出 Checkpoint、熔断状态和 Mermaid 文件。
+- 环境验证：项目使用 D:\Anaconda\python.exe（Python 3.13.2）；PyYAML 6.0.3 已安装到该解释器并写入 pyproject 依赖。
+- 验证结果：新增 11 项 Graph Engineering 与演示测试，项目共 69 项 unittest 全部通过；源码、测试和脚本编译检查及 checklist JSON 解析通过。
+- T1.3 已达到总纲 A2 的完成口径，checklist 状态更新为 done，remaining 为空。
+
+下一步
+- 返回当前主线 T1.2，完成有容量边界、可 JSON 快照恢复的工作记忆最小闭环。

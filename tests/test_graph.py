@@ -17,6 +17,19 @@ from agent_platform.core.graph import (
 from agent_platform.core.checkpoint import JsonCheckpointStore
 
 
+EDGE_SCHEMA = {"type": "object"}
+
+
+def edge(source, target, *, condition=None):
+    return GraphEdge(
+        source,
+        target,
+        condition=condition,
+        output_schema=EDGE_SCHEMA,
+        input_schema=EDGE_SCHEMA,
+    )
+
+
 class GraphRunnerTests(unittest.TestCase):
     def test_graph_executes_nodes_in_dependency_order_and_merges_state(self):
         graph = GraphDefinition(
@@ -27,8 +40,8 @@ class GraphRunnerTests(unittest.TestCase):
                 "finish": lambda state: {"done": True},
             },
             edges=(
-                GraphEdge("prepare", "double"),
-                GraphEdge("double", "finish"),
+                edge("prepare", "double"),
+                edge("double", "finish"),
             ),
         )
 
@@ -54,7 +67,7 @@ class GraphRunnerTests(unittest.TestCase):
         graph = GraphDefinition(
             start="a",
             nodes={"a": record_a, "b": record_b},
-            edges=(GraphEdge("a", "b"), GraphEdge("b", "a")),
+            edges=(edge("a", "b"), edge("b", "a")),
         )
 
         with self.assertRaises(GraphValidationError):
@@ -72,17 +85,17 @@ class GraphRunnerTests(unittest.TestCase):
                 "rejected_detail": lambda state: {"unexpected": True},
             },
             edges=(
-                GraphEdge(
+                edge(
                     "route",
                     "approved",
                     condition=lambda state: state["route"] == "approved",
                 ),
-                GraphEdge(
+                edge(
                     "route",
                     "rejected",
                     condition=lambda state: state["route"] == "rejected",
                 ),
-                GraphEdge("rejected", "rejected_detail"),
+                edge("rejected", "rejected_detail"),
             ),
         )
 
@@ -115,7 +128,7 @@ class GraphRunnerTests(unittest.TestCase):
         graph = GraphDefinition(
             start="prepare",
             nodes={"prepare": prepare, "flaky": flaky, "finish": finish},
-            edges=(GraphEdge("prepare", "flaky"), GraphEdge("flaky", "finish")),
+            edges=(edge("prepare", "flaky"), edge("flaky", "finish")),
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
