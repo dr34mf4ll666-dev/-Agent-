@@ -11,7 +11,7 @@
 3. `Observation`：工具结果或受控失败；
 4. `Reflection`：看到结果后选择 `continue`、`revise` 或 `complete`。
 
-工作记忆已经在这些稳定状态之上接入；项目记忆和组织记忆仍待实现，因此任务 1.2 仍是进行中。
+工作、项目和组织三层记忆已经接入稳定状态与上下文注入，任务 1.2 的完整调度和隔离能力见 [`loop-engineering.md`](loop-engineering.md)。
 
 ## 一步是怎样运行的
 
@@ -54,9 +54,10 @@ Plan 创建后，以及每次 Action、Observation、Reflection 产生后，Loop
 ## 当前边界
 
 - 演示 Agent 是确定性 Python 逻辑，不是真实 LLM；
-- 工具在当前 Python 进程执行，尚无进程、容器或 worktree 隔离；
-- 尚未实现项目记忆和组织记忆；
-- 尚未实现 Model Gateway、定时调度、Hook 和递归目标循环。
+- 工具仍在当前 Python 进程执行；任务文件通过独立工作目录隔离，但没有容器或操作系统权限隔离；
+- 长期记忆使用 key、类别和文本筛选，没有向量检索；
+- Heartbeat/Cron 使用宿主调用的确定性 tick，没有内置常驻服务；
+- 尚未实现 A4 Model Gateway。
 
 运行离线演示：
 

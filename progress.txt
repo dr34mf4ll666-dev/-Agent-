@@ -146,3 +146,20 @@
 
 下一步
 - 为 T1.2 增加按 project_id 隔离、可跨 Loop 运行持久化的项目记忆最小闭环。
+
+[2026-08-05] A3 / 任务 1.2 Loop Engineering 完成
+- 新增 LongTermMemory，以项目和组织命名空间隔离长期事实、决定、产物和约定；支持显式 upsert、筛选查询、受控删除、revision、来源和带时区时间。
+- 新增内存与 JSON 长期记忆适配器；项目和组织记忆可以跨 Loop 运行恢复，损坏、重复或版本不兼容快照会被拒绝。
+- 新增 ContextInjector，把调用方明确选择的 Skill、项目约定、任务上下文、项目记忆和组织记忆组合成只读 InjectedContext；未选择的长期记忆不会自动注入。
+- CognitiveLoopRunner 会把同一注入上下文提供给 Planner、Action 和 Reflection，同时继续保留有界工作记忆、最大步数、工具重试、失败 trace 和安全停止。
+- 新增 TaskWorkspaceManager；每次调度运行使用独立持久目录，任务 ID、绝对路径和 `..` 路径逃逸会被拒绝；本地目录写入已忽略的 `.runtime/`。
+- 新增 HeartbeatLoop 和五字段 CronLoop，按时间槽或 Cron 分钟生成持久幂等键；宿主通过确定性 tick 驱动，不在库内部启动永久后台线程。
+- 新增 HookLoop，按订阅名称过滤事件，并用 hook_id + event_id 防止重复处理；事件 payload 作为 JSON 兼容任务上下文注入。
+- 新增 GoalLoop，按子目标后序执行和汇总，使用 max_depth、max_goals 硬限制递归规模，并通过 run_id + 目标路径恢复已完成目标。
+- 三类触发方式共用 LoopDispatcher 和版本 1 LoopRunLedger；记录成功或失败、执行时间、触发来源和工作目录，JSON 损坏或版本不兼容时拒绝恢复。
+- 新增 A3 综合离线演示：Heartbeat、Cron、Hook 和三个递归目标节点共执行 6 次 Cognitive Loop，形成 6 条运行记录和 6 个独立工作目录。
+- 验证结果：新增 19 项长期记忆、上下文、工作目录、调度和演示测试，项目共 95 项 unittest 全部通过；源码、测试和脚本编译检查、依赖检查及 checklist JSON 解析通过。
+- 任务 1.2 已满足 ROADMAP A3 的完成口径并标记为 done；A4 Model Gateway 和 A5 非金融 Demo 单独保留为平台交付缺口。
+
+下一步
+- 进入 A4：先实现确定性 Mock Model Gateway 的稳定请求、响应、错误和追踪契约，再做一种真实 LLM 的最小受控验证。

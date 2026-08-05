@@ -72,7 +72,9 @@ Reflection <── Observation <── Harness 输出检查
 
 `WorkingMemory` 在上述状态旁保存当前任务最近的认知摘要，并通过不可变 `WorkingMemoryView` 提供给 Agent。容量满时按 FIFO 淘汰；每次写入可通过统一 Store 接口保存版本化快照，当前提供内存和 JSON 两种适配器。完整认知历史仍保留在 `CognitiveLoopState`，工作记忆只负责有限的近期上下文。
 
-项目记忆、组织记忆、调度、进程或 worktree 隔离和真实模型调用仍属于后续任务。
+`LongTermMemory` 使用项目或组织命名空间保存显式确认的长期信息；`ContextInjector` 只选择调用方指定的记忆 key，并和 Skill、项目约定、任务上下文一起注入。Planner 从有效请求读取上下文，Action 和 Reflection 从 `CognitiveLoopState.context` 读取。
+
+Heartbeat/Cron、Hook 和递归目标通过 `LoopDispatcher` 进入同一个认知 Loop。每次运行获得独立 `TaskWorkspace`，结果和幂等键写入 `LoopRunLedger`。详细关系见 [`loop-engineering.md`](loop-engineering.md)。
 
 ## 第三周 Graph/DAG
 
@@ -98,4 +100,4 @@ YAML/JSON 工作流只通过 `NodeRegistry` 绑定允许的 Python 处理函数�
 
 ## 当前实现边界
 
-现在已经用确定性的 Echo Agent 验证了 Harness 和有限步 Loop，用离线计算 Agent 验证了认知 Loop、受控工具和有界工作记忆，并完成 Graph Engineering。Graph 当前采用单进程线程池，超时属于拒绝迟到结果的软超时，不强杀执行线程；可拖拽的图形化编辑器不在 A2 范围。认知 Loop 仍尚未包含项目/组织记忆、三类调度和真实模型。
+现在已经用确定性的 Echo Agent 验证了 Harness 和有限步 Loop，用离线 Agent 验证了认知闭环、受控工具、三层记忆、三类触发循环、上下文注入和任务目录隔离，并完成 Graph Engineering。Graph 当前采用单进程线程池，超时属于拒绝迟到结果的软超时；Loop 调度采用宿主驱动的确定性 tick，不启动常驻服务。真实模型运行层仍属于 A4。

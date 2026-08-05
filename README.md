@@ -4,9 +4,9 @@
 
 ## 项目进度
 
-项目已经形成 Harness、Loop、Graph/DAG、Checkpoint、金融数据契约和简化技术分析 Agent 等可运行能力，但这不等于任务书中的整个阶段一和阶段二已经完成。当前任务 1.1、1.3 和 1.4 达到正式完成口径；1.2、2.1 和 2.2 仍为部分完成。
+项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、金融数据契约和简化技术分析 Agent 等可运行能力，但这不等于任务书中的整个平台交付包和金融应用已经完成。当前任务 1.1、1.2、1.3 和 1.4 达到正式完成口径；2.1 和 2.2 仍为部分完成。
 
-任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、重试、超时、熔断、Checkpoint、Mermaid 可视化和 LangGraph 概念映射。任务 1.2 已有认知闭环和有界工作记忆，下一步继续补项目记忆。金融模块仍使用离线模拟数据，尚未接入真实行情 API、其他专业分析 Agent 和真实 LLM。真实交易始终关闭。
+任务 1.2 Loop Engineering 已完成认知闭环、受控工具、三层记忆、三类触发循环、任务隔离和上下文注入。任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、可靠性、Checkpoint 和可视化。下一步进入 A4 Model Gateway；金融模块仍使用离线模拟数据，真实交易始终关闭。
 
 完整任务映射、最终成果和验收条件见 [`ROADMAP.md`](ROADMAP.md)。
 
@@ -86,6 +86,14 @@ python Scripts\demo_working_memory.py
 
 该演示在认知 Loop 中记录 Plan、Action、Observation 和 Reflection 摘要。工作记忆容量固定为 5；Agent 读取第一次失败的 Observation 后修正参数，运行结束后再从版本化 JSON 快照恢复最近记忆。
 
+### 运行完整 Loop Engineering 演示
+
+```powershell
+python Scripts\demo_loop_engineering.py
+```
+
+该演示把 Heartbeat、Cron、Hook 和递归目标触发接入同一个认知 Loop，展示工作/项目/组织三层记忆、Skill 和项目约定注入、六个独立任务目录，以及可恢复的运行台账。
+
 ## 已实现的能力
 
 ### Harness：一次调用的可靠性入口
@@ -102,7 +110,9 @@ python Scripts\demo_working_memory.py
 
 `WorkingMemory` 保存当前任务最近的认知摘要，使用固定容量和 FIFO 淘汰，不会随循环无限增长。Agent 在选择 Action 和 Reflection 时读取不可变视图；内存存储与 JSON 存储通过同一快照接口装配。
 
-当前版本仍不是任务书要求的完整 Agent Loop：项目记忆、组织记忆、三类调度、任务隔离、上下文注入和真实 Model Gateway 尚未实现。接口、执行顺序和当前边界见 `docs/cognitive-loop.md` 与 `docs/working-memory.md`。
+`LongTermMemory` 通过严格命名空间保存项目和组织记忆，只允许显式写入、筛选查询和受控删除。`ContextInjector` 把选中的长期记忆、Skill、项目约定和任务上下文以只读形式交给 Planner、Action 和 Reflection。`TaskWorkspaceManager` 为每次调度运行提供独立目录。
+
+`HeartbeatLoop`、`CronLoop`、`HookLoop` 和 `GoalLoop` 共用持久运行台账，分别按时间槽、Cron 分钟、事件 ID 和目标路径去重。A3 Loop Engineering 已完成；真实 Model Gateway 属于下一项 A4。完整接口和边界见 `docs/loop-engineering.md`。
 
 ### Graph：节点编排与恢复
 
@@ -177,6 +187,6 @@ Graph 节点仍是受注册表控制的 Python 函数；后续专业 Agent 可�
 
 ## 下一步
 
-下一项任务是继续完成任务 1.2：增加跨一次 Loop 运行、按项目隔离和持久化的项目记忆；组织记忆及其生命周期在后续小步完成。金融端到端 Graph 要等真实数据和四类专业 Agent 就绪后再组装，但平台 A2 Graph Engineering 已正式完成。
+下一项任务是 A4 Model Gateway：先定义统一模型请求、响应和错误契约，再让 Mock 模型与至少一种真实 LLM 适配器共用超时、重试、结构化输出和调用追踪。A3 Loop Engineering 与 A2 Graph Engineering 都已正式完成。
 
 最终交付路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。

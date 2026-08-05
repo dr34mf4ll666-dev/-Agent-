@@ -57,3 +57,11 @@ python Scripts\demo_working_memory.py
 ```
 
 该脚本把认知摘要写入容量为 5 的工作记忆。Agent 会读取失败 Observation 并修正工具参数；结束后脚本从 `checkpoints/working_memory.json` 恢复快照，并展示 FIFO 淘汰后的最近条目。可以用 `--snapshot PATH` 指定快照位置。
+
+## 完整 Loop Engineering 演示
+
+```powershell
+python Scripts\demo_loop_engineering.py
+```
+
+该脚本离线运行 Heartbeat、Cron、Hook 和递归目标触发。所有任务都复用 `CognitiveLoopRunner`，读取选中的项目/组织记忆和上下文，并写入各自独立工作目录。运行台账和三层记忆快照默认保存在已忽略的 `.runtime/a3-loop-engineering/`；可以用 `--runtime PATH` 指定位置。

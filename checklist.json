@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "updated_at": "2026-08-05",
-  "current_focus": "T1.2 项目记忆最小闭环",
+  "current_focus": "A4 统一 Model Gateway",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "in_progress",
   "items": [
@@ -33,7 +33,7 @@
     {
       "id": "T1.2",
       "title": "Loop Engineering",
-      "status": "in_progress",
+      "status": "done",
       "completed_slices": [
         "有限步循环",
         "响应历史和外部完成条件",
@@ -43,16 +43,15 @@
         "工具失败 Observation、Reflection 纠偏和离线演示",
         "有容量边界和 FIFO 淘汰的工作记忆",
         "Plan、Action、Observation、Reflection 摘要写入和 Agent 只读视图",
-        "版本化 JSON 快照、自动保存和恢复"
+        "版本化 JSON 快照、自动保存和恢复",
+        "按项目和组织命名空间隔离的长期记忆",
+        "长期记忆显式写入、更新、查询、删除和 JSON 恢复",
+        "Skill、项目约定、任务上下文和指定长期记忆的只读注入",
+        "Heartbeat/Cron、Hook 和递归目标三类触发循环",
+        "持久运行台账、幂等恢复、深度和目标数量安全边界",
+        "每次调度运行的独立任务工作目录"
       ],
-      "remaining": [
-        "Heartbeat/Cron、Hook 事件触发和递归目标循环",
-        "项目记忆和组织记忆",
-        "独立工作目录或 worktree 隔离",
-        "Skill、项目约定和任务上下文注入",
-        "统一 Mock/真实 LLM API 的 Model Gateway",
-        "复用平台的非金融 Demo，并验证新领域可在两天内接入"
-      ],
+      "remaining": [],
       "evidence": [
         "src/agent_platform/core/loop.py",
         "tests/test_loop.py",
@@ -65,7 +64,18 @@
         "tests/test_working_memory.py",
         "Scripts/demo_working_memory.py",
         "tests/test_demo_working_memory.py",
-        "docs/working-memory.md"
+        "docs/working-memory.md",
+        "src/agent_platform/core/long_term_memory.py",
+        "src/agent_platform/core/context_injection.py",
+        "src/agent_platform/core/task_workspace.py",
+        "src/agent_platform/core/loop_scheduling.py",
+        "tests/test_long_term_memory.py",
+        "tests/test_context_injection.py",
+        "tests/test_task_workspace.py",
+        "tests/test_loop_scheduling.py",
+        "Scripts/demo_loop_engineering.py",
+        "tests/test_demo_loop_engineering.py",
+        "docs/loop-engineering.md"
       ]
     },
     {
@@ -263,6 +273,30 @@
       "evidence": []
     }
   ],
+  "platform_delivery": [
+    {
+      "id": "A4",
+      "title": "统一 Model Gateway",
+      "status": "pending",
+      "remaining": [
+        "Mock 与至少一种真实 LLM 共用接口",
+        "结构化输出、超时、有限重试和错误归一化",
+        "模型、token、耗时、尝试次数和结果追踪",
+        "环境变量密钥边界和最小真实调用验证"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "A5",
+      "title": "平台通用性证明",
+      "status": "pending",
+      "remaining": [
+        "复用 Harness、Loop、Graph 和工具接口的非金融 Demo",
+        "记录新领域最小接入步骤并验证两天内可接入"
+      ],
+      "evidence": []
+    }
+  ],
   "final_acceptance": [
     {
       "id": "PLATFORM",
@@ -350,6 +384,12 @@
       "title": "有界工作记忆与快照恢复切片",
       "status": "done",
       "evidence": ["src/agent_platform/core/memory.py", "tests/test_working_memory.py", "Scripts/demo_working_memory.py", "docs/working-memory.md"]
+    },
+    {
+      "id": "M1.2-C",
+      "title": "A3 Loop Engineering 完整能力",
+      "status": "done",
+      "evidence": ["src/agent_platform/core/long_term_memory.py", "src/agent_platform/core/context_injection.py", "src/agent_platform/core/task_workspace.py", "src/agent_platform/core/loop_scheduling.py", "tests/test_loop_scheduling.py", "Scripts/demo_loop_engineering.py", "docs/loop-engineering.md"]
     }
   ]
 }

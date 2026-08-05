@@ -15,12 +15,14 @@ from .contracts import (
     TraceEvent,
 )
 from .harness import AgentHarness
+from .context_injection import ContextInjector, InjectedContext
 from .memory import (
     MemoryKind,
     WorkingMemory,
     WorkingMemoryStore,
     WorkingMemoryView,
 )
+from .task_workspace import TaskWorkspace
 
 
 class CognitiveContractError(ValueError):
@@ -228,12 +230,16 @@ class CognitiveLoopState:
     reflections: tuple[Reflection, ...] = ()
     done: bool = False
     memory: WorkingMemoryView = field(default_factory=WorkingMemoryView)
+    context: InjectedContext = field(default_factory=InjectedContext)
+    workspace: TaskWorkspace | None = None
 
     def with_plan(self, plan: Plan) -> CognitiveLoopState:
         return CognitiveLoopState(
             request=self.request,
             plan=plan,
             memory=self.memory,
+            context=self.context,
+            workspace=self.workspace,
         )
 
     def with_memory(self, memory: WorkingMemoryView) -> CognitiveLoopState:
@@ -246,6 +252,8 @@ class CognitiveLoopState:
             reflections=self.reflections,
             done=self.done,
             memory=memory,
+            context=self.context,
+            workspace=self.workspace,
         )
 
     def record_action(self, action: Action) -> CognitiveLoopState:
@@ -258,6 +266,8 @@ class CognitiveLoopState:
             reflections=self.reflections,
             done=self.done,
             memory=self.memory,
+            context=self.context,
+            workspace=self.workspace,
         )
 
     def record_observation(self, observation: Observation) -> CognitiveLoopState:
@@ -270,6 +280,8 @@ class CognitiveLoopState:
             reflections=self.reflections,
             done=self.done,
             memory=self.memory,
+            context=self.context,
+            workspace=self.workspace,
         )
 
     def record_reflection(self, reflection: Reflection) -> CognitiveLoopState:
@@ -283,6 +295,8 @@ class CognitiveLoopState:
             reflections=(*self.reflections, reflection),
             done=done,
             memory=self.memory,
+            context=self.context,
+            workspace=self.workspace,
         )
 
 
@@ -376,6 +390,8 @@ class CognitiveLoopRunner:
         working_memory: WorkingMemory | None = None,
         memory_store: WorkingMemoryStore | None = None,
         memory_capacity: int = 20,
+        context_injector: ContextInjector | None = None,
+        workspace: TaskWorkspace | None = None,
     ) -> None:
         if max_steps < 1:
             raise ValueError("max_steps must be at least 1")
@@ -398,18 +414,49 @@ class CognitiveLoopRunner:
         self._working_memory = working_memory
         self._memory_store = memory_store
         self._memory_capacity = memory_capacity
+        self._context_injector = context_injector
+        if workspace is not None and not isinstance(workspace, TaskWorkspace):
+            raise CognitiveContractError("workspace must be TaskWorkspace")
+        self._workspace = workspace
 
     def run(self, request: AgentRequest) -> CognitiveLoopResult:
+        reserved_keys = {"injected_context"}
+        if self._workspace is not None:
+            reserved_keys.add("task_workspace")
+        collisions = reserved_keys.intersection(request.context)
+        if collisions:
+            raise CognitiveContractError(
+                f"request context uses reserved keys: {sorted(collisions)!r}"
+            )
         memory = self._working_memory or WorkingMemory(self._memory_capacity)
-        state = CognitiveLoopState(request=request, memory=memory.view())
+        injected_context = (
+            self._context_injector.build(request)
+            if self._context_injector is not None
+            else InjectedContext(task_context=request.context)
+        )
+        effective_context = dict(request.context)
+        effective_context["injected_context"] = injected_context
+        if self._workspace is not None:
+            effective_context["task_workspace"] = str(self._workspace.path)
+        effective_request = AgentRequest(
+            task=request.task,
+            context=effective_context,
+        )
+        state = CognitiveLoopState(
+            request=effective_request,
+            memory=memory.view(),
+            context=injected_context,
+            workspace=self._workspace,
+        )
         records: list[ToolExecutionRecord] = []
         current_step = 0
         trace: list[CognitiveLoopEvent] = [
-            CognitiveLoopEvent(event="cognitive_loop.started", step=0)
+            CognitiveLoopEvent(event="cognitive_loop.started", step=0),
+            CognitiveLoopEvent(event="cognitive_loop.context.injected", step=0),
         ]
 
         try:
-            plan = self._agent.create_plan(request)
+            plan = self._agent.create_plan(effective_request)
             if not isinstance(plan, Plan):
                 raise CognitiveContractError("create_plan must return Plan")
             state = state.with_plan(plan)

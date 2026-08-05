@@ -18,6 +18,7 @@ logs/
 artifacts/
 reports/
 checkpoints/
+.runtime/
 *.log
 
 # Temporary document review output
