@@ -163,3 +163,61 @@
 
 下一步
 - 进入 A4：先实现确定性 Mock Model Gateway 的稳定请求、响应、错误和追踪契约，再做一种真实 LLM 的最小受控验证。
+
+[2026-08-06] A4 统一 Model Gateway 离线实现完成
+- 新增稳定的 ModelRequest、ModelResponse、ModelUsage、ModelRetryPolicy、ModelTraceEvent 和归一化错误契约；成功与失败都会保留模型、token、耗时、尝试次数和有序 trace。
+- 新增确定性 MockModelAdapter，支持固定结果和脚本化故障，可离线验证结构化输出、重试、超时与失败路径。
+- 新增 OpenAIResponsesAdapter，使用 Responses API，把统一请求转换为 input 和 text.format JSON Schema，并解析实际模型、响应 ID、output_text 与 token 用量。
+- Gateway 会对结构化结果进行本地 JSON Schema 二次校验；临时限流、超时、连接故障和 5xx 可有限重试，认证、权限、额度、无效请求、拒答和错误响应立即失败。
+- OpenAI 密钥只从 OPENAI_API_KEY 读取；默认演示和全部单元测试不联网、不消耗额度，真实请求必须显式使用 --live。
+- A4 定向验证 15 项、项目完整回归 110 项测试全部通过；源码和脚本编译、checklist JSON、Git diff 格式检查通过，离线演示成功输出 provider、model、status、token、latency、attempts、structured_output 和 trace。
+- A4 仍为进行中：本机未配置 OPENAI_API_KEY，尚缺一次最小真实 Responses API 调用及实际字段核对，未提前标记为 done。
+
+下一步
+- 用户在本地临时设置 OPENAI_API_KEY 后，运行 `python Scripts\demo_model_gateway.py --live --model gpt-5.6-luna`，完成 A4 最后一项真实验证。
+
+[2026-08-06] A4 增加 DeepSeek 真实模型适配器
+- 根据 DeepSeek 当前官方接口新增 DeepSeekChatAdapter，使用 Chat Completions、DEEPSEEK_API_KEY 和 deepseek-v4-flash；不再使用已经过弃用日期的 deepseek-chat 默认名。
+- DeepSeek JSON Output 只保证合法 JSON，适配器会把目标 Schema 写入 system prompt，返回后继续由统一 Gateway 做本地 JSON Schema 严格复核。
+- 将 DeepSeek 的 prompt/completion/total token、实际模型名、响应 ID 和 finish_reason 转换为平台统一契约。
+- 将 401、402、429、500/503 分别归一化为认证、额度、限流和服务故障；只有临时故障进入有限重试。
+- 抽取模型适配器共用的 JSON HTTP 实现，OpenAI 与 DeepSeek 继续复用同一 ModelGateway interface，Loop、Graph 和 Harness 不需要因供应商变化而修改。
+- 新增 DeepSeek 离线适配器测试和无密钥演示测试；所有测试使用假的环境字典和传输层，不访问真实接口。
+- 验证结果：A4 相关 21 项、项目完整回归 116 项 unittest 全部通过；源码和脚本编译、checklist JSON、Git diff 格式检查及默认离线演示通过。
+
+下一步
+- 用户在本地临时设置 DEEPSEEK_API_KEY 后，运行 `python Scripts\demo_model_gateway.py --live --provider deepseek --model deepseek-v4-flash`，完成 A4 最后一项真实验证。
+
+[2026-08-06] DeepSeek 首次真实调用与语义校验修正
+- 用户真实调用成功：provider=deepseek、model=deepseek-v4-flash、attempts=1、input/output/total token=123/13/136、latency=974ms，证明网络、认证、模型和用量字段映射均可用。
+- 返回的结构化结果为 mode=offline，与真实运行事实不一致；原 Schema 同时允许 offline 和 live，因此格式校验通过但语义校验没有拦截。
+- 新增红色回归测试，确认 live Schema 原本允许 offline；随后改为按运行模式动态生成 Schema，live 只接受 live，offline 只接受 offline，并把提示词改为明确固定值。
+- 演示新增 response_id 输出，便于核对真实供应商响应；A4 暂不提前完成，等待修正后的最小真实请求复验。
+- 修正后项目完整回归 118 项 unittest 全部通过，源码和脚本编译、checklist JSON 与 Git diff 格式检查通过。
+
+下一步
+- 在同一个已设置 DEEPSEEK_API_KEY 的 PowerShell 中重新运行真实演示；输出必须包含 mode=live 和非空 response_id。
+
+[2026-08-06] A4 统一 Model Gateway 正式完成
+- 修正后的 DeepSeek 真实调用成功：provider=deepseek、model=deepseek-v4-flash、response_id=b78413b7-fb38-4621-ac51-4ba3eb0925e2、status=succeeded、attempts=1。
+- 实际 input/output/total token 为 116/12/128，耗时 1063ms；结构化输出 mode=live，通过收紧后的本地 Schema 校验。
+- A4 已满足统一 Mock/真实模型接口、结构化输出、超时、有限重试、错误归一化、调用追踪、环境变量密钥边界、离线测试和最小真实验证全部条件，checklist 标记为 done。
+- 验收证据不保存 API Key 或原始响应缓存，只记录非敏感运行字段；真实交易边界没有变化。
+
+下一步
+- 进入 A5 非金融通用性 Demo，复用现有 Harness、Loop、Graph、Model Gateway、记忆和受控工具接口证明平台可跨领域接入。
+
+[2026-08-06] A5 非金融通用性证明完成
+- 新增 `agent_platform.research` 独立领域模块，包含本地资料契约、确定性检索工具、Model Gateway 认知 Agent、证据综合 Agent 和工作流装配；A5 没有修改 core 框架语义。
+- 认知 Loop 使用 Plan、Action、Observation、Reflection 和有界工作记忆，只能通过 ToolRegistry 调用 `local_document_search`；工具结果经过 JSON Schema 和 source/timestamp/as_of 校验。
+- 新增三节点 YAML Graph：retrieve 负责 Loop 检索，organize 用确定性代码生成证据编号，synthesize 通过 AgentHarness 生成报告；两条边均声明输入输出 Schema。
+- 报告 Harness 同时检查结构、来源、主题一致性和证据编号；不存在的 evidence_id 会被 CrossValidator 拒绝，模型不能绕过确定性来源约束。
+- 默认演示使用四次脚本化 Mock 调用，不联网、不消耗额度；保留显式 `--live` DeepSeek 模式，真实调用继续只读取当前终端的 DEEPSEEK_API_KEY。
+- 新增故障恢复演示：synthesize 首次失败后从版本 2 Checkpoint 恢复，恢复阶段节点调用为 retrieve=0、organize=0、synthesize=1，已完成节点没有重复执行。
+- A5 定向验证 10 项、项目完整回归 128 项测试全部通过；源码和脚本编译、checklist JSON、YAML 工作流解析、Git diff 格式和运行文件忽略规则检查通过。
+- 离线恢复演示成功输出三节点完成状态、1 步认知 Loop、1 条带来源证据、4 次模型调用、128 个模拟 token 和完整 Graph trace。
+- 新领域接入在 2026-08-06 的单次开发阶段内完成，低于两天验收上限；接入步骤和限制记录在 `docs/non-financial-research-demo.md`。
+- A5 和 PLATFORM 已在 checklist 标记为 done；这只代表通用平台交付包完成，不代表金融应用和工程化任务已经完成。
+
+下一步
+- 进入 B1 金融数据 MCP，先做一个真实金融数据接口的最小字段、时间、权限和错误验证，再定义统一工具契约与离线回放。

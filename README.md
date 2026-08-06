@@ -4,9 +4,9 @@
 
 ## 项目进度
 
-项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、金融数据契约和简化技术分析 Agent 等可运行能力，但这不等于任务书中的整个平台交付包和金融应用已经完成。当前任务 1.1、1.2、1.3 和 1.4 达到正式完成口径；2.1 和 2.2 仍为部分完成。
+项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究 Demo 等可运行能力，通用平台交付包已经完成。整个任务书仍未完成：2.1 和 2.2 只有局部成果，综合决策、回测和工程化交付仍待实现。
 
-任务 1.2 Loop Engineering 已完成认知闭环、受控工具、三层记忆、三类触发循环、任务隔离和上下文注入。任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、可靠性、Checkpoint 和可视化。下一步进入 A4 Model Gateway；金融模块仍使用离线模拟数据，真实交易始终关闭。
+任务 1.2 Loop Engineering 已完成认知闭环、受控工具、三层记忆、三类触发循环、任务隔离和上下文注入。任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、可靠性、Checkpoint 和可视化。A4 Model Gateway 已通过 DeepSeek 真实调用验证。A5 又在不修改核心框架语义的前提下接入非金融资料研究，复用了 Harness、Loop、Graph、Checkpoint、工作记忆、工具允许列表和 Model Gateway。金融模块仍使用离线模拟数据，真实交易始终关闭。
 
 完整任务映射、最终成果和验收条件见 [`ROADMAP.md`](ROADMAP.md)。
 
@@ -94,6 +94,22 @@ python Scripts\demo_loop_engineering.py
 
 该演示把 Heartbeat、Cron、Hook 和递归目标触发接入同一个认知 Loop，展示工作/项目/组织三层记忆、Skill 和项目约定注入、六个独立任务目录，以及可恢复的运行台账。
 
+### 运行 Model Gateway 演示
+
+```powershell
+python Scripts\demo_model_gateway.py
+```
+
+默认使用确定性 Mock，不访问网络、不需要密钥，也不会产生 API 费用。终端会显示模型名称、token、耗时、尝试次数、结构化输出和调用 trace。真实调用必须显式加 `--live`；当前默认真实供应商是 DeepSeek，也可以用 `--provider openai` 切换。具体步骤见 `docs/model-gateway.md`。
+
+### 运行非金融资料研究演示
+
+```powershell
+python Scripts\demo_non_financial_research.py
+```
+
+默认使用四次脚本化 Mock 调用完成 Plan、Action、Reflection 和证据综合，并输出 Graph 顺序、允许工具、工作记忆、证据、token 与 trace。加 `--verify-recovery` 可以先模拟综合节点失败，再证明恢复时不会重复执行检索和证据整理。可选的 `--live` 会读取当前终端中的 `DEEPSEEK_API_KEY`，具体接入步骤与边界见 `docs/non-financial-research-demo.md`。
+
 ## 已实现的能力
 
 ### Harness：一次调用的可靠性入口
@@ -112,13 +128,23 @@ python Scripts\demo_loop_engineering.py
 
 `LongTermMemory` 通过严格命名空间保存项目和组织记忆，只允许显式写入、筛选查询和受控删除。`ContextInjector` 把选中的长期记忆、Skill、项目约定和任务上下文以只读形式交给 Planner、Action 和 Reflection。`TaskWorkspaceManager` 为每次调度运行提供独立目录。
 
-`HeartbeatLoop`、`CronLoop`、`HookLoop` 和 `GoalLoop` 共用持久运行台账，分别按时间槽、Cron 分钟、事件 ID 和目标路径去重。A3 Loop Engineering 已完成；真实 Model Gateway 属于下一项 A4。完整接口和边界见 `docs/loop-engineering.md`。
+`HeartbeatLoop`、`CronLoop`、`HookLoop` 和 `GoalLoop` 共用持久运行台账，分别按时间槽、Cron 分钟、事件 ID 和目标路径去重。完整接口和边界见 `docs/loop-engineering.md`。
 
 ### Graph：节点编排与恢复
 
 `GraphWorkflowLoader` 可以从版本化 YAML/JSON 加载工作流，节点处理函数只能来自 `NodeRegistry` 允许列表。每条边必须声明 source 输出 Schema 和 target 输入 Schema，状态传递不符合约定时会在下游节点执行前拒绝。
 
 `GraphRunner` 支持顺序或并行拓扑波次、确定性状态合并、条件分支、跳过传播、节点重试、软超时、持久化熔断和 Checkpoint 恢复。并行节点写入同一状态键时会拒绝合并，不依赖线程完成先后静默覆盖。`GraphVisualizer` 可以输出静态或按运行状态着色的 Mermaid。完整配置、错误语义和当前超时边界见 `docs/graph-engineering.md`，与 LangGraph 的关系见 `docs/langgraph-mapping.md`。
+
+### Model Gateway：统一模型调用边界
+
+`ModelGateway` 让上层只依赖一个 `generate()` 入口。`MockModelAdapter`、`OpenAIResponsesAdapter` 和 `DeepSeekChatAdapter` 共用同一请求、响应、用量、错误和 trace 契约；Gateway 统一执行结构化结果复核、单次调用超时、有限指数退避和可重试判断。
+
+OpenAI 适配器调用 Responses API；DeepSeek 适配器调用 Chat Completions，并将 JSON Output 交给 Gateway 做本地 Schema 复核。两者都会把响应 ID、实际模型名和 token 用量转换为平台字段。密钥分别只从 `OPENAI_API_KEY` 和 `DEEPSEEK_API_KEY` 读取，默认离线演示和单元测试不会访问真实接口。A4 已通过一次受控 DeepSeek 真实调用验收，完整边界和证据见 `docs/model-gateway.md`。
+
+### Research：非金融通用性证明
+
+`agent_platform.research` 是平台的第一个非金融参考接入。认知 Loop 通过受控工具检索本地资料，Graph 依次执行检索、证据整理和报告综合，Harness 对工具结果和报告执行 Schema、来源与证据编号检查。默认 Mock 和可选 DeepSeek 使用同一装配方式，Checkpoint 可以在综合节点失败后继续运行。完整运行和最小接入步骤见 `docs/non-financial-research-demo.md`。
 
 ### Finance：可追溯的行情数据契约
 
@@ -144,9 +170,11 @@ python Scripts\demo_loop_engineering.py
 ## 模块关系
 
 ```text
-金融数据契约
+Mock / OpenAI / DeepSeek Model Gateway
       ↓
-专业分析节点（已有技术分析原型）
+单 Agent Loop 与受控工具
+      ↓
+金融数据契约与专业分析节点
       ↓
 Graph 组织 Schema、并行、分支、可靠性策略和恢复
       ↓
@@ -175,6 +203,7 @@ Graph 节点仍是受注册表控制的 Python 函数；后续专业 Agent 可�
 ├── SubAgents/              # 后续专业 Agent 定义
 ├── src/agent_platform/
 │   ├── core/               # Harness、Loop、Graph 和 Checkpoint
+│   ├── research/           # 非金融资料研究参考接入
 │   └── finance/            # 金融数据契约与后续分析逻辑
 └── tests/                  # 自动化测试和离线 fixture
 ```
@@ -187,6 +216,6 @@ Graph 节点仍是受注册表控制的 Python 函数；后续专业 Agent 可�
 
 ## 下一步
 
-下一项任务是 A4 Model Gateway：先定义统一模型请求、响应和错误契约，再让 Mock 模型与至少一种真实 LLM 适配器共用超时、重试、结构化输出和调用追踪。A3 Loop Engineering 与 A2 Graph Engineering 都已正式完成。
+通用平台交付包 A1–A5 已完成。下一条主线回到 B1 金融数据 MCP：先对一个真实数据接口做最小字段、时间、权限和错误验证，再扩展数据类别与离线回放。
 
 最终交付路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。

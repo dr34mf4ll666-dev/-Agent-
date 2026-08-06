@@ -24,3 +24,9 @@ python Scripts\demo_graph_engineering.py
 ```
 
 Graph 支持安全条件表达式、并行拓扑波次、确定性合并、跳过传播、版本 2 Checkpoint 和 Mermaid 状态图。详细语义见 `docs/graph-engineering.md`。
+
+`examples/non_financial_research.yaml` 是 A5 的跨领域示例，依次编排资料检索、证据整理和报告综合。两条边都声明输入输出 Schema，处理函数通过 `NodeRegistry` 绑定到 `agent_platform.research`，没有修改 Graph 引擎。运行入口：
+
+```powershell
+python Scripts\demo_non_financial_research.py --verify-recovery
+```

@@ -1,0 +1,69 @@
+version: 1
+start: retrieve
+
+execution:
+  strategy: sequential
+  max_workers: 1
+
+nodes:
+  retrieve:
+    handler: research_retrieve
+    timeout_seconds: 60
+  organize:
+    handler: research_organize
+    timeout_seconds: 5
+  synthesize:
+    handler: research_synthesize
+    timeout_seconds: 60
+    retry:
+      max_retries: 0
+      delay_seconds: 0
+    circuit_breaker:
+      failure_threshold: 2
+      reset_timeout_seconds: 5
+
+edges:
+  - source: retrieve
+    target: organize
+    output_schema:
+      type: object
+      required: [retrieval]
+      properties:
+        retrieval:
+          type: object
+          required: [query, records, loop_steps, allowed_tools, working_memory_entries, loop_trace, model_calls]
+          properties:
+            query: {type: string, minLength: 1}
+            records: {type: array, minItems: 1}
+            loop_steps: {type: integer, minimum: 1, maximum: 2}
+            allowed_tools: {type: array, minItems: 1}
+            working_memory_entries: {type: integer, minimum: 1}
+            loop_trace: {type: array, minItems: 1}
+            model_calls: {type: array, minItems: 3}
+      additionalProperties: false
+    input_schema:
+      type: object
+      required: [topic, run_timestamp, retrieval]
+      properties:
+        topic: {type: string, minLength: 1}
+        run_timestamp: {type: string, minLength: 1}
+        retrieval: {type: object}
+
+  - source: organize
+    target: synthesize
+    output_schema:
+      type: object
+      required: [evidence, evidence_count]
+      properties:
+        evidence: {type: array, minItems: 1}
+        evidence_count: {type: integer, minimum: 1}
+      additionalProperties: false
+    input_schema:
+      type: object
+      required: [topic, run_timestamp, retrieval, evidence, evidence_count]
+      properties:
+        topic: {type: string, minLength: 1}
+        run_timestamp: {type: string, minLength: 1}
+        retrieval: {type: object}
+        evidence: {type: array, minItems: 1}
+        evidence_count: {type: integer, minimum: 1}

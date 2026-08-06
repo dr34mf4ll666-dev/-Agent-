@@ -42,6 +42,7 @@ from .cognitive_loop import (
     UnknownToolError,
 )
 from .echo import EchoAgent
+from .deepseek_adapter import DeepSeekChatAdapter, DeepSeekTransport
 from .graph import (
     CircuitBreakerPolicy,
     GraphContractError,
@@ -128,6 +129,23 @@ from .memory import (
     WorkingMemoryStore,
     WorkingMemoryView,
 )
+from .model_gateway import (
+    MockModelAdapter,
+    ModelAdapter,
+    ModelAdapterResponse,
+    ModelErrorCode,
+    ModelGateway,
+    ModelGatewayConfigurationError,
+    ModelGatewayExecutionError,
+    ModelGatewayResult,
+    ModelRequest,
+    ModelResponse,
+    ModelRetryPolicy,
+    ModelTraceEvent,
+    ModelUsage,
+    ModelProviderError,
+)
+from .openai_adapter import OpenAIResponsesAdapter, OpenAITransport
 from .task_workspace import (
     TaskWorkspace,
     TaskWorkspaceError,
@@ -160,6 +178,8 @@ __all__ = [
     "ContextInjector",
     "CronExpression",
     "CronLoop",
+    "DeepSeekChatAdapter",
+    "DeepSeekTransport",
     "EchoAgent",
     "GraphCheckpoint",
     "GraphCheckpointError",
@@ -229,9 +249,25 @@ __all__ = [
     "MemoryKind",
     "MemoryNamespace",
     "MemoryScope",
+    "MockModelAdapter",
+    "ModelAdapter",
+    "ModelAdapterResponse",
+    "ModelErrorCode",
+    "ModelGateway",
+    "ModelGatewayConfigurationError",
+    "ModelGatewayExecutionError",
+    "ModelGatewayResult",
+    "ModelProviderError",
+    "ModelRequest",
+    "ModelResponse",
+    "ModelRetryPolicy",
+    "ModelTraceEvent",
+    "ModelUsage",
     "NodeExecutionPolicy",
     "NodeRegistry",
     "Observation",
+    "OpenAIResponsesAdapter",
+    "OpenAITransport",
     "Plan",
     "RateLimiter",
     "Reflection",

@@ -65,3 +65,19 @@ python Scripts\demo_loop_engineering.py
 ```
 
 该脚本离线运行 Heartbeat、Cron、Hook 和递归目标触发。所有任务都复用 `CognitiveLoopRunner`，读取选中的项目/组织记忆和上下文，并写入各自独立工作目录。运行台账和三层记忆快照默认保存在已忽略的 `.runtime/a3-loop-engineering/`；可以用 `--runtime PATH` 指定位置。
+
+## Model Gateway 演示
+
+```powershell
+python Scripts\demo_model_gateway.py
+```
+
+默认使用 Mock 适配器，离线展示结构化输出、token、耗时、尝试次数和 trace。只有显式执行 `python Scripts\demo_model_gateway.py --live --provider deepseek` 才会读取本地 `DEEPSEEK_API_KEY` 并发起一次真实请求；也可以将供应商改成 `openai`。测试不会走真实接口。
+
+## 非金融资料研究演示
+
+```powershell
+python Scripts\demo_non_financial_research.py
+```
+
+该脚本复用 Model Gateway、认知 Loop、受控工具、Graph、Harness、工作记忆和 Checkpoint，完成“本地资料检索→证据整理→结构化摘要”。默认 Mock 离线运行；`--verify-recovery` 演示失败后只重跑综合节点；`--live` 才会读取 `DEEPSEEK_API_KEY` 并产生真实模型调用。详细说明见 `docs/non-financial-research-demo.md`。

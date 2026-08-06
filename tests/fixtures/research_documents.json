@@ -1,0 +1,26 @@
+[
+  {
+    "document_id": "DOC-001",
+    "title": "Python 代码评审清单",
+    "content": "代码评审应先核对需求和测试，再检查命名、边界条件与异常处理。一次评审聚焦少量改动，更容易给出可执行意见。",
+    "source": "local://research/python-review-checklist",
+    "timestamp": "2026-08-06T09:00:00+08:00",
+    "as_of": "2026-08-06T00:00:00+08:00"
+  },
+  {
+    "document_id": "DOC-002",
+    "title": "自动化测试与回归验证",
+    "content": "自动化测试要覆盖正常路径、拒绝路径和故障路径。修改完成后运行定向测试与完整回归，可以降低旧功能被意外破坏的风险。",
+    "source": "local://research/regression-testing",
+    "timestamp": "2026-08-06T09:05:00+08:00",
+    "as_of": "2026-08-06T00:00:00+08:00"
+  },
+  {
+    "document_id": "DOC-003",
+    "title": "可追溯的工程记录",
+    "content": "工程结论应保留来源、时间和验证结果。失败时记录原始原因与执行轨迹，能够帮助后来者复现问题并从断点继续。",
+    "source": "local://research/auditable-engineering",
+    "timestamp": "2026-08-06T09:10:00+08:00",
+    "as_of": "2026-08-06T00:00:00+08:00"
+  }
+]

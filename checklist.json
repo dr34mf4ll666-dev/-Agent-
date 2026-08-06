@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "0.8.0",
-  "updated_at": "2026-08-05",
-  "current_focus": "A4 统一 Model Gateway",
+  "version": "1.1.0",
+  "updated_at": "2026-08-06",
+  "current_focus": "B1 金融数据 MCP 最小真实验证",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "in_progress",
   "items": [
@@ -277,30 +277,74 @@
     {
       "id": "A4",
       "title": "统一 Model Gateway",
-      "status": "pending",
-      "remaining": [
-        "Mock 与至少一种真实 LLM 共用接口",
-        "结构化输出、超时、有限重试和错误归一化",
-        "模型、token、耗时、尝试次数和结果追踪",
-        "环境变量密钥边界和最小真实调用验证"
+      "status": "done",
+      "completed_slices": [
+        "Mock、OpenAI Responses API 与 DeepSeek Chat Completions 共用请求、响应、用量、错误和 trace 契约",
+        "结构化输出、本地 Schema 复核、单次超时、有限重试和指数退避",
+        "认证、权限、限流、额度、超时、服务故障、传输、拒答和无效响应错误归一化",
+        "模型、input/output/total token、耗时、尝试次数、响应 ID 和结果追踪",
+        "OPENAI_API_KEY 和 DEEPSEEK_API_KEY 环境变量边界、默认离线演示和离线自动化测试",
+        "DeepSeek 真实调用已验证连接、模型名、响应 ID、token、耗时、mode=live 和 trace"
       ],
-      "evidence": []
+      "remaining": [],
+      "evidence": [
+        "src/agent_platform/core/model_gateway.py",
+        "src/agent_platform/core/openai_adapter.py",
+        "src/agent_platform/core/deepseek_adapter.py",
+        "src/agent_platform/core/model_http.py",
+        "tests/test_model_gateway.py",
+        "tests/test_openai_adapter.py",
+        "tests/test_deepseek_adapter.py",
+        "tests/test_demo_model_gateway.py",
+        "Scripts/demo_model_gateway.py",
+        "docs/model-gateway.md",
+        "progress.txt"
+      ],
+      "live_validation": {
+        "date": "2026-08-06",
+        "provider": "deepseek",
+        "model": "deepseek-v4-flash",
+        "response_id": "b78413b7-fb38-4621-ac51-4ba3eb0925e2",
+        "status": "succeeded",
+        "attempts": 1,
+        "input_tokens": 116,
+        "output_tokens": 12,
+        "total_tokens": 128,
+        "latency_ms": 1063,
+        "structured_mode": "live"
+      }
     },
     {
       "id": "A5",
       "title": "平台通用性证明",
-      "status": "pending",
-      "remaining": [
-        "复用 Harness、Loop、Graph 和工具接口的非金融 Demo",
-        "记录新领域最小接入步骤并验证两天内可接入"
+      "status": "done",
+      "completed_slices": [
+        "非金融本地资料研究 Demo 复用 AgentHarness、CognitiveLoopRunner、ToolRegistry、GraphRunner、工作记忆、Checkpoint 和 ModelGateway",
+        "retrieve、organize、synthesize 三节点通过 YAML Graph 边 Schema 传递资料、证据和报告",
+        "本地检索与报告综合分别执行 Schema、来源和证据编号交叉验证",
+        "默认四次 Mock 模型调用离线运行，可显式切换 DeepSeek",
+        "综合节点故障后从 Checkpoint 恢复且不重复检索和证据整理",
+        "在单次开发阶段内完成新领域最小接入，未修改 core 框架语义"
       ],
-      "evidence": []
+      "remaining": [],
+      "evidence": [
+        "src/agent_platform/research/contracts.py",
+        "src/agent_platform/research/tools.py",
+        "src/agent_platform/research/agents.py",
+        "src/agent_platform/research/workflow.py",
+        "Workflow/examples/non_financial_research.yaml",
+        "tests/fixtures/research_documents.json",
+        "tests/test_non_financial_research.py",
+        "tests/test_demo_non_financial_research.py",
+        "Scripts/demo_non_financial_research.py",
+        "docs/non-financial-research-demo.md"
+      ]
     }
   ],
   "final_acceptance": [
     {
       "id": "PLATFORM",
-      "status": "pending",
+      "status": "done",
       "required_result": "九类 Harness 组件、AgentHarness、完整 Loop、Graph、记忆、Model Gateway 和非金融 Demo 全部可运行"
     },
     {
