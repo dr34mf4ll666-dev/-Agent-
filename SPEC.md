@@ -9,26 +9,25 @@
 - 输出结构化、数据可追溯、行为可约束、过程可审计；
 - 在不接入真实下单的前提下完成分析、风控、模拟执行和回测。
 
-## 2. 最近完成的小功能：A5 非金融通用性 Demo
+## 2. 当前小功能：交付包一验收证据修复
 
-A4 Model Gateway 已完成，并通过 DeepSeek 真实调用验证。A5 进一步用本地资料研究任务证明同一套平台能力可以在不修改底层框架语义的情况下接入新领域。最终成果、正式任务状态和验收条件以 `ROADMAP.md` 与 `checklist.json` 为准。
+A5 技术能力已经完成，但严格复核发现交付包一仍缺少 dev-map、Skill/MCP/SubAgent 可核查管理证据和 Echo 独立演示。当前小功能只修复这些验收缺口，不提前实现 B1 金融数据 MCP。最终成果、正式任务状态和验收条件以 `ROADMAP.md` 与 `checklist.json` 为准。
 
 ### 必须完成
 
-1. 实现一个小型非金融资料研究 Demo，输入一个主题和本地资料，输出带证据的结构化摘要。
-2. 复用现有 `AgentHarness`、`CognitiveLoopRunner`、`ToolRegistry`、`GraphRunner` 和 `ModelGateway`，不另写一套调度框架。
-3. 至少包含资料检索、证据整理和结果综合三个明确职责，并通过 Graph 的边 Schema 传递数据。
-4. 默认使用 Mock 离线运行和测试；允许显式切换 DeepSeek，但单元测试不得消耗真实额度。
-5. 保留最大步数、工具允许列表、来源字段、失败 trace 和 Checkpoint 恢复能力。
-6. 记录新领域接入时新增的代码、配置和步骤，证明底层平台无需修改即可复用。
-7. 提供自动化测试、可直接运行的演示和接入说明，并更新 checklist 与 progress 证据。
+1. 新增根目录 `dev-map.md`，覆盖 SPEC、Rule、Skill、Workflow、Scripts、MCP、SubAgent、dev-map 和任务看板九类组件，并指向真实实现与验证入口。
+2. 为 Skill、MCP 和 SubAgents 分别提供版本化可机读 catalog；active 条目必须声明稳定 interface、implementation 和 evidence。
+3. 自动化测试必须验证 active catalog 条目的实现符号可以导入，implementation 与 evidence 文件真实存在；pending 条目不得冒充完成。
+4. 新增可直接运行的 Echo Agent 演示，通过 `AgentHarness` 输出完整生命周期 trace，并提供 subprocess 自动化测试。
+5. 更新 README、目录角色说明、checklist 和 progress，使“交付包一完成”的声明与真实证据一致。
+6. 运行完整回归、编译、JSON 解析、离线演示和 Git diff 检查。
 
 ### 明确不做
 
-- 不在本步扩展金融指标、真实行情、辩论、交易或回测。
-- 不修改 Harness、Loop、Graph 的核心语义来迁就 Demo；发现平台缺口时必须单独记录。
-- 不接入网络搜索、向量数据库或复杂前端，先证明现有平台可以跨领域复用。
-- 不在测试中消耗真实 API 额度，不提交密钥、真实响应缓存或本地 `.env`。
+- 不实现或冒充 B1 的真实金融数据 MCP；未经真实返回验证的金融 adapter 保持 pending。
+- 不修改 Harness、Loop、Graph、Memory 或 Model Gateway 的核心 interface。
+- 不增加网络调用，不消耗真实模型或数据接口额度。
+- 不把只有目录或一句未来规划的占位内容当成管理证据。
 
 ## 3. 架构原则
 

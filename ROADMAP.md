@@ -126,6 +126,8 @@
 - Mock/真实模型共用统一接口，模型调用可追踪。
 - Echo Agent 和非金融 Demo 均通过自动化测试和可运行演示。
 
+2026-08-06 严格复核后补齐了 `dev-map.md`、Skill/MCP/SubAgent 可机读 catalog 和 Echo 独立演示。active catalog 条目的实现符号与 evidence 路径由项目测试自动核对；金融市场数据 MCP 明确保留为 B1 pending，不用其他 adapter 冒充完成。至此本交付包满足上述验收条件。
+
 ## 7. 交付包二：金融数据和四类分析 Agent
 
 ### B1. 金融数据 MCP（任务 2.1）

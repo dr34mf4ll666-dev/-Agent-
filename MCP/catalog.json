@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "catalog": "tool_and_external_adapters",
+  "entries": [
+    {
+      "id": "local-document-search",
+      "status": "active",
+      "transport": "in_process_tool",
+      "interface": "Tool.name + Tool.run(arguments)",
+      "implementation": "src/agent_platform/research/tools.py",
+      "import_path": "agent_platform.research.tools:LocalDocumentSearchTool",
+      "source_policy": ["source", "timestamp", "as_of"],
+      "evidence": [
+        "tests/test_non_financial_research.py",
+        "Scripts/demo_non_financial_research.py",
+        "docs/non-financial-research-demo.md"
+      ]
+    },
+    {
+      "id": "deepseek-chat",
+      "status": "active",
+      "transport": "https_chat_completions",
+      "interface": "ModelAdapter.invoke(request, timeout_seconds)",
+      "implementation": "src/agent_platform/core/deepseek_adapter.py",
+      "import_path": "agent_platform.core.deepseek_adapter:DeepSeekChatAdapter",
+      "secret_policy": "DEEPSEEK_API_KEY is read from the process environment only",
+      "evidence": [
+        "tests/test_deepseek_adapter.py",
+        "Scripts/demo_model_gateway.py",
+        "docs/model-gateway.md",
+        "progress.txt"
+      ]
+    },
+    {
+      "id": "openai-responses",
+      "status": "active",
+      "transport": "https_responses",
+      "interface": "ModelAdapter.invoke(request, timeout_seconds)",
+      "implementation": "src/agent_platform/core/openai_adapter.py",
+      "import_path": "agent_platform.core.openai_adapter:OpenAIResponsesAdapter",
+      "secret_policy": "OPENAI_API_KEY is read from the process environment only",
+      "evidence": [
+        "tests/test_openai_adapter.py",
+        "Scripts/demo_model_gateway.py",
+        "docs/model-gateway.md"
+      ]
+    },
+    {
+      "id": "financial-market-data-mcp",
+      "status": "pending",
+      "transport": "to_be_verified_in_B1",
+      "interface": "not frozen until the smallest real provider response is inspected",
+      "reason": "B1 must verify real fields, time semantics, permissions and errors before implementation"
+    }
+  ]
+}

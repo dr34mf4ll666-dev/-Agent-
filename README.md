@@ -30,6 +30,14 @@ python -m unittest discover -s tests -v
 python -m pytest
 ```
 
+### 运行 Echo Agent 演示
+
+```powershell
+python Scripts\demo_echo.py --task "hello agent platform"
+```
+
+这是最小的 Agent/Harness 健康检查：不调用模型、工具或网络，只把任务原样返回，并打印 preflight、Agent 执行和 postflight trace。
+
 ### 运行 Graph 演示
 
 ```powershell
@@ -192,15 +200,16 @@ Graph 节点仍是受注册表控制的 Python 函数；后续专业 Agent 可�
 ├── SPEC.md                 # 当前阶段的目标与明确边界
 ├── ROADMAP.md              # 最终成果、正式任务和验收条件
 ├── AGENTS.md               # 项目协作约定
+├── dev-map.md              # 九类组件、module seam 和证据导航
 ├── checklist.json          # 功能状态与验收证据
 ├── progress.txt            # 按日期记录的进度
 ├── docs/                   # 架构和数据契约说明
 ├── Rule/                   # Guardrail 和行为规则
-├── Skill/                  # 可复用技能说明
+├── Skill/                  # 可复用技能说明与可机读 catalog
 ├── Workflow/               # Graph/DAG 工作流说明
 ├── Scripts/                # 可直接运行的演示和辅助脚本
-├── MCP/                    # 外部数据与工具适配层
-├── SubAgents/              # 后续专业 Agent 定义
+├── MCP/                    # 工具/外部 adapter catalog 与后续金融 MCP
+├── SubAgents/              # Agent 卡片、权限和验收证据
 ├── src/agent_platform/
 │   ├── core/               # Harness、Loop、Graph 和 Checkpoint
 │   ├── research/           # 非金融资料研究参考接入

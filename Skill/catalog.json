@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "catalog": "skills",
+  "entries": [
+    {
+      "id": "controlled-task",
+      "status": "active",
+      "interface": "SkillContext(name, content, source) -> InjectedContext.skills",
+      "implementation": "src/agent_platform/core/context_injection.py",
+      "import_path": "agent_platform.core.context_injection:SkillContext",
+      "inputs": ["skill name", "instruction content", "source"],
+      "outputs": ["read-only skill context visible to Plan, Action and Reflection"],
+      "evidence": [
+        "Scripts/demo_loop_engineering.py",
+        "tests/test_context_injection.py",
+        "tests/test_demo_loop_engineering.py",
+        "docs/loop-engineering.md"
+      ]
+    },
+    {
+      "id": "local-research-summary",
+      "status": "active",
+      "interface": "NonFinancialResearchRuntime.run(topic, run_timestamp, resume) -> GraphResult",
+      "implementation": "src/agent_platform/research/workflow.py",
+      "import_path": "agent_platform.research.workflow:NonFinancialResearchRuntime",
+      "inputs": ["research topic", "local documents", "run timestamp"],
+      "outputs": ["evidence-backed structured research report"],
+      "evidence": [
+        "Scripts/demo_non_financial_research.py",
+        "tests/test_non_financial_research.py",
+        "tests/test_demo_non_financial_research.py",
+        "docs/non-financial-research-demo.md"
+      ]
+    }
+  ]
+}

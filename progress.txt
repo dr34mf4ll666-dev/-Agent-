@@ -221,3 +221,16 @@
 
 下一步
 - 进入 B1 金融数据 MCP，先做一个真实金融数据接口的最小字段、时间、权限和错误验证，再定义统一工具契约与离线回放。
+
+[2026-08-06] 交付包一严格验收缺口修复完成
+- 复核发现 checklist 曾声明存在 dev-map，但仓库实际缺失；Skill、MCP、SubAgents 也只有占位说明，Echo 只有单元测试而没有独立运行入口，因此此前 PLATFORM=done 的判断过早。
+- 新增根目录 `dev-map.md`，逐项连接 SPEC、Rule、Skill、Workflow、Scripts、MCP、SubAgent、dev-map 和任务看板，并记录核心 module 的稳定 interface、adapter 和验证入口。
+- 为 Skill、MCP 和 SubAgents 新增版本 1 JSON catalog；active 条目记录 interface、implementation、import_path 和 evidence，pending 金融市场数据 MCP 明确不冒充完成。
+- 项目引导测试现在会导入每个 active 条目的真实实现符号，并核对 implementation 和全部 evidence 文件存在，管理证据不再只靠文字声明。
+- 新增 `Scripts/demo_echo.py` 和 subprocess 测试；演示通过 AgentHarness 原样返回任务，并输出 preflight、agent 和 postflight 完整 trace。
+- 更新三个目录的角色说明、根 README、docs 索引、SPEC、ROADMAP 和 checklist；PLATFORM=done 现在有可核查证据支撑。
+- 验证结果：新增 3 项自动化检查后，项目完整回归 131 项全部通过；Echo 独立演示、源码/脚本编译、四份 JSON 解析全部成功。
+- 本次只修复交付包一证据，没有实现 B1 真实金融数据 MCP，也没有修改 Harness、Loop、Graph、Memory 或 Model Gateway 的核心 interface。
+
+下一步
+- 进入 B1 金融数据 MCP，先运行一个最小真实数据请求并检查返回字段、时区、权限和错误，再冻结 adapter interface。

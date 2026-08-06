@@ -4,6 +4,14 @@
 
 脚本应能被命令行重复执行，并在失败时返回明确的非零退出状态。
 
+## Echo Agent 演示
+
+```powershell
+python Scripts\demo_echo.py --task "hello agent platform"
+```
+
+该脚本通过 `AgentHarness(EchoAgent())` 运行最小闭环，打印输入、输出、Agent 名称和从 preflight 到 postflight 的完整 trace。它不调用模型、工具或网络。
+
 ## Graph 演示
 
 ```powershell

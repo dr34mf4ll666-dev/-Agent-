@@ -1,3 +1,4 @@
+import importlib
 import json
 import sys
 import unittest
@@ -25,6 +26,7 @@ class ProjectBootstrapTests(unittest.TestCase):
             "progress.txt",
             "pyproject.toml",
             ".env.example",
+            "dev-map.md",
         ]
 
         for relative_path in required_files:
@@ -47,6 +49,59 @@ class ProjectBootstrapTests(unittest.TestCase):
                 directory_path = PROJECT_ROOT / directory
                 self.assertTrue(directory_path.is_dir())
                 self.assertTrue((directory_path / "README.md").is_file())
+
+    def test_management_catalogs_reference_importable_modules_and_real_evidence(self):
+        catalog_paths = [
+            "Skill/catalog.json",
+            "MCP/catalog.json",
+            "SubAgents/catalog.json",
+        ]
+
+        for relative_path in catalog_paths:
+            with self.subTest(catalog=relative_path):
+                path = PROJECT_ROOT / relative_path
+                catalog = json.loads(path.read_text(encoding="utf-8"))
+                self.assertEqual(catalog["version"], 1)
+                entries = catalog["entries"]
+                self.assertTrue(entries)
+                ids = [entry["id"] for entry in entries]
+                self.assertEqual(len(ids), len(set(ids)))
+                self.assertTrue(any(entry["status"] == "active" for entry in entries))
+
+                for entry in entries:
+                    self.assertIn(entry["status"], {"active", "pending"})
+                    if entry["status"] != "active":
+                        continue
+                    implementation = PROJECT_ROOT / entry["implementation"]
+                    self.assertTrue(implementation.is_file(), implementation)
+                    module_name, symbol_name = entry["import_path"].split(":", 1)
+                    module = importlib.import_module(module_name)
+                    self.assertTrue(hasattr(module, symbol_name))
+                    evidence = entry["evidence"]
+                    self.assertTrue(evidence)
+                    for evidence_path in evidence:
+                        self.assertTrue(
+                            (PROJECT_ROOT / evidence_path).is_file(),
+                            evidence_path,
+                        )
+
+    def test_dev_map_covers_all_nine_harness_components(self):
+        dev_map = (PROJECT_ROOT / "dev-map.md").read_text(encoding="utf-8")
+        required_components = [
+            "SPEC",
+            "Rule",
+            "Skill",
+            "Workflow",
+            "Scripts",
+            "MCP",
+            "SubAgent",
+            "dev-map",
+            "任务看板",
+        ]
+
+        for component in required_components:
+            with self.subTest(component=component):
+                self.assertIn(component, dev_map)
 
     def test_checklist_is_valid_and_ids_are_unique(self):
         checklist_path = PROJECT_ROOT / "checklist.json"

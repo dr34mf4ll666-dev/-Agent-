@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "catalog": "agent_cards",
+  "entries": [
+    {
+      "id": "echo",
+      "status": "active",
+      "role": "minimal deterministic Agent and Harness health check",
+      "interface": "Agent.run(AgentRequest) -> AgentResponse",
+      "implementation": "src/agent_platform/core/echo.py",
+      "import_path": "agent_platform.core.echo:EchoAgent",
+      "tools": [],
+      "model_access": "none",
+      "guardrails": ["AgentHarness request and response contract"],
+      "evidence": [
+        "Scripts/demo_echo.py",
+        "tests/test_echo_harness.py",
+        "tests/test_demo_echo.py"
+      ]
+    },
+    {
+      "id": "gateway-research-planner",
+      "status": "active",
+      "role": "plan local research, choose one allowed tool and reflect on its observation",
+      "interface": "CognitiveAgent.create_plan + choose_action + reflect",
+      "implementation": "src/agent_platform/research/agents.py",
+      "import_path": "agent_platform.research.agents:GatewayResearchPlanner",
+      "tools": ["local_document_search"],
+      "model_access": "ModelGateway only",
+      "guardrails": ["action JSON Schema", "ToolRegistry allowlist", "tool result source attribution"],
+      "evidence": [
+        "tests/test_non_financial_research.py",
+        "Scripts/demo_non_financial_research.py",
+        "docs/non-financial-research-demo.md"
+      ]
+    },
+    {
+      "id": "gateway-research-reporter",
+      "status": "active",
+      "role": "synthesize a report only from organized evidence",
+      "interface": "Agent.run(AgentRequest) -> AgentResponse",
+      "implementation": "src/agent_platform/research/agents.py",
+      "import_path": "agent_platform.research.agents:GatewayResearchReporter",
+      "tools": [],
+      "model_access": "ModelGateway only",
+      "guardrails": ["report JSON Schema", "source attribution", "evidence id cross-validation"],
+      "evidence": [
+        "tests/test_non_financial_research.py",
+        "Scripts/demo_non_financial_research.py",
+        "docs/non-financial-research-demo.md"
+      ]
+    }
+  ]
+}

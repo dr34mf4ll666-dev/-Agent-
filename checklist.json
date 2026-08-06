@@ -1,6 +1,6 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "updated_at": "2026-08-06",
   "current_focus": "B1 金融数据 MCP 最小真实验证",
   "tracking_model": "official_tasks_and_final_acceptance",
@@ -13,7 +13,10 @@
       "completed_slices": [
         "建立 SPEC、Rule、Skill、Workflow、Scripts、MCP、SubAgent、dev-map 和任务看板结构",
         "使用 checklist、progress.txt 和 Git 跟踪进度",
-        "形成一次只处理一个可验收小功能的协作约定"
+        "形成一次只处理一个可验收小功能的协作约定",
+        "新增 dev-map 连接九类组件、核心 module interface 和验证入口",
+        "为 Skill、MCP 和 SubAgent 建立可机读 catalog，自动核对 active 实现与证据",
+        "补齐可直接运行并输出 Harness trace 的 Echo Agent 演示"
       ],
       "remaining": [],
       "evidence": [
@@ -27,7 +30,14 @@
         "Workflow/README.md",
         "Scripts/README.md",
         "MCP/README.md",
-        "SubAgents/README.md"
+        "MCP/catalog.json",
+        "SubAgents/README.md",
+        "SubAgents/catalog.json",
+        "Skill/catalog.json",
+        "dev-map.md",
+        "Scripts/demo_echo.py",
+        "tests/test_demo_echo.py",
+        "tests/test_project_bootstrap.py"
       ]
     },
     {
@@ -345,7 +355,20 @@
     {
       "id": "PLATFORM",
       "status": "done",
-      "required_result": "九类 Harness 组件、AgentHarness、完整 Loop、Graph、记忆、Model Gateway 和非金融 Demo 全部可运行"
+      "required_result": "九类 Harness 组件、AgentHarness、完整 Loop、Graph、记忆、Model Gateway 和非金融 Demo 全部可运行",
+      "evidence": [
+        "dev-map.md",
+        "Skill/catalog.json",
+        "MCP/catalog.json",
+        "SubAgents/catalog.json",
+        "Scripts/demo_echo.py",
+        "Scripts/demo_guardrails.py",
+        "Scripts/demo_loop_engineering.py",
+        "Scripts/demo_graph_engineering.py",
+        "Scripts/demo_model_gateway.py",
+        "Scripts/demo_non_financial_research.py",
+        "tests/test_project_bootstrap.py"
+      ]
     },
     {
       "id": "FINANCE_APPLICATION",
