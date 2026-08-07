@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "description": "基本面 Agent 离线回放；字段来自 2026-08-07 对 sz000001 的真实只读验证。",
+  "datasets": [
+    {
+      "dataset": "fundamental.balance_sheet",
+      "source": "akshare.stock_financial_report_sina",
+      "timestamp": "2026-08-07T15:37:16.846696+08:00",
+      "records": [
+        {
+          "subject": "sz000001",
+          "fields": {"statement": "资产负债表", "资产总计": "6033962000000", "负债合计": "5489879000000", "归属于母公司股东的权益": "544083000000", "发放贷款及垫款净额": "3393535000000"},
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T15:37:16.846696+08:00",
+          "as_of": "2026-03-31T00:00:00+08:00"
+        },
+        {
+          "subject": "sz000001",
+          "fields": {"statement": "资产负债表", "资产总计": "5925777000000", "负债合计": "5374593000000", "归属于母公司股东的权益": "551184000000", "发放贷款及垫款净额": "3320386000000"},
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T15:37:16.846696+08:00",
+          "as_of": "2025-12-31T00:00:00+08:00"
+        },
+        {
+          "subject": "sz000001",
+          "fields": {"statement": "资产负债表", "资产总计": "5766764000000", "负债合计": "5248834000000", "归属于母公司股东的权益": "517930000000", "发放贷款及垫款净额": "3344599000000"},
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T15:37:16.846696+08:00",
+          "as_of": "2025-09-30T00:00:00+08:00"
+        },
+        {
+          "subject": "sz000001",
+          "fields": {"statement": "资产负债表", "资产总计": "5874961000000", "负债合计": "5364899000000", "归属于母公司股东的权益": "510062000000", "发放贷款及垫款净额": "3332319000000"},
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T15:37:16.846696+08:00",
+          "as_of": "2025-06-30T00:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "fundamental.income_statement",
+      "source": "akshare.stock_financial_report_sina",
+      "timestamp": "2026-08-07T15:37:19.310793+08:00",
+      "records": [
+        {
+          "subject": "sz000001",
+          "fields": {"statement": "利润表", "营业收入": "35277000000", "净利润": "14523000000", "归属于母公司的净利润": "14523000000", "基本每股收益": "0.67"},
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T15:37:19.310793+08:00",
+          "as_of": "2026-03-31T00:00:00+08:00"
+        },
+        {
+          "subject": "sz000001",
+          "fields": {"statement": "利润表", "营业收入": "131442000000", "净利润": "42633000000", "归属于母公司的净利润": "42633000000", "基本每股收益": "2.07"},
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T15:37:19.310793+08:00",
+          "as_of": "2025-12-31T00:00:00+08:00"
+        },
+        {
+          "subject": "sz000001",
+          "fields": {"statement": "利润表", "营业收入": "100668000000", "净利润": "38339000000", "归属于母公司的净利润": "38339000000", "基本每股收益": "1.87"},
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T15:37:19.310793+08:00",
+          "as_of": "2025-09-30T00:00:00+08:00"
+        },
+        {
+          "subject": "sz000001",
+          "fields": {"statement": "利润表", "营业收入": "69385000000", "净利润": "24870000000", "归属于母公司的净利润": "24870000000", "基本每股收益": "1.18"},
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T15:37:19.310793+08:00",
+          "as_of": "2025-06-30T00:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "fundamental.cash_flow",
+      "source": "akshare.stock_financial_report_sina",
+      "timestamp": "2026-08-07T15:37:21.806462+08:00",
+      "records": [
+        {
+          "subject": "sz000001",
+          "fields": {"statement": "现金流量表", "经营活动产生的现金流量净额": "37802000000", "购建固定资产、无形资产和其他长期资产支付的现金": "172000000"},
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T15:37:21.806462+08:00",
+          "as_of": "2026-03-31T00:00:00+08:00"
+        },
+        {
+          "subject": "sz000001",
+          "fields": {"statement": "现金流量表", "经营活动产生的现金流量净额": "315858000000", "购建固定资产、无形资产和其他长期资产支付的现金": "2893000000"},
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T15:37:21.806462+08:00",
+          "as_of": "2025-12-31T00:00:00+08:00"
+        },
+        {
+          "subject": "sz000001",
+          "fields": {"statement": "现金流量表", "经营活动产生的现金流量净额": "71783000000", "购建固定资产、无形资产和其他长期资产支付的现金": "1288000000"},
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T15:37:21.806462+08:00",
+          "as_of": "2025-09-30T00:00:00+08:00"
+        },
+        {
+          "subject": "sz000001",
+          "fields": {"statement": "现金流量表", "经营活动产生的现金流量净额": "174682000000", "购建固定资产、无形资产和其他长期资产支付的现金": "838000000"},
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T15:37:21.806462+08:00",
+          "as_of": "2025-06-30T00:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "fundamental.indicators",
+      "source": "akshare.stock_financial_analysis_indicator",
+      "timestamp": "2026-08-07T15:37:24.365495+08:00",
+      "records": [
+        {"subject": "000001", "fields": {"roe_percent": "2.67", "weighted_roe_percent": "2.83", "debt_to_asset_percent": "90.983", "return_on_assets_percent": "0.2429", "net_profit_growth_percent": "3.0292", "total_assets_cny": "6033962000000"}, "source": "akshare.stock_financial_analysis_indicator", "timestamp": "2026-08-07T15:37:24.365495+08:00", "as_of": "2026-03-31T00:00:00+08:00"},
+        {"subject": "000001", "fields": {"roe_percent": "7.73", "weighted_roe_percent": "9.15", "debt_to_asset_percent": "90.6985", "return_on_assets_percent": "0.7291", "net_profit_growth_percent": "-4.2127", "total_assets_cny": "5925777000000"}, "source": "akshare.stock_financial_analysis_indicator", "timestamp": "2026-08-07T15:37:24.365495+08:00", "as_of": "2025-12-31T00:00:00+08:00"},
+        {"subject": "000001", "fields": {"roe_percent": "7.4", "weighted_roe_percent": "8.28", "debt_to_asset_percent": "91.0187", "return_on_assets_percent": "0.6647", "net_profit_growth_percent": "-3.4987", "total_assets_cny": "5766764000000"}, "source": "akshare.stock_financial_analysis_indicator", "timestamp": "2026-08-07T15:37:24.365495+08:00", "as_of": "2025-09-30T00:00:00+08:00"},
+        {"subject": "000001", "fields": {"roe_percent": "4.88", "weighted_roe_percent": "5.25", "debt_to_asset_percent": "91.318", "return_on_assets_percent": "0.4272", "net_profit_growth_percent": "-3.8989", "total_assets_cny": "5874961000000"}, "source": "akshare.stock_financial_analysis_indicator", "timestamp": "2026-08-07T15:37:24.365495+08:00", "as_of": "2025-06-30T00:00:00+08:00"}
+      ]
+    },
+    {
+      "dataset": "fundamental.valuation",
+      "source": "tencent.quote+sina.financial_report",
+      "timestamp": "2026-08-07T15:37:26.904070+08:00",
+      "records": [
+        {"subject": "sz000001", "fields": {"pe_dynamic": "5.04", "pb": "0.48", "ps": "1.652051855571278586753092619", "market_cap_cny": "217149000000.00", "annual_revenue_cny": "131442000000.0", "annual_revenue_period": "20251231"}, "source": "tencent.quote+sina.financial_report", "timestamp": "2026-08-07T15:37:26.904070+08:00", "as_of": "2026-08-07T15:36:36+08:00"}
+      ]
+    },
+    {
+      "dataset": "market.realtime",
+      "source": "tencent.qt.gtimg.cn",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {"subject": "sz000001", "fields": {"last": "11.17", "name": "平安银行"}, "source": "tencent.qt.gtimg.cn", "timestamp": "2026-08-07T12:10:00+08:00", "as_of": "2026-08-07T11:53:36+08:00"}
+      ]
+    }
+  ]
+}

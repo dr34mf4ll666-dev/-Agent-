@@ -28,9 +28,13 @@
 | Model Gateway | `ModelGateway.generate(request)` | Mock、OpenAI、DeepSeek adapter | `demo_model_gateway.py` |
 | Finance Data | `FinancialDataHub.fetch(dataset, params, mode)` | 子进程真实 provider、JSON fixture、缓存与限流 adapter | `demo_financial_data_hub.py`、`test_financial_data_hub.py` |
 | Financial MCP | `list_financial_datasets`、`get_financial_data` | 官方 MCP Python SDK 1.x stdio server | `run_financial_mcp.py`、MCP call_tool 测试 |
+| Technical Specialist | `TechnicalAnalysisRuntime.run(query)`、`run_graph_node(state)` | B1 Data Hub、确定性指标引擎、认知 Loop、三层 Harness | `demo_technical_analysis.py`、`test_technical_analysis_runtime.py` |
+| Fundamental Specialist | `FundamentalAnalysisRuntime.run(query)`、`run_graph_node(state)` | B1 六类财务 dataset、确定性估值/DCF 引擎、认知 Loop、三层 Harness | `demo_fundamental_analysis.py`、`test_fundamental_analysis_runtime.py` |
+| Industry Specialist | `IndustryAnalysisRuntime.run(query)`、`run_graph_node(state)` | B1 行业/LPR dataset、确定性行业画像与评分引擎、认知 Loop、三层 Harness | `demo_industry_analysis.py`、`test_industry_analysis_runtime.py` |
+| Macro Specialist | `MacroAnalysisRuntime.run(query)`、`run_graph_node(state)` | B1 指数/资金/宏观/研报 dataset、确定性 Regime 与风险偏好引擎、认知 Loop、三层 Harness | `demo_macro_analysis.py`、`test_macro_analysis_runtime.py` |
 
 ## 当前主线
 
-交付包一的技术能力和管理证据完成后，B1 又完成了统一 Data Hub、AKShare/Tushare 多类真实数据、可靠性层、全真实样本离线回放和 MCP Server。当前主线进入 B2 四类专业分析 Agent。
+交付包一的技术能力和管理证据完成后，B1 又完成了统一 Data Hub、AKShare/Tushare 多类真实数据、可靠性层、全真实样本离线回放和 MCP Server。B2 四个 Specialist 已完成，当前主线进入交付包三；T2.2 的四类 Agent 验收条件已满足。
 
 真实交易继续关闭。任何新外部数据都必须保留 `source`、`timestamp` 和 `as_of`，任何密钥都只能来自本地环境变量。

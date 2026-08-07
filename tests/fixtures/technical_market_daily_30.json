@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "description": "B2 技术分析离线样本；2026-08-07 通过 FinancialDataHub 从 AKShare 腾讯接口真实取得。",
+  "datasets": [
+    {
+      "dataset": "market.daily",
+      "source": "akshare.stock_zh_a_hist_tx",
+      "timestamp": "2026-08-07T14:55:03.600255+08:00",
+      "records": [
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.42","high":"10.47","low":"10.19","close":"10.23","volume_shares":"123648200.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-06-26T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.22","high":"10.32","low":"10.02","close":"10.24","volume_shares":"112414000.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-06-29T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.22","high":"10.22","low":"10.04","close":"10.05","volume_shares":"111135300.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-06-30T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.05","high":"10.18","low":"9.99","close":"10.16","volume_shares":"90689000.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-01T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.2","high":"10.36","low":"10.17","close":"10.28","volume_shares":"100474900.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-02T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.29","high":"10.4","low":"10.18","close":"10.29","volume_shares":"86332700.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-03T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.25","high":"10.52","low":"10.22","close":"10.5","volume_shares":"106104900.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-06T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.46","high":"10.51","low":"10.35","close":"10.47","volume_shares":"80522100.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-07T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.44","high":"10.63","low":"10.34","close":"10.6","volume_shares":"95076000.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-08T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.55","high":"10.59","low":"10.43","close":"10.49","volume_shares":"74719100.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-09T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.5","high":"10.51","low":"10.4","close":"10.45","volume_shares":"95732000.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-10T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.42","high":"10.55","low":"10.38","close":"10.54","volume_shares":"92474600.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-13T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.53","high":"10.7","low":"10.48","close":"10.69","volume_shares":"119371500.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-14T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.65","high":"10.87","low":"10.63","close":"10.84","volume_shares":"98142200.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-15T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.85","high":"10.93","low":"10.72","close":"10.77","volume_shares":"80076600.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-16T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.75","high":"10.88","low":"10.72","close":"10.78","volume_shares":"107549900.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-17T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.75","high":"11.0","low":"10.74","close":"10.98","volume_shares":"156730400.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-20T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.99","high":"11.13","low":"10.83","close":"10.84","volume_shares":"175511300.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-21T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.81","high":"10.98","low":"10.77","close":"10.98","volume_shares":"102948400.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-22T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"10.92","high":"11.12","low":"10.9","close":"11.08","volume_shares":"109574300.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-23T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"11.09","high":"11.18","low":"11.09","close":"11.1","volume_shares":"114093300.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-24T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"11.11","high":"11.16","low":"11.04","close":"11.11","volume_shares":"95715600.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-27T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"11.1","high":"11.21","low":"11.09","close":"11.2","volume_shares":"106101100.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-28T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"11.19","high":"11.36","low":"11.18","close":"11.28","volume_shares":"151105400.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-29T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"11.28","high":"11.62","low":"11.18","close":"11.61","volume_shares":"277770800.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-30T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"11.5","high":"11.63","low":"11.28","close":"11.63","volume_shares":"202497900.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-07-31T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"11.54","high":"11.66","low":"11.52","close":"11.62","volume_shares":"106085100.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-08-03T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"11.58","high":"11.62","low":"11.42","close":"11.44","volume_shares":"122113000.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-08-04T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"11.41","high":"11.5","low":"11.18","close":"11.25","volume_shares":"151151000.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-08-05T15:00:00+08:00"},
+        {"subject":"sz000001","fields":{"period":"daily","open":"11.22","high":"11.28","low":"11.12","close":"11.27","volume_shares":"104634300.0"},"source":"akshare.stock_zh_a_hist_tx","timestamp":"2026-08-07T14:55:03.600255+08:00","as_of":"2026-08-06T15:00:00+08:00"}
+      ]
+    }
+  ]
+}

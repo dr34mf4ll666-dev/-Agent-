@@ -48,7 +48,31 @@ python Scripts\demo_guardrails.py
 python Scripts\demo_technical_analysis.py
 ```
 
-该脚本读取 30 根离线模拟日线，通过 Harness 运行 `TechnicalAnalysisAgent`，并打印结构化指标、趋势规则、数据来源和 Harness trace。它不调用网络、LLM 或真实交易接口。
+默认回放 30 根已真实获取的腾讯 A 股日线，通过 Data Hub、技术 Agent 自己的认知 Loop 和 Harness，打印完整指标、七项评分、来源、Loop trace 与 Guardrail trace。它不调用 LLM 或真实交易；只有显式添加 `--live` 才访问真实行情接口。
+
+## 基本面分析演示
+
+```powershell
+python Scripts\demo_fundamental_analysis.py
+```
+
+该脚本默认回放已真实验证的基本面样本，打印三大报表关键值、ROE/ROA、净利润增长、PE/PB/PS、规则估值分位、简化股东收益 DCF、安全边际、评分、Loop trace 和 Harness trace。只有显式添加 `--live` 才访问真实财务接口；不连接真实交易。
+
+## 行业分析演示
+
+`powershell
+python Scripts/demo_industry_analysis.py
+`
+
+该脚本默认回放真实验证的行业快照和 LPR，打印行业画像、景气度、竞争格局、产业链、代表股排序、评分和完整 trace。只有显式添加 `--live` 才访问真实接口；产业链是项目分类模板，代表股排序不是完整成分股排名。
+
+## 大盘/宏观分析演示
+
+`powershell
+python Scripts/demo_macro_analysis.py
+`
+
+该脚本默认回放真实验证的指数、个股资金流、GDP、SHIBOR、LPR 和研报评级，打印指数趋势、资金面代理、情绪、Market Regime、风险偏好、评分和完整 trace。只有显式添加 `--live` 才访问真实接口；资金面是关联股票代理，不代表全市场资金总量。
 
 ## 腾讯日线数据 Tool 演示
 

@@ -47,21 +47,26 @@ class TechnicalAnalysisAgentTests(unittest.TestCase):
         harness_result = AgentHarness(TechnicalAnalysisAgent()).run(request)
         analysis = harness_result.response.metadata["analysis"]
 
+        self.assertEqual(analysis["symbol"], "DEMO.SH")
+        self.assertEqual(analysis["sample_size"], 30)
+        self.assertEqual(analysis["latest_close"], "12.9000")
         self.assertEqual(
-            analysis,
-            {
-                "symbol": "DEMO.SH",
-                "as_of": "2026-07-31T15:00:00+08:00",
-                "sample_size": 30,
-                "latest_close": "12.90",
-                "daily_return": "0.0078125",
-                "sma_5": "12.70",
-                "sma_20": "11.95",
-                "trend": "bullish",
-                "trend_rule": "latest_close > sma_5 > sma_20",
-                "sources": ["synthetic_fixture"],
-            },
+            analysis["ma"],
+            {"sma_5": "12.7000", "sma_10": "12.4500", "sma_20": "11.9500"},
         )
+        self.assertEqual(
+            analysis["macd"],
+            {"dif": "0.5702", "dea": "0.5172", "histogram": "0.1059"},
+        )
+        self.assertEqual(analysis["rsi"], {"rsi_14": "100.0000"})
+        self.assertEqual(analysis["trend"], "bullish")
+        self.assertEqual(analysis["signal_score"], 0)
+        self.assertEqual(analysis["signal_label"], "neutral")
+        self.assertEqual(
+            analysis["signal_score"],
+            sum(component["points"] for component in analysis["score_components"]),
+        )
+        self.assertEqual(analysis["sources"], ["synthetic_fixture"])
         self.assertIn("不构成投资建议", harness_result.response.content)
         self.assertEqual(
             [event.event for event in harness_result.trace],
@@ -85,7 +90,7 @@ class TechnicalAnalysisAgentTests(unittest.TestCase):
             AgentHarness(TechnicalAnalysisAgent()).run(request)
 
         self.assertIsInstance(raised.exception.cause, InsufficientMarketDataError)
-        self.assertEqual(raised.exception.cause.required, 20)
+        self.assertEqual(raised.exception.cause.required, 30)
         self.assertEqual(raised.exception.cause.actual, 5)
         self.assertEqual(
             [event.event for event in raised.exception.trace],

@@ -1,0 +1,45 @@
+{
+  "symbol": "sz000001",
+  "as_of": "2026-08-06T15:00:00+08:00",
+  "timestamp": "2026-08-07T14:55:03.600255+08:00",
+  "sample_size": 30,
+  "latest_close": "11.2700",
+  "daily_return": "0.001778",
+  "ma": {
+    "sma_5": "11.4420",
+    "sma_10": "11.3510",
+    "sma_20": "11.0730"
+  },
+  "macd": {
+    "dif": "0.2573",
+    "dea": "0.2559",
+    "histogram": "0.0028"
+  },
+  "rsi": {"rsi_14": "62.2919"},
+  "kdj": {"k": "58.5986", "d": "75.1683", "j": "25.4594"},
+  "bollinger": {
+    "middle": "11.0730",
+    "upper": "11.7492",
+    "lower": "10.3968"
+  },
+  "levels": {
+    "support_20": "10.3800",
+    "resistance_20": "11.6600",
+    "distance_to_support": "0.085742",
+    "distance_to_resistance": "0.034605"
+  },
+  "trend": "mixed",
+  "trend_rule": "moving averages are not strictly aligned",
+  "signal_score": 10,
+  "signal_label": "neutral",
+  "score_components": [
+    {"name": "trend", "points": 0, "rule": "moving averages are mixed"},
+    {"name": "macd", "points": 15, "rule": "MACD histogram > 0"},
+    {"name": "rsi", "points": 0, "rule": "30 <= RSI14 <= 70"},
+    {"name": "kdj", "points": -5, "rule": "KDJ K <= D"},
+    {"name": "bollinger", "points": 0, "rule": "close is inside Bollinger bands"},
+    {"name": "support", "points": 0, "rule": "not near support"},
+    {"name": "resistance", "points": 0, "rule": "not near resistance"}
+  ],
+  "sources": ["akshare.stock_zh_a_hist_tx"]
+}

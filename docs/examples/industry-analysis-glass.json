@@ -1,0 +1,58 @@
+{
+  "sector": "玻璃行业",
+  "as_of": "2026-08-07T16:05:21.245460+08:00",
+  "timestamp": "2026-08-07T16:05:23.166320+08:00",
+  "industry_profile": {
+    "company_count": 19,
+    "average_price": "17.0621",
+    "change_percent": "4.3554",
+    "total_volume": "938514036.0000",
+    "total_turnover": "25437696452.0000",
+    "representative_stock_code": "sz300395",
+    "representative_stock_name": "菲利华"
+  },
+  "competition": {
+    "sector_count": 5,
+    "largest_sector_by_company_count": "电力行业",
+    "largest_sector_company_count": 62,
+    "leader_ranking_method": "provider_representative_stock_sort"
+  },
+  "policy": {
+    "latest_as_of": "2026-07-20T00:00:00+08:00",
+    "lpr_1y": "3.0000",
+    "lpr_5y": "3.5000",
+    "previous_lpr_1y": "3.0000",
+    "change_1y": "0.0000",
+    "signal": "stable"
+  },
+  "prosperity": {
+    "label": "hot",
+    "rule": "sector change >= 2%",
+    "sector_change_percent": "4.3554"
+  },
+  "industry_chain": {
+    "method": "project_taxonomy_rule",
+    "upstream": ["纯碱", "石英砂", "能源"],
+    "midstream": ["浮法玻璃", "光伏玻璃", "玻璃深加工"],
+    "downstream": ["房地产和建筑", "汽车", "家电和光伏组件"]
+  },
+  "leaders": [
+    {"rank": 1, "sector": "电力行业", "stock_code": "sh600744", "stock_name": "华银电力", "representative_change_percent": "10.0560", "sector_change_percent": "0.4551", "company_count": 62},
+    {"rank": 2, "sector": "玻璃行业", "stock_code": "sz300395", "stock_name": "菲利华", "representative_change_percent": "9.4950", "sector_change_percent": "4.3554", "company_count": 19},
+    {"rank": 3, "sector": "电器行业", "stock_code": "sz300274", "stock_name": "阳光电源", "representative_change_percent": "6.9920", "sector_change_percent": "1.2958", "company_count": 58}
+  ],
+  "score": 40,
+  "score_label": "positive",
+  "score_components": [
+    {"name": "prosperity", "points": 20, "rule": "sector change >= 2%"},
+    {"name": "policy", "points": 5, "rule": "1Y LPR unchanged"},
+    {"name": "competition", "points": 5, "rule": "target industry has fewer than 100 companies"},
+    {"name": "leader", "points": 10, "rule": "target representative stock change >= 0%"}
+  ],
+  "sources": ["akshare.macro_china_lpr", "akshare.stock_sector_spot"],
+  "caveats": [
+    "industry_chain is a project taxonomy template, not a newly retrieved causal supply-chain dataset",
+    "leader ranking sorts the provider's representative stock for each sector; it is not a full constituent ranking",
+    "policy_signal is an indicator association, not a causal investment conclusion"
+  ]
+}

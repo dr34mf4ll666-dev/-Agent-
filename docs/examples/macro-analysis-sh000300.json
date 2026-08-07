@@ -1,0 +1,80 @@
+{
+  "index_symbol": "sh000300",
+  "symbol": "sz000001",
+  "as_of": "2026-08-07T16:13:33.935749+08:00",
+  "timestamp": "2026-08-07T16:13:52.430299+08:00",
+  "index": {
+    "sample_size": 5,
+    "latest_as_of": "2026-08-06T15:00:00+08:00",
+    "latest_close": "4651.3100",
+    "previous_close": "4658.1550",
+    "latest_return_percent": "-0.1469",
+    "window_return_percent": "1.3756",
+    "latest_volume": "24751073000.0000",
+    "trend": "bullish",
+    "trend_rule": "window return >= 1%"
+  },
+  "funds": {
+    "subject_symbol": "sz000001",
+    "latest_as_of": "2026-08-07T16:13:33.935749+08:00",
+    "last": "11.1900",
+    "change_percent": "-0.7100",
+    "inflow_cny": "387000000.0000",
+    "outflow_cny": "599000000.0000",
+    "net_flow_cny": "-212000000.0000",
+    "flow_ratio_percent": "-21.5010",
+    "direction": "outflow"
+  },
+  "sentiment": {
+    "research_count": 1,
+    "latest_rating": "中性",
+    "rating_counts": {"中性": 1},
+    "research_label": "neutral",
+    "market_proxy_points": -5,
+    "label": "neutral"
+  },
+  "macro": {
+    "gdp_latest_as_of": "2025-07-15T00:00:00+08:00",
+    "gdp_current_percent": "5.2000",
+    "gdp_previous_percent": "5.4000",
+    "gdp_change_percent": "-0.2000",
+    "shibor_latest_as_of": "2026-08-07T00:00:00+08:00",
+    "shibor_1w": "1.3910",
+    "previous_shibor_1w": "1.3830",
+    "shibor_1w_change": "0.0080",
+    "lpr_1y": "3.0000",
+    "previous_lpr_1y": "3.0000",
+    "lpr_1y_change": "0.0000",
+    "lpr_5y": "3.5000"
+  },
+  "market_regime": {
+    "label": "mixed",
+    "rule": "index trend and target flow do not form a one-sided regime"
+  },
+  "risk_appetite": {
+    "label": "low",
+    "score": -15,
+    "rule": "score >= 35 high; >= 10 moderate; > -10 cautious; otherwise low"
+  },
+  "score": -15,
+  "score_label": "neutral",
+  "score_components": [
+    {"name": "index_trend", "points": 20, "rule": "window return >= 1%"},
+    {"name": "funds", "points": -20, "rule": "target net flow < 0"},
+    {"name": "sentiment", "points": -5, "rule": "research ratings are mixed or neutral; latest index return and target net flow are negative"},
+    {"name": "macro", "points": -10, "rule": "GDP is slowing while short rate/LPR are not easing"}
+  ],
+  "sources": [
+    "akshare.macro_china_gdp_yearly",
+    "akshare.macro_china_lpr",
+    "akshare.macro_china_shibor_all",
+    "akshare.stock_fund_flow_individual",
+    "akshare.stock_research_report_em",
+    "akshare.stock_zh_index_daily"
+  ],
+  "caveats": [
+    "funds uses the selected stock's fund-flow data as a capital-flow proxy, not a full-market aggregate",
+    "sentiment combines research ratings with an index/stock-flow proxy; it is not a survey index",
+    "market_regime and risk_appetite are transparent project heuristics, not official classifications"
+  ]
+}

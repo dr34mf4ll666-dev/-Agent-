@@ -4,7 +4,7 @@
 
 ## 项目进度
 
-项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究 Demo 等可运行能力，通用平台交付包已经完成。整个任务书仍未完成：2.1 和 2.2 只有局部成果，综合决策、回测和工程化交付仍待实现。
+项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究 Demo 等可运行能力，通用平台交付包已经完成。金融数据基础设施 B1 和 B2 四类专业分析 Agent 已完成；整个任务书仍未完成，综合决策、回测和工程化交付仍待实现。
 
 任务 1.2 Loop Engineering 已完成认知闭环、受控工具、三层记忆、三类触发循环、任务隔离和上下文注入。任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、可靠性、Checkpoint 和可视化。A4 Model Gateway 已通过 DeepSeek 真实调用验证。A5 又在不修改核心框架语义的前提下接入非金融资料研究。B1 已形成统一金融 Data Hub 与只读 MCP Server；行情、财务、宏观行业、新闻、公告、LPR、研报和 Tushare 第二日线来源均已真实验证，19 个 dataset 都有真实最小样本和离线回放。真实交易始终关闭。
 
@@ -68,7 +68,31 @@ python Scripts\demo_graph_engineering.py
 python Scripts\demo_technical_analysis.py
 ```
 
-该演示会读取 30 根人工构造的日线，通过 Harness 运行 `TechnicalAnalysisAgent`，并输出单日收益率、SMA5、SMA20、趋势标签、触发规则、数据来源和 trace。
+默认离线回放 30 根已真实获取的腾讯 A 股日线，不访问网络。技术 Agent 通过 Data Hub、认知 Loop 和 Harness 输出 SMA5/10/20、MACD、RSI、KDJ、布林带、支撑阻力、七项评分、数据来源和完整 trace。显式加 `--live` 才请求真实接口；详细边界与样例见 `docs/technical-analysis-agent.md`。
+
+### 运行基本面分析演示
+
+```powershell
+python Scripts/demo_fundamental_analysis.py
+```
+
+默认离线回放已真实验证的平安银行财务样本，通过 Data Hub、基本面 Agent 自己的认知 Loop 和 Harness，输出三大报表关键字段、ROE/ROA、净利润增长、PE/PB/PS、规则估值分位、简化股东收益 DCF、安全边际、评分和完整 trace。显式加 `--live` 才请求真实财务数据；估值分位和 DCF 的适用边界见 `docs/fundamental-analysis-agent.md`。
+
+### 运行行业分析演示
+
+`powershell
+python Scripts/demo_industry_analysis.py
+`
+
+默认回放真实验证的行业快照和 LPR，输出行业画像、景气度、竞争格局、产业链、代表股排序、评分和完整 trace。显式加 `--live` 才请求真实行业和政策数据；详细边界见 `docs/industry-analysis-agent.md`。
+
+### 运行大盘/宏观分析演示
+
+`powershell
+python Scripts/demo_macro_analysis.py
+`
+
+默认回放真实验证的指数、个股资金流、GDP、SHIBOR、LPR 和研报评级，输出指数趋势、资金面代理、情绪、Market Regime、风险偏好、评分和完整 trace。显式加 `--live` 才请求真实数据；详细边界见 `docs/macro-analysis-agent.md`。
 
 ### 运行腾讯日线数据 Tool
 
@@ -181,15 +205,25 @@ OpenAI 适配器调用 Responses API；DeepSeek 适配器调用 Chat Completions
 
 `MarketDataSeries` 只接受同一证券的数据，并要求 `as_of` 严格递增。测试使用的 `synthetic_market_bars.json` 是人工构造的练习数据，不代表真实证券、真实行情或投资结果。
 
-### TechnicalAnalysisAgent：确定性的技术指标
+### TechnicalAnalysisAgent：可重算的技术分析 Specialist
 
-`TechnicalAnalysisAgent` 从 `AgentRequest.context["market_data"]` 读取经过校验的行情序列，计算最新单日收益率、SMA5 和 SMA20。当前趋势规则为：
+`TechnicalAnalysisRuntime.run(query)` 隐藏了 Data Hub 取数、行情契约转换、指标计算、认知 Loop 和 Harness 校验。调用方只需要提供证券代码、日期范围、离线/真实模式和数据条数；同一个 Runtime 也能通过 `run_graph_node(state)` 接入 Graph。
 
-- `bullish`：`latest_close > sma_5 > sma_20`；
-- `bearish`：`latest_close < sma_5 < sma_20`；
-- `mixed`：均线没有形成以上严格关系。
+指标包括 SMA5/10/20、MACD、RSI14、KDJ9、布林带和 20 日支撑阻力。趋势、七项评分和标签全部由 `Decimal` 确定性代码生成；CrossValidator 会从原始 K 线重算整个分析对象，拦截被修改或编造的数值。每根行情继续保留 `source`、`timestamp` 和 `as_of`。这些结果只描述规则下的技术状态，不构成投资建议。
 
-结果通过 `AgentResponse.metadata["analysis"]` 返回，价格和指标转换为 JSON 兼容的十进制字符串。数据不足 20 根或输入类型错误时，Harness 会保留稳定错误和失败 trace。趋势标签只描述当前规则下的技术状态，不构成投资建议。
+### FundamentalAnalysisAgent：可重算的基本面 Specialist
+
+`FundamentalAnalysisRuntime.run(query)` 一次受控地读取资产负债表、利润表、现金流量表、财务指标、估值和实时价格，再由确定性引擎生成报告。报告同时保留原始六类 Data Hub 输出，Harness 会检查每条记录的 `source`、`timestamp`、`as_of`，并重新计算估值、DCF、安全边际和综合评分。
+
+它当前使用规则区间计算透明的估值分位，不把它包装成历史估值分位；针对银行类股票，DCF 使用折现股东收益代理模型，并把假设和限制写进报告。基本面结果是研究证据，不构成投资建议。
+
+### IndustryAnalysisAgent：可追溯的行业 Specialist
+
+`IndustryAnalysisRuntime.run(query)` 统一读取行业快照和 LPR，确定性计算行业画像、竞争格局、政策信号、景气度、项目产业链模板和代表股排序。报告保留原始数据，Harness 会检查来源并重算评分；产业链和代表股排序的适用边界会显式写入报告。
+
+### MacroAnalysisAgent：可重算的大盘/宏观 Specialist
+
+`MacroAnalysisRuntime.run(query)` 统一读取指数、关联股票资金流、GDP、SHIBOR、LPR 和研报评级，确定性计算指数趋势、资金面代理、情绪、Market Regime、风险偏好和评分。同一个 Runtime 可作为 Graph 节点运行；资金面代理和规则化 Market Regime 不被包装成全市场事实或投资建议。
 
 ## 模块关系
 
@@ -241,6 +275,6 @@ Graph 节点仍是受注册表控制的 Python 函数；后续专业 Agent 可�
 
 ## 下一步
 
-通用平台交付包 A1–A5 和 B1 金融数据基础设施均已完成。下一步进入 B2，让四类专业分析 Agent 统一消费 Data Hub，并补齐各自的 Loop、Harness、测试和样例报告。
+通用平台交付包 A1–A5、B1 金融数据基础设施和 B2 四类专业分析 Agent 均已完成。下一步进入交付包三：综合研判、结构化辩论、Trader、Risk Manager 和完整金融 Graph。
 
 最终交付路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。

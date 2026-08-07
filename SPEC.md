@@ -9,27 +9,32 @@
 - 输出结构化、数据可追溯、行为可约束、过程可审计；
 - 在不接入真实下单的前提下完成分析、风控、模拟执行和回测。
 
-## 2. 已完成功能：B1 完整金融 Data Hub 与 MCP
+## 2. 当前小功能：B2 四类专业分析 Agent 收尾
 
-本轮已按 `ROADMAP.md` 的完整 B1 口径，把行情、财务、宏观行业和舆情数据收敛到一个统一 Data Hub，并通过官方 MCP Python SDK 暴露只读工具。AKShare、腾讯和 Tushare 均已留下真实成功证据；认证失败、权限失败和离线回放契约也有自动化测试。
+本轮完成 B2 剩余的行业 Agent 和大盘/宏观 Agent。至此技术、基本面、行业、大盘/宏观四类 Agent 都统一消费 B1 Data Hub，各自拥有确定性分析引擎、自治认知 Loop、Harness、Graph 节点、真实只读验证、离线 fixture、样例报告和自动化测试。B2 正式任务 T2.2 已达到四类 Specialist 的交付包验收条件；后续进入交付包三，不能把这些分析结果直接当成交易指令。
 
-### 验收内容（全部完成）
+### 本轮验收内容
 
-1. `FinancialDataHub.fetch(dataset, params, mode)` 覆盖日线、周线、分钟线、实时报价、资金流、三大报表、财务指标、PE/PB/PS、指数、行业、GDP、Shibor、LPR、新闻、公告和研报。
-2. 每条记录统一包含 `subject`、`fields`、`source`、`timestamp` 和 `as_of`；金融数值以十进制字符串跨 JSON 传递，确定性计算使用 `Decimal`。
-3. 真实 provider 在可终止子进程运行，实现整个调用的硬总超时，并统一提供缓存、provider 限流、有限重试、错误码和 trace。
-4. 默认离线 fixture 覆盖全部 dataset；19 个 dataset 均使用经过最小真实验证的样本，不再包含 synthetic Tushare 数据。
-5. 使用官方 MCP Python SDK 注册 `list_financial_datasets` 和 `get_financial_data`，默认 stdio、默认离线且只读。
-6. 对 AKShare/腾讯可用数据集逐类执行最小真实整链验证；东方财富被限制时记录失败并切换其他来源，不高频重复请求。
-7. Tushare 只从 `TUSHARE_TOKEN` 环境变量读取凭证；没有 token 时返回 `auth_required`，token 有效但账号权限不足时返回 `permission_denied`。权限生效后日线真实调用成功返回 4 条记录，离线 fixture 已替换为真实样本。
-8. 更新 README、MCP catalog、dev-map、checklist 和 progress，运行定向测试、完整回归、编译、JSON 解析、离线演示和 Git diff 检查。
+1. 行业 Agent 通过 `IndustryAnalysisRuntime.run(query)` 独立运行，并通过 `run_graph_node(state)` 接入 Graph。
+2. 行业 Agent 确定性计算行业画像、竞争格局、LPR 政策信号、景气度、产业链模板、代表股排序和四项评分。
+3. 大盘/宏观 Agent 通过 `MacroAnalysisRuntime.run(query)` 独立运行，并通过 `run_graph_node(state)` 接入 Graph。
+4. 大盘/宏观 Agent 确定性计算指数趋势、关联股票资金面代理、研报情绪、GDP/SHIBOR/LPR 环境、Market Regime、风险偏好和评分。
+5. 两个 Agent 都拥有 Plan、Action、Observation、Reflection 闭环，只允许调用各自的受控分析工具，最多运行两步。
+6. 两个 Agent 都使用 JSON Schema、完整来源校验和代码重算 Guardrail；篡改评分、排序、Regime 或风险偏好会被拒绝。
+7. 默认离线演示回放 2026-08-07 真实验证的样本；真实模式必须显式使用 `--live`，外部失败时仍可离线复现。
+8. 测试覆盖正常路径、来源缺失、结果篡改、非法查询、Graph 节点和命令行演示。
 
-### 明确不做
+### 口径边界
 
-- 不支持前复权或后复权；现有 `MarketBar` 要求价格为正，而 AKShare 官方说明复权历史价可能为负，二者需要后续单独设计。
-- 不修改 Harness、Loop、Graph、Memory 或 Model Gateway 的核心 interface。
-- 不在 B1 实现技术面、基本面、行业或大盘分析 Agent；这些属于 B2。
-- 验收过程中没有把 Tushare 的认证失败、权限失败或 synthetic fixture 当作真实成功；只有日线真实调用成功后才把 B1 标记为 `done`。
+- “估值分位”是透明的规则区间分位，不冒充历史估值分位；报告会明确标注方法。
+- 银行不适合直接套用工业企业自由现金流 DCF，本轮使用“折现股东收益代理模型”，并在报告中明确这是简化模型。
+- LLM 不计算、改写或补全财务数值；指标、估值、DCF 和评分全部由确定性代码计算。
+- 结果不转换成买卖指令，不连接真实下单。
+- 不修改 Harness、Loop、Graph、Memory 或 Model Gateway 的公共 interface。
+
+### 已完成基线
+
+B1 Data Hub 与只读 MCP 已完成；B2 四类 Agent 均已完成各自的指标/规则、评分、独立 Loop、Harness、Graph 节点、真实样本和离线演示。
 
 ## 3. 架构原则
 
@@ -141,23 +146,45 @@ first_bar.timestamp  # 数据获取时间
 - `MarketBar.from_mapping()`：解析并校验一条外部行情记录。
 - `MarketDataSeries.from_records()`：构造同一证券、严格按时间递增的行情序列。
 - `MarketDataValidationError`：统一暴露缺失字段、错误格式和不变量错误。
-- 当前 fixture 是人工构造的练习数据，不代表任何真实证券或投资结果。
+- `synthetic_market_bars.json` 仅用于基础契约测试；B2 默认演示使用单独保存的腾讯真实历史样本。任何离线样本都只用于复现，不代表当前实时行情或投资结果。
 
-## 8. 阶段二技术分析接口
+## 8. 阶段二专业分析接口
 
 ```python
-request = AgentRequest(
-    task="analyze the latest technical trend",
-    context={"market_data": series},
+query = TechnicalAnalysisQuery(
+    symbol="sz000001",
+    start_date="20260626",
+    end_date="20260806",
+    mode="offline",
+    limit=30,
 )
-result = AgentHarness(TechnicalAnalysisAgent()).run(request)
-analysis = result.response.metadata["analysis"]
+result = build_default_technical_analysis_runtime().run(query)
+analysis = result.report["analysis"]
 ```
 
-- 输入必须是 `MarketDataSeries`，并至少包含 20 根 K 线。
-- 输出包含 `daily_return`、`sma_5`、`sma_20`、趋势标签和明确的趋势规则。
-- 所有指标由确定性 `Decimal` 运算得到，LLM 不参与计算。
-- 趋势标签只是简化的技术状态，不是投资建议。
+- Runtime 通过 B1 的 `FinancialDataTool` 请求 `market.daily`，再转换为至少 30 根 K 线的 `MarketDataSeries`。
+- 输出包含收益率、三条均线、MACD、RSI、KDJ、布林带、支撑阻力、趋势和七项可解释评分。
+- 所有指标由确定性 `Decimal` 运算得到，并由 CrossValidator 使用原始 K 线完整重算；LLM 不参与计算。
+- 自治 Loop 只允许使用一个技术分析工具，Harness 同时检查 JSON Schema、来源字段和重算结果。
+- 输出是技术状态摘要和研究证据，不是投资建议或真实交易信号。
+
+基本面分析接口：
+
+```python
+query = FundamentalAnalysisQuery(
+    symbol="sz000001",
+    mode="offline",
+    limit=4,
+    start_year="2024",
+)
+result = build_default_fundamental_analysis_runtime().run(query)
+analysis = result.report["analysis"]
+```
+
+- Runtime 通过 B1 的 `FinancialDataTool` 请求资产负债表、利润表、现金流量表、财务指标、估值和实时价格。
+- 输出包含三大报表关键字段、ROE/ROA、净利润增长、PE/PB/PS、规则估值分位、简化股东收益 DCF 和安全边际。
+- `CrossValidator` 从报告附带的六类原始 Data Hub 输出重新计算全部基本面结果。
+- DCF 和估值分位都返回计算方法与假设，调用方不能把它们误认为无条件的市场结论。
 
 ## 9. 最终成功标准摘要
 
@@ -198,4 +225,4 @@ python -m unittest discover -s tests -v
 
 ## 12. 下一步
 
-B1 已完成。Tushare 日线成功返回 4 条真实记录，最后一个 synthetic fixture 已替换；19 个 dataset 均有真实最小样本和离线回放。下一步进入 B2 四类专业 Agent，先让现有技术分析原型改为消费统一 Data Hub，并按 ROADMAP 补齐完整指标、Loop、Harness、测试和样例报告。
+B2 四类 Agent 已完成，T2.2 已达到交付包二的四类 Specialist 验收条件。下一小功能进入交付包三：用 Graph 编排四类分析，加入综合研判、结构化辩论、Trader 和 Risk Manager。

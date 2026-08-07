@@ -9,6 +9,10 @@
 - `finance-data-contract.md`：金融行情字段、时间和来源语义。
 - `tencent-daily-market-data.md`：B1 腾讯真实日线 Tool、字段差异、成交量转换、错误与运行方式。
 - `financial-data-hub.md`：B1 全类别 Data Hub、缓存限流、硬超时、MCP Server 和 Tushare 最终验收结果。
+- `technical-analysis-agent.md`：B2 技术分析 Agent 的指标、Loop、Harness、Graph 接入、真实样本和运行方式。
+- `fundamental-analysis-agent.md`：B2 基本面 Agent 的三大报表、估值、DCF、Loop、Harness、Graph 接入和验收方式。
+- `industry-analysis-agent.md`：B2 行业 Agent 的行业画像、竞争、政策、景气度、产业链、代表股排序和验收方式。
+- `macro-analysis-agent.md`：B2 大盘/宏观 Agent 的指数、资金面代理、情绪、Market Regime、风险偏好和验收方式。
 - `harness-guardrails.md`：五类 Guardrail、配置注册、错误语义和 trace。
 - `cognitive-loop.md`、`working-memory.md`、`loop-engineering.md`：认知闭环、三层记忆、调度和上下文注入。
 - `graph-engineering.md`、`langgraph-mapping.md`：Graph 配置、可靠性和框架映射。

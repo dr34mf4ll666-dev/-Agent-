@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "description": "大盘/宏观 Agent 离线回放；字段来自 2026-08-07 的真实只读验证。",
+  "datasets": [
+    {
+      "dataset": "macro.index",
+      "source": "akshare.stock_zh_index_daily",
+      "timestamp": "2026-08-07T16:13:08.000744+08:00",
+      "records": [
+        {"subject": "sh000300", "fields": {"close": "4588.197", "volume": "27924369800"}, "source": "akshare.stock_zh_index_daily", "timestamp": "2026-08-07T16:13:08.000744+08:00", "as_of": "2026-07-31T15:00:00+08:00"},
+        {"subject": "sh000300", "fields": {"close": "4543.178", "volume": "23204258400"}, "source": "akshare.stock_zh_index_daily", "timestamp": "2026-08-07T16:13:08.000744+08:00", "as_of": "2026-08-03T15:00:00+08:00"},
+        {"subject": "sh000300", "fields": {"close": "4600.930", "volume": "24207361100"}, "source": "akshare.stock_zh_index_daily", "timestamp": "2026-08-07T16:13:08.000744+08:00", "as_of": "2026-08-04T15:00:00+08:00"},
+        {"subject": "sh000300", "fields": {"close": "4658.155", "volume": "27692191900"}, "source": "akshare.stock_zh_index_daily", "timestamp": "2026-08-07T16:13:08.000744+08:00", "as_of": "2026-08-05T15:00:00+08:00"},
+        {"subject": "sh000300", "fields": {"close": "4651.310", "volume": "24751073000"}, "source": "akshare.stock_zh_index_daily", "timestamp": "2026-08-07T16:13:08.000744+08:00", "as_of": "2026-08-06T15:00:00+08:00"}
+      ]
+    },
+    {
+      "dataset": "market.fund_flow",
+      "source": "akshare.stock_fund_flow_individual",
+      "timestamp": "2026-08-07T16:13:52.430299+08:00",
+      "records": [
+        {"subject": "000001", "fields": {"name": "平安银行", "last": "11.19", "change_percent": "-0.71", "inflow_cny": "387000000.00", "outflow_cny": "599000000.00", "net_flow_cny": "-212000000.00", "turnover_amount_cny": "986000000.00"}, "source": "akshare.stock_fund_flow_individual", "timestamp": "2026-08-07T16:13:52.430299+08:00", "as_of": "2026-08-07T16:13:33.935749+08:00"}
+      ]
+    },
+    {
+      "dataset": "macro.gdp",
+      "source": "akshare.macro_china_gdp_yearly",
+      "timestamp": "2026-08-07T16:13:09.756948+08:00",
+      "records": [
+        {"subject": "CN_GDP_YOY", "fields": {"今值": "4.6", "前值": "4.7"}, "source": "akshare.macro_china_gdp_yearly", "timestamp": "2026-08-07T16:13:09.756948+08:00", "as_of": "2024-10-18T00:00:00+08:00"},
+        {"subject": "CN_GDP_YOY", "fields": {"今值": "5.4", "前值": "4.6"}, "source": "akshare.macro_china_gdp_yearly", "timestamp": "2026-08-07T16:13:09.756948+08:00", "as_of": "2025-01-17T00:00:00+08:00"},
+        {"subject": "CN_GDP_YOY", "fields": {"今值": "5.4", "前值": "5.4"}, "source": "akshare.macro_china_gdp_yearly", "timestamp": "2026-08-07T16:13:09.756948+08:00", "as_of": "2025-04-16T00:00:00+08:00"},
+        {"subject": "CN_GDP_YOY", "fields": {"今值": "5.2", "前值": "5.4"}, "source": "akshare.macro_china_gdp_yearly", "timestamp": "2026-08-07T16:13:09.756948+08:00", "as_of": "2025-07-15T00:00:00+08:00"}
+      ]
+    },
+    {
+      "dataset": "macro.shibor",
+      "source": "akshare.macro_china_shibor_all",
+      "timestamp": "2026-08-07T16:13:08.196969+08:00",
+      "records": [
+        {"subject": "SHIBOR", "fields": {"1W-定价": "1.388"}, "source": "akshare.macro_china_shibor_all", "timestamp": "2026-08-07T16:13:08.196969+08:00", "as_of": "2026-08-04T00:00:00+08:00"},
+        {"subject": "SHIBOR", "fields": {"1W-定价": "1.377"}, "source": "akshare.macro_china_shibor_all", "timestamp": "2026-08-07T16:13:08.196969+08:00", "as_of": "2026-08-05T00:00:00+08:00"},
+        {"subject": "SHIBOR", "fields": {"1W-定价": "1.383"}, "source": "akshare.macro_china_shibor_all", "timestamp": "2026-08-07T16:13:08.196969+08:00", "as_of": "2026-08-06T00:00:00+08:00"},
+        {"subject": "SHIBOR", "fields": {"1W-定价": "1.391"}, "source": "akshare.macro_china_shibor_all", "timestamp": "2026-08-07T16:13:08.196969+08:00", "as_of": "2026-08-07T00:00:00+08:00"}
+      ]
+    },
+    {
+      "dataset": "macro.policy_lpr",
+      "source": "akshare.macro_china_lpr",
+      "timestamp": "2026-08-07T15:58:56.964197+08:00",
+      "records": [
+        {"subject": "CN_LPR", "fields": {"LPR1Y": "3.0", "LPR5Y": "3.5"}, "source": "akshare.macro_china_lpr", "timestamp": "2026-08-07T15:58:56.964197+08:00", "as_of": "2026-04-20T00:00:00+08:00"},
+        {"subject": "CN_LPR", "fields": {"LPR1Y": "3.0", "LPR5Y": "3.5"}, "source": "akshare.macro_china_lpr", "timestamp": "2026-08-07T15:58:56.964197+08:00", "as_of": "2026-05-20T00:00:00+08:00"},
+        {"subject": "CN_LPR", "fields": {"LPR1Y": "3.0", "LPR5Y": "3.5"}, "source": "akshare.macro_china_lpr", "timestamp": "2026-08-07T15:58:56.964197+08:00", "as_of": "2026-06-22T00:00:00+08:00"},
+        {"subject": "CN_LPR", "fields": {"LPR1Y": "3.0", "LPR5Y": "3.5"}, "source": "akshare.macro_china_lpr", "timestamp": "2026-08-07T15:58:56.964197+08:00", "as_of": "2026-07-20T00:00:00+08:00"}
+      ]
+    },
+    {
+      "dataset": "sentiment.research",
+      "source": "akshare.stock_research_report_em",
+      "timestamp": "2026-08-07T14:30:45.834860+08:00",
+      "records": [
+        {"subject": "000001.SZ", "fields": {"股票简称": "平安银行", "东财评级": "中性", "行业": "银行Ⅱ"}, "source": "akshare.stock_research_report_em", "timestamp": "2026-08-07T14:30:45.834860+08:00", "as_of": "2026-04-26T00:00:00+08:00"}
+      ]
+    }
+  ]
+}

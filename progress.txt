@@ -287,3 +287,40 @@
 
 下一步
 - 进入 B2：先让现有技术分析 Agent 消费统一 Data Hub，再补齐指标集合、认知 Loop、Harness 校验、真实样例报告和 Graph 节点接入。
+
+[2026-08-07] B2 技术分析 Agent 完成
+- 将原有只计算 SMA5、SMA20 和单日收益率的原型扩展为确定性指标引擎，新增 SMA10、MACD、RSI14、KDJ9、布林带、20 日支撑阻力和七项可解释信号评分。
+- 新增 `TechnicalAnalysisRuntime`：通过 B1 `FinancialDataTool` 获取 `market.daily`，统一完成行情契约转换、认知 Loop、Harness 校验、独立运行和 Graph 节点接入。
+- 技术 Agent 的 Loop 只允许调用 `technical_market_analysis`，最多两步；Harness 使用 JSON Schema、来源字段检查和原始 K 线完整重算，篡改指标或评分会被拒绝。
+- 使用 60 根腾讯真实历史日线完成最小真实验证，并保存其中最近 30 根为独立离线 fixture；默认演示可离线复现，不把样本冒充实时行情。
+- 新增专项文档与固定样例报告，更新 README、SPEC、ROADMAP、checklist 和 dev-map。
+- 定向测试 10 项、项目完整回归 152 项、源码编译、三份关键 JSON 解析、离线演示和 Git diff 检查全部通过；B2 正式任务 T2.2 仍为 `in_progress`，剩余基本面、行业和大盘/宏观三个 Agent。
+
+下一步
+- 实现基本面 Agent，接入三大报表、财务指标和估值数据，并补确定性计算、Loop、Harness、测试、报告和 Graph 节点。
+
+[2026-08-07] 技术分析演示输出本地化
+- 将技术分析终端演示改为中文名称并保留英文缩写/字段名，例如“相对强弱指标（RSI14）”“布林带（BOLL）”和“综合信号评分（signal）”。
+- 同步翻译趋势、评分规则和 Loop/Harness 标题；内部 JSON 字段、Runtime 接口、Graph 状态和校验逻辑保持不变。
+- 演示专项 10 项与项目完整回归 152 项测试全部通过。
+
+[2026-08-07] B2 基本面分析 Agent 完成
+- 先对平安银行 `fundamental.balance_sheet`、`fundamental.income_statement`、`fundamental.cash_flow`、`fundamental.indicators` 和 `fundamental.valuation` 做最小真实只读验证，确认三大报表关键字段、ROE/负债率/增长、PE/PB/PS 和市值均可取到；同时保留腾讯实时价格来源。
+- 新增 `FundamentalAnalysisEngine`，使用 `Decimal` 确定性计算资产负债表、利润表、现金流代理值、ROE/ROA、净利润增长、PE/PB/PS、规则估值分位、折现股东收益 DCF、安全边际和六项综合评分。
+- 新增 `FundamentalAnalysisRuntime`：一次受控读取六类 Data Hub 数据，经过基本面专属认知 Loop、JSON Schema、六类来源校验和完整结果重算，并支持独立运行和 Graph 节点。
+- 明确估值分位不是历史分位，而是规则区间分位；明确银行不直接套用工业自由现金流 DCF，使用带假设和限制说明的折现股东收益代理模型。
+- 新增真实样本离线 fixture、基本面演示、固定样例报告和专项文档。离线演示可直观看到资产负债表、利润表、现金流、估值、DCF、安全边际、评分和完整 trace。
+- 基本面专项 6 项测试通过；一次真实运行失败先被 trace 定位为 Schema 漏字段和时间字段误校验，修复后重跑通过，失败路径也纳入测试。
+- T2.2 仍为 `in_progress`，剩余行业和大盘/宏观两个 Agent。下一步实现行业 Agent。
+
+[2026-08-07] B2 行业与大盘/宏观 Agent 完成，交付包二四类 Specialist 验收闭环
+- 行业 Agent 新增 `IndustryAnalysisEngine` 和 `IndustryAnalysisRuntime`，统一读取 `industry.snapshot` 与 `macro.policy_lpr`，确定性计算行业画像、竞争格局、LPR 政策信号、景气度、项目产业链模板、代表股排序和四项评分。
+- 大盘/宏观 Agent 新增 `MacroAnalysisEngine` 和 `MacroAnalysisRuntime`，统一读取指数、关联股票资金流、GDP、SHIBOR、LPR 和研报评级，确定性计算指数趋势、资金面代理、研报/市场代理情绪、Market Regime、风险偏好和四项评分。
+- 两个 Agent 都通过自己的 Plan-Action-Observation-Reflection Loop 调用单一受控工具；Harness 分别配置 JSON Schema、来源字段校验和完整结果重算，Graph 节点复用同一 Runtime。
+- 行业真实模式完整运行成功：数据来源为 `akshare.stock_sector_spot` 和 `akshare.macro_china_lpr`；玻璃行业样本显示 19 家公司、板块涨跌幅 4.3554%、景气度 hot、评分 40，Loop/Harness 全部通过。
+- 大盘/宏观真实模式完整运行成功：数据来源覆盖指数、资金流、GDP、SHIBOR、LPR 和研报；沪深 300 五日窗口收益 1.3756%，平安银行资金净流出 2.12 亿元，Market Regime=mixed、风险偏好=low、评分 -15，Loop/Harness 全部通过。
+- 默认离线 fixture 保留真实验证样本的 `source`、`timestamp`、`as_of`，可在无网络时复现；资金面明确是关联股票代理，产业链和 Regime 明确是项目规则边界。
+- 新增两个专项演示、两个样例报告、十项 Runtime 测试和两项演示测试；行业/宏观定向测试、演示和源码编译均通过。项目完整回归 170 项测试全部通过，checklist JSON 和五份新样例 JSON 解析通过。T2.2 的四类 Specialist 交付条件已满足，下一步进入交付包三。
+
+下一步
+- 进入交付包三：用 Graph 编排四类 Agent，增加综合研判、结构化辩论、Trader、Risk Manager 和真实交易关闭边界的端到端验收。

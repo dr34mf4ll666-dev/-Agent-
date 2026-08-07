@@ -1,0 +1,88 @@
+{
+  "symbol": "sz000001",
+  "as_of": "2026-08-07T15:36:36+08:00",
+  "timestamp": "2026-08-07T15:37:26.904070+08:00",
+  "latest_financial_period": "2026-03-31T00:00:00+08:00",
+  "annual_base_period": "2025-12-31T00:00:00+08:00",
+  "statements": {
+    "balance_sheet": {
+      "assets_cny": "6033962000000.00",
+      "liabilities_cny": "5489879000000.00",
+      "shareholder_equity_cny": "544083000000.00",
+      "computed_debt_to_asset_percent": "90.9830",
+      "provider_debt_to_asset_percent": "90.9830"
+    },
+    "income_statement": {
+      "annual_revenue_cny": "131442000000.00",
+      "annual_net_profit_cny": "42633000000.00",
+      "latest_revenue_cny": "35277000000.00",
+      "latest_net_profit_cny": "14523000000.00",
+      "net_margin_percent": "32.4348",
+      "basic_eps_cny": "2.0700"
+    },
+    "cash_flow": {
+      "operating_cash_flow_cny": "37802000000.00",
+      "capex_cny": "172000000.00",
+      "free_cash_flow_proxy_cny": "37630000000.00"
+    }
+  },
+  "indicators": {
+    "roe_percent": "2.6700",
+    "weighted_roe_percent": "2.8300",
+    "roa_percent": "0.2429",
+    "net_profit_growth_percent": "3.0292"
+  },
+  "valuation": {
+    "current_price": "11.1700",
+    "market_cap_cny": "217149000000.00",
+    "pe_dynamic": "5.040000",
+    "pb": "0.480000",
+    "ps": "1.652052",
+    "valuation_percentile": "80.7598",
+    "valuation_percentile_method": "rule_based_not_historical",
+    "valuation_band": "PE<=20, PB<=3, PS<=10; lower multiple gets a higher percentile"
+  },
+  "growth": {
+    "net_profit_growth_percent": "3.0292",
+    "growth_rule": "uses the latest Data Hub net_profit_growth_percent"
+  },
+  "dcf": {
+    "method": "discounted_earnings_proxy",
+    "base_eps_cny": "2.0700",
+    "growth_assumption_percent": "3.0292",
+    "discount_rate_percent": "10.0000",
+    "terminal_growth_percent": "3.0000",
+    "forecast_years": 5,
+    "forecasts": [
+      {"year": "1", "eps": "2.1327", "present_value": "1.9388"},
+      {"year": "2", "eps": "2.1973", "present_value": "1.8160"},
+      {"year": "3", "eps": "2.2639", "present_value": "1.7009"},
+      {"year": "4", "eps": "2.3324", "present_value": "1.5931"},
+      {"year": "5", "eps": "2.4031", "present_value": "1.4921"}
+    ],
+    "intrinsic_value_per_share": "30.4966",
+    "current_price": "11.1700",
+    "margin_of_safety_percent": "63.3730"
+  },
+  "score": 60,
+  "score_label": "strong_positive",
+  "score_components": [
+    {"name": "profitability", "points": 0, "rule": "weighted ROE < 5%"},
+    {"name": "growth", "points": 10, "rule": "0% <= net profit growth < 10%"},
+    {"name": "balance_sheet", "points": 5, "rule": "90% < computed debt ratio <= 95%"},
+    {"name": "valuation", "points": 15, "rule": "rule-based valuation percentile >= 75"},
+    {"name": "cash_flow", "points": 10, "rule": "operating cash flow exceeds capex proxy"},
+    {"name": "dcf", "points": 20, "rule": "DCF margin of safety >= 30%"}
+  ],
+  "sources": [
+    "akshare.stock_financial_analysis_indicator",
+    "akshare.stock_financial_report_sina",
+    "tencent.qt.gtimg.cn",
+    "tencent.quote+sina.financial_report"
+  ],
+  "caveats": [
+    "valuation_percentile is a transparent rule-band percentile, not a historical market percentile",
+    "DCF uses discounted earnings per share as a banking-stock proxy; it is not a generic industrial free-cash-flow DCF",
+    "the report is research evidence, not investment advice or a trading instruction"
+  ]
+}
