@@ -50,6 +50,23 @@ python Scripts\demo_technical_analysis.py
 
 该脚本读取 30 根离线模拟日线，通过 Harness 运行 `TechnicalAnalysisAgent`，并打印结构化指标、趋势规则、数据来源和 Harness trace。它不调用网络、LLM 或真实交易接口。
 
+## 腾讯日线数据 Tool 演示
+
+```powershell
+python Scripts\demo_market_data.py
+```
+
+默认使用 JSON 回放 4 根已经真实验证的腾讯历史日线。只有显式加 `--live` 才会调用 AKShare 腾讯接口；可通过 `--symbol`、`--start-date`、`--end-date`、`--timeout` 和 `--attempts` 控制有界请求。该脚本只读取行情，不连接真实交易。
+
+## 完整金融 Data Hub 与 MCP
+
+```powershell
+python Scripts\demo_financial_data_hub.py
+python Scripts\run_financial_mcp.py
+```
+
+第一个命令默认离线检查全部 19 个 dataset；这些 fixture 均来自最小真实验证。也可以用 `--live --dataset` 限定一次真实只读请求。第二个命令启动官方 MCP Python SDK 的 stdio Server，提供数据集清单和统一金融数据两个工具。真实交易能力没有注册到 MCP。
+
 ## 认知 Loop 演示
 
 ```powershell

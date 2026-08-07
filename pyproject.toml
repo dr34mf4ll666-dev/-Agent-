@@ -16,6 +16,11 @@ dependencies = [
 dev = [
     "pytest>=8.0"
 ]
+finance = [
+    "akshare>=1.18.64",
+    "tushare>=1.4.29",
+    "mcp>=1.29,<2"
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

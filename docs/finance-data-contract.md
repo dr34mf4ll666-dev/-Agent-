@@ -31,6 +31,8 @@ series = MarketDataSeries.from_records(records)
 
 `tests/fixtures/synthetic_market_bars_30.csv` 提供 30 根严格递增的模拟日线，供 `TechnicalAnalysisAgent` 计算 SMA5 和 SMA20。CSV 中每条记录同样保留 `source`、`timestamp` 和 `as_of`。
 
+`tests/fixtures/tencent_daily_bars_000001.json` 与上述模拟数据不同：它是 2026-08-07 从 AKShare 腾讯接口取得的 4 根真实历史日线最小样本，用于默认离线回放。文件记录了 provider、实际返回列和成交量单位转换，详情见 `tencent-daily-market-data.md`。
+
 ## 技术分析输出
 
 `TechnicalAnalysisAgent` 只接收已经通过契约校验的 `MarketDataSeries`。当前确定性计算包括：

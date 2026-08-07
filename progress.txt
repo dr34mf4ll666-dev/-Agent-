@@ -234,3 +234,56 @@
 
 下一步
 - 进入 B1 金融数据 MCP，先运行一个最小真实数据请求并检查返回字段、时区、权限和错误，再冻结 adapter interface。
+
+[2026-08-07] B1 腾讯 A 股日线首切片完成
+- 本机确认 AKShare 1.18.64 和 Pandas 2.3.3；东方财富 `stock_zh_a_hist` 的最小请求分别出现 RemoteDisconnected 和 ProxyError，用户说明当前 IP 可能已被东方财富限制，因此切换腾讯数据源。
+- 核对 AKShare 官方文档和已安装源码后，真实调用 `stock_zh_a_hist_tx(symbol="sz000001", start_date="20240102", end_date="20240105", adjust="")` 成功返回 4 根日线。
+- 真实返回只有 `date/open/close/high/low/amount` 6 列，与官方文档当前列出的 8 列不同；通过新浪同日数据交叉验证，确认本机版本的 `amount` 实际为按手记录的成交量，乘以 100 映射为股，可能丢失不足一手的尾数。
+- 新增 `DailyBarQuery`、`MarketDataFetchPolicy`、`MarketDataFetchResult`、稳定错误码和 provider trace；查询强制市场前缀、不复权、最长 366 天、1–3 次有限尝试。
+- 新增 `AkShareTencentDailyAdapter`、`JsonDailyMarketDataAdapter` 和受控 `DailyMarketDataTool`；真实网络与离线 JSON 使用同一 `fetch(query, policy)` interface，调用方不依赖 AKShare/Pandas 字段。
+- 每根 K 线保留 `source`、获取时间 `timestamp` 和日线行情时间 `as_of`；腾讯只给日期，因此项目明确映射为 Asia/Shanghai 当日 15:00。
+- 保存 4 根已验证真实历史日线作为离线回放样本，默认演示不联网；显式 `--live --attempts 1` 的整链验证成功输出 4 根日线和 started/succeeded/mapped trace。
+- 新增 6 项 adapter 与演示测试，项目完整回归 137 项全部通过；源码、测试和脚本编译、四份 JSON 解析、离线演示与 Git diff 格式检查通过。
+- 完整 B1 仍为 in_progress，尚缺其他频率、实时行情、资金流、财务/宏观/舆情、缓存、限流、Tushare 和远程 MCP 服务。
+
+下一步
+- 在腾讯日线 Tool 上增加缓存和限流，减少外部请求和封 IP 风险，再扩展周线或实时行情。
+
+[2026-08-07] B1 统一金融 Data Hub 主体实现完成
+- 在腾讯日线首切片之上新增统一 `FinancialDataHub.fetch(dataset, params, mode)` 和受控 `FinancialDataTool`；调用方只面对一个稳定入口，不需要理解每个供应商不同的函数和字段。
+- 数据范围扩展到 19 个 dataset：日线、周线、分钟线、实时报价、资金流，资产负债表、利润表、现金流量表、财务指标、估值，指数、行业、GDP、Shibor、LPR，以及新闻、公告、研报和 Tushare 日线。
+- AKShare 真实整链验证已覆盖腾讯日线/周线/实时报价、新浪分钟线、同花顺资金流、三大财务报表、ROE 与资产负债率、PE/PB/PS、指数、行业、GDP、Shibor、新闻和巨潮公告；东方财富不可用的链路没有继续作为默认依赖。
+- 所有规范化记录统一保留 `source`、获取完成时间 `timestamp` 和数据对应时间 `as_of`；价格、金额和比例进入平台后使用 `Decimal`，不把 Pandas/NumPy 类型泄漏给 Agent。
+- 增加按 dataset 设置 TTL 的 JSON 缓存、按 provider 滑动窗口限流、有限重试、可终止子进程硬总超时和稳定错误码；缓存命中不会再次访问外部接口，超时进程会被操作系统终止。
+- 增加版本 1 离线 fixture，默认演示可在无网络环境回放全部 19 个 dataset；其中尚未授权的三个 Tushare 样本明确标注为 `synthetic_tushare_contract_fixture`，不会冒充真实数据。
+- 使用官方 MCP Python SDK 新增只读 stdio Server，提供 `list_financial_datasets` 和 `get_financial_data` 两个工具；没有注册下单或真实交易能力。
+- Tushare adapter 已接入统一 Hub；本机未配置 `TUSHARE_TOKEN` 时，日线、LPR 和研报请求均被归一化为 `auth_required`，证明错误边界有效，但不能算真实成功证据。
+- 验证结果：B1 新增 9 项定向测试、项目完整回归 146 项测试全部通过；源码、测试和脚本编译、四份 catalog/checklist JSON 解析、19 类离线演示和 Git diff 格式检查均通过。
+- B1 当前仍为 `in_progress`：代码主体和 AKShare 真实链路已经完成，严格验收只剩配置本地 Tushare token，成功运行三项真实请求并替换三个 synthetic fixture。
+
+下一步
+- 在不提交密钥的前提下临时设置 `TUSHARE_TOKEN`，完成 `tushare.daily`、`macro.policy_lpr`、`sentiment.research` 的最小真实验证；通过后再把 B1 标记为 done 并进入 B2。
+
+[2026-08-07] B1 Tushare 权限诊断与免费真实来源补齐
+- Codex 重启后确认可以读取 `TUSHARE_TOKEN`，且不会输出或保存 token 内容；Tushare 客户端初始化成功，证明 token 本身有效。
+- `tushare.pro.daily`、`tushare.pro.shibor_lpr` 和 `tushare.pro.report_rc` 均返回“没有接口访问权限”，说明失败原因是账号权限而不是认证、网络或无数据。
+- 修复供应商错误归一化：新增稳定错误码 `permission_denied`，识别中文访问权限、英文 permission denied/forbidden 等提示；权限错误立即失败且不进入无意义重试。新增回归测试先复现旧代码误报，再验证修复。
+- 核对 Tushare 官方权限说明：日线和 LPR 当前最低 120 积分，券商研报属于单独权限。为避免让教学项目依赖付费研报接口，将 LPR 改为 `akshare.macro_china_lpr`，将研报改为 `akshare.stock_research_report_em`。
+- AKShare LPR 真实整链成功返回 2026-07-20 的一条记录；平安银行研报真实整链成功返回 2 条记录，最新报告日期为 2026-04-26。两项都保留 `source`、`timestamp` 和 `as_of`。
+- 用真实 LPR 和研报记录替换对应 synthetic fixture；19 个 dataset 中现在有 18 个真实最小样本，只剩 Tushare 日线明确标为 `synthetic_tushare_contract_fixture`。
+- 验证结果：B1 定向 10 项、项目完整回归 147 项测试全部通过；源码/测试/脚本编译、五份 JSON 解析和 19 类离线演示通过。
+- B1 仍保持 `in_progress`：严格验收只剩账号取得至少 120 积分后成功调用一次 Tushare 日线，并替换最后一个 synthetic fixture。
+
+下一步
+- 在 Tushare 权限中心确认或补足日线所需积分；权限生效后重新运行 `tushare.daily` 最小请求，完成 B1 最后一项验收。
+
+[2026-08-07] B1 金融数据基础设施正式完成
+- Tushare 日线权限生效后，统一 Data Hub 真实调用 `tushare.pro.daily` 成功；查询 `000001.SZ` 在 2026-08-01 至 2026-08-07 的数据，返回 4 条日线，调用只尝试 1 次。
+- 真实记录覆盖 2026-08-03 至 2026-08-06，包含 open、high、low、close、pre_close、change、pct_chg、vol 和 amount；每条记录统一保留 `source=tushare.pro.daily`、抓取时间 `timestamp` 和收盘时间 `as_of`。
+- 用 4 条真实 Tushare 日线替换最后一个 `synthetic_tushare_contract_fixture`。当前 19 个 dataset 全部具有真实最小样本，默认离线演示不需要网络或 token 即可复现其数据契约。
+- MCP catalog 中完整金融市场数据条目从 pending 改为 active，记录 Tushare 的日期、代码、查询区间和返回条数，不保存 token。
+- checklist T2.1 状态改为 `done`，remaining 清空；ROADMAP 当前主线切换到 B2 四类专业分析 Agent。B1 完成不代表整个金融应用已经完成。
+- 最终验证：B1 与项目引导定向 18 项测试通过，项目完整回归 147 项测试全部通过；源码/测试/脚本编译、五份 JSON 解析、19 类离线演示和 Git diff 格式检查通过。
+
+下一步
+- 进入 B2：先让现有技术分析 Agent 消费统一 Data Hub，再补齐指标集合、认知 Loop、Harness 校验、真实样例报告和 Graph 节点接入。

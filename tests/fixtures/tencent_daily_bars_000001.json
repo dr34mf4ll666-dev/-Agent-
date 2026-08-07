@@ -1,0 +1,55 @@
+{
+  "dataset_type": "captured_real_sample",
+  "description": "2026-08-07 通过 AKShare 1.18.64 的腾讯日线接口取得的最小真实样本，仅用于离线回放，不代表投资建议。",
+  "provider": "akshare.stock_zh_a_hist_tx",
+  "provider_symbol": "sz000001",
+  "captured_at": "2026-08-07T10:23:41+08:00",
+  "observed_columns": ["date", "open", "close", "high", "low", "amount"],
+  "volume_mapping": "实际 amount 为以手计的成交量，乘以 100 转为股；不足一手的尾数无法从该返回恢复。",
+  "bars": [
+    {
+      "symbol": "sz000001",
+      "open": "9.39",
+      "high": "9.42",
+      "low": "9.21",
+      "close": "9.21",
+      "volume": 115836600,
+      "source": "akshare.stock_zh_a_hist_tx",
+      "timestamp": "2026-08-07T10:23:41+08:00",
+      "as_of": "2024-01-02T15:00:00+08:00"
+    },
+    {
+      "symbol": "sz000001",
+      "open": "9.19",
+      "high": "9.22",
+      "low": "9.15",
+      "close": "9.20",
+      "volume": 73361000,
+      "source": "akshare.stock_zh_a_hist_tx",
+      "timestamp": "2026-08-07T10:23:41+08:00",
+      "as_of": "2024-01-03T15:00:00+08:00"
+    },
+    {
+      "symbol": "sz000001",
+      "open": "9.19",
+      "high": "9.19",
+      "low": "9.08",
+      "close": "9.11",
+      "volume": 86419400,
+      "source": "akshare.stock_zh_a_hist_tx",
+      "timestamp": "2026-08-07T10:23:41+08:00",
+      "as_of": "2024-01-04T15:00:00+08:00"
+    },
+    {
+      "symbol": "sz000001",
+      "open": "9.10",
+      "high": "9.44",
+      "low": "9.07",
+      "close": "9.27",
+      "volume": 199162200,
+      "source": "akshare.stock_zh_a_hist_tx",
+      "timestamp": "2026-08-07T10:23:41+08:00",
+      "as_of": "2024-01-05T15:00:00+08:00"
+    }
+  ]
+}

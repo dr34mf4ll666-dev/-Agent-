@@ -1,0 +1,457 @@
+{
+  "version": 1,
+  "description": "B1 离线回放数据；19 个 dataset 均来自 2026-08-07 的最小真实验证。",
+  "datasets": [
+    {
+      "dataset": "market.daily",
+      "source": "akshare.stock_zh_a_hist_tx",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "sz000001",
+          "fields": {
+            "period": "daily",
+            "open": "9.39",
+            "high": "9.42",
+            "low": "9.21",
+            "close": "9.21",
+            "volume_shares": "115836600"
+          },
+          "source": "akshare.stock_zh_a_hist_tx",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2024-01-02T15:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "market.weekly",
+      "source": "akshare.stock_zh_a_hist_tx",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "sz000001",
+          "fields": {
+            "period": "weekly",
+            "week_start": "2024-01-02",
+            "week_end": "2024-01-05",
+            "open": "9.39",
+            "high": "9.44",
+            "low": "9.07",
+            "close": "9.27",
+            "volume_shares": "474779200"
+          },
+          "source": "akshare.stock_zh_a_hist_tx",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2024-01-05T15:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "market.minute",
+      "source": "akshare.stock_zh_a_minute",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "sz000001",
+          "fields": {
+            "period_minutes": "60",
+            "open": "11.170",
+            "high": "11.230",
+            "low": "11.150",
+            "close": "11.170",
+            "volume_shares": "26000",
+            "turnover_amount_cny": "290626.9988"
+          },
+          "source": "akshare.stock_zh_a_minute",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2026-08-07T11:30:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "market.realtime",
+      "source": "tencent.qt.gtimg.cn",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "sz000001",
+          "fields": {
+            "name": "平安银行",
+            "last": "11.17",
+            "previous_close": "11.27",
+            "open": "11.23",
+            "high": "11.26",
+            "low": "11.14",
+            "volume_shares": "43434500",
+            "turnover_amount_cny": "485870585",
+            "turnover_rate_percent": "0.22"
+          },
+          "source": "tencent.qt.gtimg.cn",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2026-08-07T11:53:36+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "market.fund_flow",
+      "source": "akshare.stock_fund_flow_individual",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "301707",
+          "fields": {
+            "name": "展芯股份",
+            "last": "118.02",
+            "change_percent": "403.28",
+            "turnover_rate_percent": "62.67",
+            "inflow_cny": "1072000000",
+            "outflow_cny": "894000000",
+            "net_flow_cny": "179000000",
+            "turnover_amount_cny": "1966000000"
+          },
+          "source": "akshare.stock_fund_flow_individual",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2026-08-07T12:10:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "fundamental.balance_sheet",
+      "source": "akshare.stock_financial_report_sina",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "sz000001",
+          "fields": {
+            "statement": "资产负债表",
+            "现金及存放中央银行款项": "260145000000.0"
+          },
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2026-03-31T00:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "fundamental.income_statement",
+      "source": "akshare.stock_financial_report_sina",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "sz000001",
+          "fields": {
+            "statement": "利润表",
+            "营业收入": "35277000000.0",
+            "净利息收入": "22081000000.0",
+            "利息收入": "39895000000.0",
+            "利息支出": "17814000000.0"
+          },
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2026-03-31T00:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "fundamental.cash_flow",
+      "source": "akshare.stock_financial_report_sina",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "sz000001",
+          "fields": {
+            "statement": "现金流量表",
+            "客户存款和同业存放款项净增加额": "204605000000.0"
+          },
+          "source": "akshare.stock_financial_report_sina",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2026-03-31T00:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "fundamental.indicators",
+      "source": "akshare.stock_financial_analysis_indicator",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "000001",
+          "fields": {
+            "roe_percent": "3.08",
+            "weighted_roe_percent": "3.15",
+            "debt_to_asset_percent": "91.5248",
+            "return_on_assets_percent": "0.2639",
+            "net_profit_growth_percent": "2.260",
+            "total_assets_cny": "5729398000000"
+          },
+          "source": "akshare.stock_financial_analysis_indicator",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2024-03-31T00:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "fundamental.valuation",
+      "source": "tencent.quote+sina.financial_report",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "sz000001",
+          "fields": {
+            "pe_dynamic": "5.03",
+            "pb": "0.47",
+            "ps": "1.649099983262579692944416549",
+            "ps_basis": "market_cap/latest_annual_revenue",
+            "market_cap_cny": "216761000000",
+            "annual_revenue_cny": "131442000000.0",
+            "annual_revenue_period": "20251231"
+          },
+          "source": "tencent.quote+sina.financial_report",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2026-08-07T11:53:36+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "macro.index",
+      "source": "akshare.stock_zh_index_daily",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "sh000300",
+          "fields": {
+            "open": "4621.803",
+            "high": "4675.646",
+            "low": "4611.066",
+            "close": "4651.31",
+            "volume": "24751073000"
+          },
+          "source": "akshare.stock_zh_index_daily",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2026-08-06T15:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "industry.snapshot",
+      "source": "akshare.stock_sector_spot",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "玻璃行业",
+          "fields": {
+            "公司家数": "19",
+            "平均价格": "16.77",
+            "涨跌额": "0.42",
+            "涨跌幅": "2.5688073394495",
+            "总成交量": "556864108",
+            "总成交额": "14533744469",
+            "股票代码": "sh600176",
+            "股票名称": "中国巨石"
+          },
+          "source": "akshare.stock_sector_spot",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2026-08-07T12:10:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "macro.gdp",
+      "source": "akshare.macro_china_gdp_yearly",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "CN_GDP_YOY",
+          "fields": {
+            "商品": "中国GDP年率报告",
+            "今值": "5.2",
+            "前值": "5.4"
+          },
+          "source": "akshare.macro_china_gdp_yearly",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2025-07-15T00:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "macro.shibor",
+      "source": "akshare.macro_china_shibor_all",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "SHIBOR",
+          "fields": {
+            "O/N-定价": "1.361",
+            "1W-定价": "1.391",
+            "1M-定价": "1.4167",
+            "3M-定价": "1.43",
+            "1Y-定价": "1.48"
+          },
+          "source": "akshare.macro_china_shibor_all",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2026-08-07T00:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "sentiment.news",
+      "source": "akshare.stock_news_main_cx",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "商圈",
+          "fields": {
+            "summary": "松田克也上任一年多，用减值、停产、出售三步棋，交出了一份明治中国的止损答卷。",
+            "url": "https://database.caixin.com/2026-08-07/102472066.html"
+          },
+          "source": "akshare.stock_news_main_cx",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2026-08-07T12:10:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "macro.policy_lpr",
+      "source": "akshare.macro_china_lpr",
+      "timestamp": "2026-08-07T14:30:41.830639+08:00",
+      "records": [
+        {
+          "subject": "CN_LPR",
+          "fields": {
+            "LPR1Y": "3.0",
+            "LPR5Y": "3.5",
+            "RATE_1": "4.35",
+            "RATE_2": "4.9"
+          },
+          "source": "akshare.macro_china_lpr",
+          "timestamp": "2026-08-07T14:30:41.830639+08:00",
+          "as_of": "2026-07-20T00:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "sentiment.announcements",
+      "source": "akshare.stock_zh_a_disclosure_report_cninfo",
+      "timestamp": "2026-08-07T12:10:00+08:00",
+      "records": [
+        {
+          "subject": "000001",
+          "fields": {
+            "代码": "000001",
+            "简称": "平安银行",
+            "公告标题": "关联交易公告",
+            "公告链接": "http://www.cninfo.com.cn/new/disclosure/detail?stockCode=000001&announcementId=1225451412"
+          },
+          "source": "akshare.stock_zh_a_disclosure_report_cninfo",
+          "timestamp": "2026-08-07T12:10:00+08:00",
+          "as_of": "2026-08-01T00:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "sentiment.research",
+      "source": "akshare.stock_research_report_em",
+      "timestamp": "2026-08-07T14:30:45.834860+08:00",
+      "records": [
+        {
+          "subject": "000001.SZ",
+          "fields": {
+            "序号": "1",
+            "股票代码": "000001",
+            "股票简称": "平安银行",
+            "报告名称": "2025年报及2026一季报点评：收入利润增速均回正",
+            "东财评级": "中性",
+            "机构": "国信证券",
+            "近一月个股研报数": "0",
+            "2026-盈利预测-收益": "2.08",
+            "2026-盈利预测-市盈率": "5.3",
+            "2027-盈利预测-收益": "2.09",
+            "2027-盈利预测-市盈率": "5.3",
+            "2028-盈利预测-收益": "2.11",
+            "2028-盈利预测-市盈率": "5.2",
+            "行业": "银行Ⅱ",
+            "报告PDF链接": "https://pdf.dfcfw.com/pdf/H3_AP202604261821586763_1.pdf"
+          },
+          "source": "akshare.stock_research_report_em",
+          "timestamp": "2026-08-07T14:30:45.834860+08:00",
+          "as_of": "2026-04-26T00:00:00+08:00"
+        }
+      ]
+    },
+    {
+      "dataset": "tushare.daily",
+      "source": "tushare.pro.daily",
+      "timestamp": "2026-08-07T14:39:09.674247+08:00",
+      "records": [
+        {
+          "subject": "000001.SZ",
+          "fields": {
+            "open": "11.54",
+            "high": "11.66",
+            "low": "11.52",
+            "close": "11.62",
+            "pre_close": "11.63",
+            "change": "-0.01",
+            "pct_chg": "-0.086",
+            "vol": "1060850.94",
+            "amount": "1229339.79191"
+          },
+          "source": "tushare.pro.daily",
+          "timestamp": "2026-08-07T14:39:09.674247+08:00",
+          "as_of": "2026-08-03T15:00:00+08:00"
+        },
+        {
+          "subject": "000001.SZ",
+          "fields": {
+            "open": "11.58",
+            "high": "11.62",
+            "low": "11.42",
+            "close": "11.44",
+            "pre_close": "11.62",
+            "change": "-0.18",
+            "pct_chg": "-1.5491",
+            "vol": "1221129.84",
+            "amount": "1401213.60003"
+          },
+          "source": "tushare.pro.daily",
+          "timestamp": "2026-08-07T14:39:09.674247+08:00",
+          "as_of": "2026-08-04T15:00:00+08:00"
+        },
+        {
+          "subject": "000001.SZ",
+          "fields": {
+            "open": "11.41",
+            "high": "11.5",
+            "low": "11.18",
+            "close": "11.25",
+            "pre_close": "11.44",
+            "change": "-0.19",
+            "pct_chg": "-1.6608",
+            "vol": "1511509.93",
+            "amount": "1703942.51743"
+          },
+          "source": "tushare.pro.daily",
+          "timestamp": "2026-08-07T14:39:09.674247+08:00",
+          "as_of": "2026-08-05T15:00:00+08:00"
+        },
+        {
+          "subject": "000001.SZ",
+          "fields": {
+            "open": "11.22",
+            "high": "11.28",
+            "low": "11.12",
+            "close": "11.27",
+            "pre_close": "11.25",
+            "change": "0.02",
+            "pct_chg": "0.1778",
+            "vol": "1046342.57",
+            "amount": "1171011.83024"
+          },
+          "source": "tushare.pro.daily",
+          "timestamp": "2026-08-07T14:39:09.674247+08:00",
+          "as_of": "2026-08-06T15:00:00+08:00"
+        }
+      ]
+    }
+  ]
+}

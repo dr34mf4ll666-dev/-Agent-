@@ -46,11 +46,91 @@
       ]
     },
     {
+      "id": "tencent-a-share-daily-bars",
+      "status": "active",
+      "transport": "in_process_tool_over_akshare_https",
+      "interface": "DailyMarketDataTool.name + DailyMarketDataTool.run(arguments)",
+      "implementation": "src/agent_platform/finance/market_data.py",
+      "import_path": "agent_platform.finance.market_data:DailyMarketDataTool",
+      "source_policy": ["source", "timestamp", "as_of"],
+      "provider": "akshare.stock_zh_a_hist_tx",
+      "live_validation": {
+        "date": "2026-08-07",
+        "provider_version": "akshare 1.18.64",
+        "symbol": "sz000001",
+        "start_date": "20240102",
+        "end_date": "20240105",
+        "bar_count": 4,
+        "observed_columns": ["date", "open", "close", "high", "low", "amount"]
+      },
+      "evidence": [
+        "tests/test_market_data_adapter.py",
+        "tests/test_demo_market_data.py",
+        "tests/fixtures/tencent_daily_bars_000001.json",
+        "Scripts/demo_market_data.py",
+        "docs/tencent-daily-market-data.md",
+        "progress.txt"
+      ]
+    },
+    {
+      "id": "financial-data-hub",
+      "status": "active",
+      "transport": "in_process_tool_with_killable_provider_workers",
+      "interface": "FinancialDataTool.name + FinancialDataTool.run(arguments)",
+      "implementation": "src/agent_platform/finance/data_hub.py",
+      "import_path": "agent_platform.finance.data_hub:FinancialDataTool",
+      "source_policy": ["source", "timestamp", "as_of"],
+      "reliability": ["json_cache", "provider_rate_limit", "finite_retry", "hard_total_timeout", "normalized_errors", "offline_fixture"],
+      "datasets": 19,
+      "evidence": [
+        "src/agent_platform/finance/_provider_worker.py",
+        "tests/test_financial_data_hub.py",
+        "tests/test_demo_financial_data_hub.py",
+        "tests/fixtures/financial_data_hub.json",
+        "Scripts/demo_financial_data_hub.py",
+        "docs/financial-data-hub.md",
+        "progress.txt"
+      ]
+    },
+    {
+      "id": "financial-data-mcp-server",
+      "status": "active",
+      "transport": "model_context_protocol_stdio",
+      "interface": "list_financial_datasets + get_financial_data",
+      "implementation": "src/agent_platform/finance/mcp_server.py",
+      "import_path": "agent_platform.finance.mcp_server:create_financial_mcp_server",
+      "sdk": "official mcp Python SDK 1.x",
+      "safety": "read-only tools; no live trading tool is registered",
+      "evidence": [
+        "tests/test_financial_data_hub.py",
+        "Scripts/run_financial_mcp.py",
+        "docs/financial-data-hub.md"
+      ]
+    },
+    {
       "id": "financial-market-data-mcp",
-      "status": "pending",
-      "transport": "to_be_verified_in_B1",
-      "interface": "not frozen until the smallest real provider response is inspected",
-      "reason": "B1 must verify real fields, time semantics, permissions and errors before implementation"
+      "status": "active",
+      "transport": "model_context_protocol_stdio_with_akshare_and_tushare",
+      "interface": "list_financial_datasets + get_financial_data through FinancialDataHub",
+      "implementation": "src/agent_platform/finance/mcp_server.py",
+      "import_path": "agent_platform.finance.mcp_server:create_financial_mcp_server",
+      "live_validation": {
+        "date": "2026-08-07",
+        "tushare_dataset": "tushare.daily",
+        "symbol": "000001.SZ",
+        "start_date": "20260801",
+        "end_date": "20260807",
+        "record_count": 4
+      },
+      "evidence": [
+        "src/agent_platform/finance/data_hub.py",
+        "src/agent_platform/finance/_provider_worker.py",
+        "tests/fixtures/financial_data_hub.json",
+        "tests/test_financial_data_hub.py",
+        "Scripts/demo_financial_data_hub.py",
+        "docs/financial-data-hub.md",
+        "progress.txt"
+      ]
     }
   ]
 }

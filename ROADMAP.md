@@ -50,7 +50,7 @@
 | 1.2 Loop Engineering | 已完成 | 有限步与认知闭环、受控工具、三层记忆、Heartbeat/Cron、Hook、递归目标、独立工作目录、上下文注入和安全停止 | 无；真实模型属于 A4，非金融 Demo 属于 A5 |
 | 1.3 Graph Engineering | 已完成 | YAML/JSON 工作流、边 Schema、并行波次、条件分支、重试、软超时、熔断、Checkpoint、Mermaid 和 LangGraph 映射 | 后续业务只需注册节点并提供工作流配置 |
 | 1.4 Harness SDK | 已完成 | 统一 Harness、五类 Guardrail、配置注册表、自定义插件、分阶段 trace、测试和离线演示 | 后续 Agent 只需按各自 Schema、来源和交叉验证规则配置 |
-| 2.1 数据基础设施 | 进行中 | 数据契约和人工模拟行情 | AKShare/Tushare MCP、任务书要求的真实数据类别、异常降级和来源时间验证 |
+| 2.1 数据基础设施 | 已完成 | 19 类统一 Data Hub、AKShare/Tushare 真实验证、只读 MCP、缓存/限流/重试/硬超时/统一错误和全真实样本离线回放 | 无；后续由 B2 Agent 消费统一数据接口 |
 | 2.2 四类分析 Agent | 进行中 | SMA5、SMA20 和收益率技术分析原型 | 完整技术指标、基本面、行业、大盘宏观 Agent，以及各自 Loop、Harness、测试和报告 |
 | 3.1–3.3 决策流程 | 未开始 | 无 | 辩论、综合、Trader、Risk Manager、20 只股票完整 Graph |
 | 4.1–4.3 工程化交付 | 未开始 | 无 | 回测、可观测性、评估、熔断、对比实验、模拟运行和最终文档 |
@@ -126,7 +126,7 @@
 - Mock/真实模型共用统一接口，模型调用可追踪。
 - Echo Agent 和非金融 Demo 均通过自动化测试和可运行演示。
 
-2026-08-06 严格复核后补齐了 `dev-map.md`、Skill/MCP/SubAgent 可机读 catalog 和 Echo 独立演示。active catalog 条目的实现符号与 evidence 路径由项目测试自动核对；金融市场数据 MCP 明确保留为 B1 pending，不用其他 adapter 冒充完成。至此本交付包满足上述验收条件。
+2026-08-06 严格复核后补齐了 `dev-map.md`、Skill/MCP/SubAgent 可机读 catalog 和 Echo 独立演示。active catalog 条目的实现符号与 evidence 路径由项目测试自动核对；当时尚未实现的金融市场数据 MCP 继续归入 B1，不用其他 adapter 冒充完成。至此本交付包满足上述验收条件。
 
 ## 7. 交付包二：金融数据和四类分析 Agent
 
@@ -265,7 +265,7 @@
 
 ## 12. 当前唯一主线
 
-当前进入 B1：先对一个真实金融数据接口做最小字段、时间、权限和错误验证，再逐类接入行情、财务、宏观行业和舆情数据，并保留离线 fixture。A1–A5 通用平台能力已完成，后续实现顺序可以根据依赖和实际开发情况调整，但最终验收清单中的任何一项都不能被省略。
+当前 B1 已完成：统一金融 Data Hub 覆盖行情、财务、宏观行业和舆情共 19 个 dataset，AKShare 与 Tushare 均有真实成功证据；缓存、限流、有限重试、硬总超时、统一错误、全真实样本离线回放和只读 MCP Server 均已通过测试。下一条主线是 B2 四类专业分析 Agent，先让技术分析 Agent 消费统一 Data Hub，再补基本面、行业和大盘宏观 Agent。A1–A5 通用平台能力已完成，后续实现顺序可以根据依赖和实际开发情况调整，但最终验收清单中的任何一项都不能被省略。
 
 每次开始新功能前必须回答：
 

@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "1.2.0",
-  "updated_at": "2026-08-06",
-  "current_focus": "B1 金融数据 MCP 最小真实验证",
+  "version": "1.5.0",
+  "updated_at": "2026-08-07",
+  "current_focus": "B1 已完成，等待进入 B2 四类专业分析 Agent",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "in_progress",
   "items": [
@@ -151,25 +151,46 @@
     {
       "id": "T2.1",
       "title": "金融数据基础设施",
-      "status": "in_progress",
+      "status": "done",
       "completed_slices": [
         "MarketBar 和 MarketDataSeries 数据契约",
-        "带 source、timestamp、as_of 的人工模拟行情"
+        "带 source、timestamp、as_of 的人工模拟行情",
+        "AKShare 腾讯 A 股不复权日线最小真实调用验证",
+        "统一 DailyMarketDataTool、腾讯 adapter 和 JSON 离线回放",
+        "真实字段漂移检查、成交量单位交叉验证、有限重试和稳定错误",
+        "统一 FinancialDataHub 和 FinancialDataTool，覆盖 19 个金融 dataset",
+        "日线、周线、分钟线、实时报价和同花顺资金流真实整链验证",
+        "三大财务报表、ROE、资产负债率、PE、PB 和确定性 PS 真实整链验证",
+        "指数、行业、GDP、Shibor、新闻和巨潮公告真实整链验证",
+        "JSON TTL 缓存、provider 限流、有限重试、可终止子进程硬总超时和统一错误",
+        "官方 MCP Python SDK stdio Server、两个只读工具和 call_tool 自动化验证",
+        "Tushare 日线 adapter、无 token 的 auth_required 和有效 token 但无权限的 permission_denied 真实验证",
+        "AKShare LPR 和个股研报真实整链验证，并替换原 Tushare synthetic 样本",
+        "Tushare 日线取得权限后的 4 条真实记录验证，字段、来源和时间映射通过",
+        "全部 19 个 dataset 均使用真实最小样本离线回放，不再包含 synthetic Tushare fixture"
       ],
-      "remaining": [
-        "AKShare/Tushare MCP 工具和最小真实调用验证",
-        "日线、周线、分钟线、实时报价和资金流向",
-        "三大财务报表以及 PE、PB、PS、ROE、资产负债率",
-        "指数、板块、政策、利率和行业数据",
-        "财经新闻、公告和研报摘要",
-        "字段映射、缓存、限流、重试、超时和统一异常",
-        "真实数据来源时间验证和离线回放"
-      ],
+      "remaining": [],
       "evidence": [
         "src/agent_platform/finance/contracts.py",
+        "src/agent_platform/finance/market_data.py",
+        "src/agent_platform/finance/data_hub.py",
+        "src/agent_platform/finance/_provider_worker.py",
+        "src/agent_platform/finance/mcp_server.py",
         "tests/test_finance_contracts.py",
+        "tests/test_market_data_adapter.py",
+        "tests/test_demo_market_data.py",
+        "tests/test_financial_data_hub.py",
+        "tests/test_demo_financial_data_hub.py",
         "tests/fixtures/synthetic_market_bars.json",
-        "docs/finance-data-contract.md"
+        "tests/fixtures/tencent_daily_bars_000001.json",
+        "tests/fixtures/financial_data_hub.json",
+        "Scripts/demo_market_data.py",
+        "Scripts/demo_financial_data_hub.py",
+        "Scripts/run_financial_mcp.py",
+        "docs/finance-data-contract.md",
+        "docs/tencent-daily-market-data.md",
+        "docs/financial-data-hub.md",
+        "MCP/catalog.json"
       ]
     },
     {

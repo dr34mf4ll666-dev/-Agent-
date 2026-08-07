@@ -7,6 +7,8 @@
 当前专项文档：
 
 - `finance-data-contract.md`：金融行情字段、时间和来源语义。
+- `tencent-daily-market-data.md`：B1 腾讯真实日线 Tool、字段差异、成交量转换、错误与运行方式。
+- `financial-data-hub.md`：B1 全类别 Data Hub、缓存限流、硬超时、MCP Server 和 Tushare 最终验收结果。
 - `harness-guardrails.md`：五类 Guardrail、配置注册、错误语义和 trace。
 - `cognitive-loop.md`、`working-memory.md`、`loop-engineering.md`：认知闭环、三层记忆、调度和上下文注入。
 - `graph-engineering.md`、`langgraph-mapping.md`：Graph 配置、可靠性和框架映射。

@@ -9,25 +9,27 @@
 - 输出结构化、数据可追溯、行为可约束、过程可审计；
 - 在不接入真实下单的前提下完成分析、风控、模拟执行和回测。
 
-## 2. 当前小功能：交付包一验收证据修复
+## 2. 已完成功能：B1 完整金融 Data Hub 与 MCP
 
-A5 技术能力已经完成，但严格复核发现交付包一仍缺少 dev-map、Skill/MCP/SubAgent 可核查管理证据和 Echo 独立演示。当前小功能只修复这些验收缺口，不提前实现 B1 金融数据 MCP。最终成果、正式任务状态和验收条件以 `ROADMAP.md` 与 `checklist.json` 为准。
+本轮已按 `ROADMAP.md` 的完整 B1 口径，把行情、财务、宏观行业和舆情数据收敛到一个统一 Data Hub，并通过官方 MCP Python SDK 暴露只读工具。AKShare、腾讯和 Tushare 均已留下真实成功证据；认证失败、权限失败和离线回放契约也有自动化测试。
 
-### 必须完成
+### 验收内容（全部完成）
 
-1. 新增根目录 `dev-map.md`，覆盖 SPEC、Rule、Skill、Workflow、Scripts、MCP、SubAgent、dev-map 和任务看板九类组件，并指向真实实现与验证入口。
-2. 为 Skill、MCP 和 SubAgents 分别提供版本化可机读 catalog；active 条目必须声明稳定 interface、implementation 和 evidence。
-3. 自动化测试必须验证 active catalog 条目的实现符号可以导入，implementation 与 evidence 文件真实存在；pending 条目不得冒充完成。
-4. 新增可直接运行的 Echo Agent 演示，通过 `AgentHarness` 输出完整生命周期 trace，并提供 subprocess 自动化测试。
-5. 更新 README、目录角色说明、checklist 和 progress，使“交付包一完成”的声明与真实证据一致。
-6. 运行完整回归、编译、JSON 解析、离线演示和 Git diff 检查。
+1. `FinancialDataHub.fetch(dataset, params, mode)` 覆盖日线、周线、分钟线、实时报价、资金流、三大报表、财务指标、PE/PB/PS、指数、行业、GDP、Shibor、LPR、新闻、公告和研报。
+2. 每条记录统一包含 `subject`、`fields`、`source`、`timestamp` 和 `as_of`；金融数值以十进制字符串跨 JSON 传递，确定性计算使用 `Decimal`。
+3. 真实 provider 在可终止子进程运行，实现整个调用的硬总超时，并统一提供缓存、provider 限流、有限重试、错误码和 trace。
+4. 默认离线 fixture 覆盖全部 dataset；19 个 dataset 均使用经过最小真实验证的样本，不再包含 synthetic Tushare 数据。
+5. 使用官方 MCP Python SDK 注册 `list_financial_datasets` 和 `get_financial_data`，默认 stdio、默认离线且只读。
+6. 对 AKShare/腾讯可用数据集逐类执行最小真实整链验证；东方财富被限制时记录失败并切换其他来源，不高频重复请求。
+7. Tushare 只从 `TUSHARE_TOKEN` 环境变量读取凭证；没有 token 时返回 `auth_required`，token 有效但账号权限不足时返回 `permission_denied`。权限生效后日线真实调用成功返回 4 条记录，离线 fixture 已替换为真实样本。
+8. 更新 README、MCP catalog、dev-map、checklist 和 progress，运行定向测试、完整回归、编译、JSON 解析、离线演示和 Git diff 检查。
 
 ### 明确不做
 
-- 不实现或冒充 B1 的真实金融数据 MCP；未经真实返回验证的金融 adapter 保持 pending。
+- 不支持前复权或后复权；现有 `MarketBar` 要求价格为正，而 AKShare 官方说明复权历史价可能为负，二者需要后续单独设计。
 - 不修改 Harness、Loop、Graph、Memory 或 Model Gateway 的核心 interface。
-- 不增加网络调用，不消耗真实模型或数据接口额度。
-- 不把只有目录或一句未来规划的占位内容当成管理证据。
+- 不在 B1 实现技术面、基本面、行业或大盘分析 Agent；这些属于 B2。
+- 验收过程中没有把 Tushare 的认证失败、权限失败或 synthetic fixture 当作真实成功；只有日线真实调用成功后才把 B1 标记为 `done`。
 
 ## 3. 架构原则
 
@@ -196,4 +198,4 @@ python -m unittest discover -s tests -v
 
 ## 12. 下一步
 
-下一项任务是 B1 金融数据 MCP 的最小真实验证：先核对一个真实接口的字段、时间、权限和错误，再决定统一数据工具契约与离线回放方式。本文件将在开始该小功能时收窄为对应的实现边界。
+B1 已完成。Tushare 日线成功返回 4 条真实记录，最后一个 synthetic fixture 已替换；19 个 dataset 均有真实最小样本和离线回放。下一步进入 B2 四类专业 Agent，先让现有技术分析原型改为消费统一 Data Hub，并按 ROADMAP 补齐完整指标、Loop、Harness、测试和样例报告。

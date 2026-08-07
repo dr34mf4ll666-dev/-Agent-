@@ -22,13 +22,15 @@
 | --- | --- | --- | --- |
 | Harness | `AgentHarness.run(request)` | Echo、Research Reporter、Technical Agent | `demo_echo.py`、`demo_guardrails.py` |
 | Cognitive Loop | `CognitiveLoopRunner.run(request)` | Research Planner、ScheduledContextAgent | `demo_cognitive_loop.py`、`demo_loop_engineering.py` |
-| Tool | `name` 与 `run(arguments)` | LocalDocumentSearchTool | `demo_non_financial_research.py` |
+| Tool | `name` 与 `run(arguments)` | LocalDocumentSearchTool、DailyMarketDataTool、FinancialDataTool | `demo_non_financial_research.py`、`demo_market_data.py`、`demo_financial_data_hub.py` |
 | Graph | YAML/JSON + NodeRegistry + `GraphRunner.run()` | A2 并行工作流、A5 研究工作流 | `demo_graph_engineering.py`、A5 演示 |
 | Memory | 工作记忆与长期记忆的统一 store interface | 内存和 JSON adapter | `demo_working_memory.py`、A3 演示 |
 | Model Gateway | `ModelGateway.generate(request)` | Mock、OpenAI、DeepSeek adapter | `demo_model_gateway.py` |
+| Finance Data | `FinancialDataHub.fetch(dataset, params, mode)` | 子进程真实 provider、JSON fixture、缓存与限流 adapter | `demo_financial_data_hub.py`、`test_financial_data_hub.py` |
+| Financial MCP | `list_financial_datasets`、`get_financial_data` | 官方 MCP Python SDK 1.x stdio server | `run_financial_mcp.py`、MCP call_tool 测试 |
 
 ## 当前主线
 
-交付包一的技术能力和管理证据完成后，主线进入 B1。B1 先验证一个真实金融数据接口，再冻结金融 MCP 的字段映射和错误契约；不要在未看到真实响应前凭文档猜测字段。
+交付包一的技术能力和管理证据完成后，B1 又完成了统一 Data Hub、AKShare/Tushare 多类真实数据、可靠性层、全真实样本离线回放和 MCP Server。当前主线进入 B2 四类专业分析 Agent。
 
 真实交易继续关闭。任何新外部数据都必须保留 `source`、`timestamp` 和 `as_of`，任何密钥都只能来自本地环境变量。

@@ -9,6 +9,9 @@
 - 本地资料检索 Tool adapter：active，返回 `source`、`timestamp` 和 `as_of`。
 - DeepSeek Model adapter：active，已完成离线错误测试和一次真实调用验证。
 - OpenAI Responses adapter：active，已完成离线传输映射测试，未记录真实调用验收。
-- 金融市场数据 MCP：pending，留给 B1 做最小真实字段、时间、权限和错误验证。
+- 腾讯 A 股日线 Tool adapter：active，已用 4 根真实历史日线验证字段、单位、时间、错误和离线回放。
+- 金融 Data Hub：active，19 个 dataset 共用缓存、限流、重试、硬超时、统一错误和离线回放。
+- 金融 MCP Server：active，使用官方 MCP Python SDK 注册两个只读 stdio 工具，并通过 `call_tool` 测试。
+- 完整金融市场数据 MCP 验收：active，AKShare 与 Tushare 均有真实成功调用，19 个 dataset 全部具备真实最小样本和离线回放。
 
-这里的 catalog 是 adapter 管理证据，不表示所有 active 条目都是 Model Context Protocol 服务器。真正的金融数据 MCP 仍属于 B1，不能用 Model adapter 或本地 Tool 冒充完成。
+这里的 catalog 同时管理普通 adapter 和真正的 MCP Server；通过 `transport` 字段区分。金融 MCP Server 只提供查询能力，不包含下单或真实交易工具。

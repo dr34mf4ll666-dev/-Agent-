@@ -6,7 +6,7 @@
 
 项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究 Demo 等可运行能力，通用平台交付包已经完成。整个任务书仍未完成：2.1 和 2.2 只有局部成果，综合决策、回测和工程化交付仍待实现。
 
-任务 1.2 Loop Engineering 已完成认知闭环、受控工具、三层记忆、三类触发循环、任务隔离和上下文注入。任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、可靠性、Checkpoint 和可视化。A4 Model Gateway 已通过 DeepSeek 真实调用验证。A5 又在不修改核心框架语义的前提下接入非金融资料研究，复用了 Harness、Loop、Graph、Checkpoint、工作记忆、工具允许列表和 Model Gateway。金融模块仍使用离线模拟数据，真实交易始终关闭。
+任务 1.2 Loop Engineering 已完成认知闭环、受控工具、三层记忆、三类触发循环、任务隔离和上下文注入。任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、可靠性、Checkpoint 和可视化。A4 Model Gateway 已通过 DeepSeek 真实调用验证。A5 又在不修改核心框架语义的前提下接入非金融资料研究。B1 已形成统一金融 Data Hub 与只读 MCP Server；行情、财务、宏观行业、新闻、公告、LPR、研报和 Tushare 第二日线来源均已真实验证，19 个 dataset 都有真实最小样本和离线回放。真实交易始终关闭。
 
 完整任务映射、最终成果和验收条件见 [`ROADMAP.md`](ROADMAP.md)。
 
@@ -69,6 +69,22 @@ python Scripts\demo_technical_analysis.py
 ```
 
 该演示会读取 30 根人工构造的日线，通过 Harness 运行 `TechnicalAnalysisAgent`，并输出单日收益率、SMA5、SMA20、趋势标签、触发规则、数据来源和 trace。
+
+### 运行腾讯日线数据 Tool
+
+```powershell
+python Scripts\demo_market_data.py
+```
+
+默认回放已经验证过的 4 根腾讯真实历史日线，不访问网络。显式加 `--live` 才会调用 `akshare.stock_zh_a_hist_tx`；实时模式需要先安装 `.[finance]` 可选依赖。字段差异、成交量转换和当前限制见 `docs/tencent-daily-market-data.md`。
+
+### 运行完整金融 Data Hub
+
+```powershell
+python Scripts\demo_financial_data_hub.py
+```
+
+默认离线遍历 19 个金融 dataset。显式指定 `--live --dataset ...` 才会访问真实来源；相同真实请求会优先命中本地缓存。MCP stdio 入口为 `python Scripts\run_financial_mcp.py`，完整数据集、可靠性和 Tushare token 边界见 `docs/financial-data-hub.md`。
 
 ### 运行 Guardrail 演示
 
@@ -225,6 +241,6 @@ Graph 节点仍是受注册表控制的 Python 函数；后续专业 Agent 可�
 
 ## 下一步
 
-通用平台交付包 A1–A5 已完成。下一条主线回到 B1 金融数据 MCP：先对一个真实数据接口做最小字段、时间、权限和错误验证，再扩展数据类别与离线回放。
+通用平台交付包 A1–A5 和 B1 金融数据基础设施均已完成。下一步进入 B2，让四类专业分析 Agent 统一消费 Data Hub，并补齐各自的 Loop、Harness、测试和样例报告。
 
 最终交付路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。
