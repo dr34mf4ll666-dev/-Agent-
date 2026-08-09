@@ -32,9 +32,12 @@
 | Fundamental Specialist | `FundamentalAnalysisRuntime.run(query)`、`run_graph_node(state)` | B1 六类财务 dataset、确定性估值/DCF 引擎、认知 Loop、三层 Harness | `demo_fundamental_analysis.py`、`test_fundamental_analysis_runtime.py` |
 | Industry Specialist | `IndustryAnalysisRuntime.run(query)`、`run_graph_node(state)` | B1 行业/LPR dataset、确定性行业画像与评分引擎、认知 Loop、三层 Harness | `demo_industry_analysis.py`、`test_industry_analysis_runtime.py` |
 | Macro Specialist | `MacroAnalysisRuntime.run(query)`、`run_graph_node(state)` | B1 指数/资金/宏观/研报 dataset、确定性 Regime 与风险偏好引擎、认知 Loop、三层 Harness | `demo_macro_analysis.py`、`test_macro_analysis_runtime.py` |
+| Combined Analysis | `CombinedAnalysisRuntime.run(query)`、`run_graph_node(state)` | Planner、四 Specialist 并行 Graph 波次、报告/证据/来源/Loop 汇总和联合层 Schema 校验 | `demo_combined_analysis.py`、`test_combined_analysis.py`、`docs/combined-analysis.md` |
+| Structured Debate | `StructuredDebateRuntime.run(query)`、`run_graph_node(state)` | 2–3 轮 Claim → Evidence → Reasoning、证据路径/来源/as_of 校验和双方证据平衡检查 | `demo_combined_analysis.py`、`test_structured_debate.py`、`docs/combined-analysis.md` |
+| C1 Decision | `C1DecisionRuntime.run(query)`、`run_graph_node(state)` | 四路加权 Synthesis、Bull/Bear 研究边界、目标区间、置信度、Consistency/Bias 和 Market Regime 门控 | `demo_combined_analysis.py`、`test_c1_decision.py`、`docs/combined-analysis.md` |
 
 ## 当前主线
 
-交付包一的技术能力和管理证据完成后，B1 又完成了统一 Data Hub、AKShare/Tushare 多类真实数据、可靠性层、全真实样本离线回放和 MCP Server。B2 四个 Specialist 已完成，当前主线进入交付包三；T2.2 的四类 Agent 验收条件已满足。
+交付包一的技术能力和管理证据完成后，B1 又完成了统一 Data Hub、AKShare/Tushare 多类真实数据、可靠性层、全真实样本离线回放和 MCP Server。B2 四个 Specialist 与 C1 综合研判均已完成；当前主线进入 C2 Trader 与 Risk Manager，先实现模拟交易信号和确定性风控，不开放真实交易。
 
 真实交易继续关闭。任何新外部数据都必须保留 `source`、`timestamp` 和 `as_of`，任何密钥都只能来自本地环境变量。

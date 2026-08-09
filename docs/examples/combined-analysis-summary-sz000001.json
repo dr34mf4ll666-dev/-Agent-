@@ -1,0 +1,25 @@
+{
+  "status": "specialists_completed",
+  "symbol": "sz000001",
+  "mode": "offline",
+  "summary": {
+    "technical": {"signal_label": "neutral", "signal_score": 10},
+    "fundamental": {"score_label": "strong_positive", "score": 60},
+    "industry": {"score_label": "positive", "score": 40, "prosperity": "hot"},
+    "macro": {"score_label": "neutral", "score": -15, "market_regime": "mixed", "risk_appetite": "low"}
+  },
+  "graph": {
+    "statuses": {
+      "planner": "completed",
+      "technical": "completed",
+      "fundamental": "completed",
+      "industry": "completed",
+      "macro": "completed",
+      "aggregate": "completed"
+    },
+    "execution_order": ["planner", "technical", "fundamental", "industry", "macro", "aggregate"],
+    "parallel_wave": ["technical", "fundamental", "industry", "macro"]
+  },
+  "next_stage": "bull_bear_debate_and_synthesis",
+  "caveat": "This is a four-specialist aggregate, not a final investment conclusion."
+}

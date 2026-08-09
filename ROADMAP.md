@@ -42,7 +42,7 @@
 
 ## 4. 当前真实基线
 
-截至 2026-08-06，任务 1.1、1.2、1.3、1.4，以及 A4 真实模型运行层和 A5 非金融通用性证明均已完成。通用平台交付包已经验收；2.1 和 2.2 仍只有局部原型，尚未达到任务书的完整验收要求。
+截至 2026-08-09，任务 1.1、1.2、1.3、1.4，以及 A4 真实模型运行层和 A5 非金融通用性证明均已完成。通用平台交付包已经验收；2.1 金融数据、2.2 四类 Specialist 和 3.1 综合研判与辩论均已完成。项目仍需继续完成 C2/C3、回测和工程化交付，尚未达到任务书的最终验收要求。
 
 | 正式任务 | 当前状态 | 已有成果 | 主要缺口 |
 | --- | --- | --- | --- |
@@ -52,7 +52,8 @@
 | 1.4 Harness SDK | 已完成 | 统一 Harness、五类 Guardrail、配置注册表、自定义插件、分阶段 trace、测试和离线演示 | 后续 Agent 只需按各自 Schema、来源和交叉验证规则配置 |
 | 2.1 数据基础设施 | 已完成 | 19 类统一 Data Hub、AKShare/Tushare 真实验证、只读 MCP、缓存/限流/重试/硬超时/统一错误和全真实样本离线回放 | 无；后续由 B2 Agent 消费统一数据接口 |
 | 2.2 四类分析 Agent | 已完成 | 技术、基本面、行业、大盘/宏观四类 Agent 均已完成：确定性分析、评分、独立 Loop、Harness、测试、真实样本报告和 Graph 节点 | 无；后续交由交付包三编排综合研判和交易风控 |
-| 3.1–3.3 决策流程 | 未开始 | 无 | 辩论、综合、Trader、Risk Manager、20 只股票完整 Graph |
+| 3.1 综合研判与辩论 | 已完成 | 四 Agent 并行编排、2–3 轮证据辩论、Synthesis、Bull/Bear 目标边界、置信度、Consistency/Bias 和 Market Regime 门控 | 无；后续由 C2 消费研究结论并执行交易风控 |
+| 3.2–3.3 交易与完整 Graph | 未开始 | 无 | Trader、Risk Manager、20 只股票完整 Graph |
 | 4.1–4.3 工程化交付 | 未开始 | 无 | 回测、可观测性、评估、熔断、对比实验、模拟运行和最终文档 |
 
 ## 5. 实现原则
@@ -164,12 +165,25 @@
 
 ### C1. 综合研判与辩论（任务 3.1）
 
+正式任务已完成。`CombinedAnalysisRuntime` 通过 Planner 在同一 Graph 并行运行四个 Specialist 并汇总报告、证据、来源和 Loop 轨迹；`StructuredDebateRuntime` 完成 2–3 轮 Claim → Evidence → Reasoning 辩论；`C1DecisionRuntime` 再统一完成 Synthesis、目标价研究区间、证据一致性置信度、Consistency Check、Bias Detector 和 Market Regime Gate。
+
 - Planner 组织四类分析 Agent，能并行的分析并行执行。
 - Bull Agent 给出看涨理由和目标价上限，Bear Agent 给出风险和目标价下限。
 - 完成 2–3 轮结构化辩论，格式固定为 Claim → Evidence → Reasoning。
 - Synthesis Agent 输出综合倾向、目标价区间和 0–100% 置信度。
 - Market Regime 作为门控条件，熊市环境自动降低仓位上限。
 - Harness 检查前后数据矛盾、无证据结论和只引用单边证据的偏差。
+
+#### C1 后续增强：受约束的动态大模型辩论（项目增强，非任务书硬指标）
+
+当前确定性辩论已经满足 C1 正式验收：句式和证据选择规则固定，报告中的评分、趋势、估值、行业表现和市场环境随输入数据变化。未来可以在不削弱当前可靠性的前提下增加动态大模型辩论：
+
+- 通过现有 Model Gateway 分别生成 Bull/Bear 的候选 Claim 和 Reasoning，使论证角度与语言能够随证券、数据和市场环境变化。
+- 强制模型输出 Claim → Evidence → Reasoning Schema；Evidence 只能引用四份 Specialist 报告中真实存在的路径，不能自行生成金融数值、来源或时间。
+- 生成后由确定性代码重新检查 evidence path、value、source、timestamp、as_of、轮次回应和双方证据覆盖；校验失败时有限重试，超过上限则安全降级到当前固定模板。
+- Synthesis、目标价区间、置信度、仓位门控和风控硬规则继续由确定性代码负责，LLM 只负责候选观点和自然语言解释。
+- 为动态模式增加 Mock 离线测试、真实模型受控验证和固定评测集，对比证据有效率、观点多样性、正反平衡、重试率、耗时、token 成本和结果稳定性。
+- 固定模板继续作为默认离线模式和故障降级路径；动态辩论是增强能力，不阻塞 C2、C3 和任务书硬指标的推进。
 
 ### C2. Trader 与 Risk Manager（任务 3.2）
 
@@ -265,7 +279,7 @@
 
 ## 12. 当前唯一主线
 
-当前 B1 已完成：统一金融 Data Hub 覆盖行情、财务、宏观行业和舆情共 19 个 dataset，AKShare 与 Tushare 均有真实成功证据；缓存、限流、有限重试、硬总超时、统一错误、全真实样本离线回放和只读 MCP Server 均已通过测试。B2 四个 Specialist 现在都统一消费 Data Hub：技术分析负责指标，基本面负责报表/估值，行业负责行业画像/景气度/竞争，大盘宏观负责指数/资金面代理/Market Regime；四者均具备确定性评分、独立 Loop、Harness、真实样本报告和 Graph 节点。T2.2 已达到四类 Agent 交付包验收条件。下一条主线是交付包三的综合研判、辩论、Trader、Risk Manager 和完整金融 Graph。A1–A5 通用平台能力已完成，最终验收清单中的任何一项都不能被省略。
+当前 A1–A5 通用平台能力、B1 金融 Data Hub、B2 四个 Specialist 和 C1 综合研判与辩论均已完成。C1 已能一次运行四路 Planner/Graph 并行分析、2–3 轮结构化辩论、Synthesis、Bull/Bear 研究边界、目标区间、证据置信度、Consistency/Bias 检查和 Market Regime 仓位门控。当前唯一主线进入 C2 Trader 与 Risk Manager；真实交易继续关闭，最终验收清单中的任何一项都不能被省略。
 
 每次开始新功能前必须回答：
 

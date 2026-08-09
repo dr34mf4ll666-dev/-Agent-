@@ -60,19 +60,29 @@ python Scripts\demo_fundamental_analysis.py
 
 ## 行业分析演示
 
-`powershell
+```powershell
 python Scripts/demo_industry_analysis.py
-`
+```
 
 该脚本默认回放真实验证的行业快照和 LPR，打印行业画像、景气度、竞争格局、产业链、代表股排序、评分和完整 trace。只有显式添加 `--live` 才访问真实接口；产业链是项目分类模板，代表股排序不是完整成分股排名。
 
 ## 大盘/宏观分析演示
 
-`powershell
+```powershell
 python Scripts/demo_macro_analysis.py
-`
+```
 
 该脚本默认回放真实验证的指数、个股资金流、GDP、SHIBOR、LPR 和研报评级，打印指数趋势、资金面代理、情绪、Market Regime、风险偏好、评分和完整 trace。只有显式添加 `--live` 才访问真实接口；资金面是关联股票代理，不代表全市场资金总量。
+
+## C1 四 Agent 并行联合分析演示
+
+```powershell
+python Scripts/demo_combined_analysis.py
+python Scripts/demo_combined_analysis.py --rounds 3
+python Scripts/demo_combined_analysis.py --base-position-cap 30
+```
+
+该脚本一次运行完整 C1：Planner 调度技术、基本面、行业和大盘/宏观四个 Agent，在 Graph 的同一并行波次中运行；随后完成 2 或 3 轮 Claim → Evidence → Reasoning 结构化辩论，并输出综合倾向、Bull/Bear 目标价研究边界、完整区间、证据一致性置信度、Consistency Check、Bias Detector 和 Market Regime 仓位门控。`--base-position-cap` 设置门控前仓位上限；无论输入多少，真实交易都保持关闭。
 
 ## 腾讯日线数据 Tool 演示
 

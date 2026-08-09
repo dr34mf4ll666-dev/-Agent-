@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "1.6.0",
-  "updated_at": "2026-08-07",
-  "current_focus": "B2 四类专业分析 Agent 已完成，下一步进入交付包三",
+  "version": "1.9.0",
+  "updated_at": "2026-08-09",
+  "current_focus": "C1 综合研判与辩论已完成，下一步进入 C2 Trader 与 Risk Manager",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "in_progress",
   "items": [
@@ -253,16 +253,43 @@
     {
       "id": "T3.1",
       "title": "综合研判与辩论",
-      "status": "pending",
-      "completed_slices": [],
-      "remaining": [
-        "Planner 组织四类分析并行执行",
-        "Bull/Bear 进行 2–3 轮 Claim-Evidence-Reasoning 辩论",
-        "Synthesis 输出综合倾向、目标价区间和 0–100% 置信度",
-        "Market Regime 门控",
-        "Consistency Check 和 Bias Detector"
+      "status": "done",
+      "completed_slices": [
+        "CombinedAnalysisQuery 统一四类 Specialist 查询并校验证券代码、运行模式和日期口径",
+        "CombinedAnalysisRuntime 通过 Planner 组织技术、基本面、行业和大盘/宏观四路 Graph 节点",
+        "四个 Specialist 在同一并行波次复用已有 Runtime、Loop 和 Harness",
+        "aggregate 汇总四份完整报告、证据、来源和 Loop 轨迹，并生成四路摘要",
+        "联合分析结果保留 Graph 状态、执行顺序、尝试次数和 trace",
+        "缺失 Specialist 结果时由联合层结构校验拒绝生成完整汇总",
+        "离线联合演示、样例报告、专项测试和文档已补齐",
+        "StructuredDebateRuntime 支持 2–3 轮 Claim-Evidence-Reasoning 结构化 Bull/Bear 辩论",
+        "每条 Claim 保留 Specialist、报告路径、实际值、source 和 as_of",
+        "双方至少引用两个 Specialist，联合层检查单边证据、轮次回应和来源聚合",
+        "结构化辩论支持 Graph 节点入口、确定性校验和失败路径测试",
+        "C1DecisionRuntime 通过一个统一接口串联四 Agent 联合分析、结构化辩论、Synthesis、质量检查和市场门控",
+        "按技术 25%、基本面 30%、行业 20%、大盘宏观 25% 确定性计算加权评分和综合倾向",
+        "Bull 输出目标价研究上限，Bear 输出目标价研究下限，并形成有序目标区间",
+        "输出 0–100 证据一致性置信度，并明确它不是上涨或盈利概率",
+        "Consistency Check 校验证券代码、来源、时间、价格口径和辩论证据回放",
+        "Bias Detector 检查正反双方至少引用两个 Specialist 且联合来源具备多样性",
+        "Market Regime Gate 在熊市、震荡市或低风险偏好时确定性降低仓位上限，真实交易固定关闭",
+        "完整 C1 支持 Graph 节点入口、统一离线演示、成功与失败路径测试和固定样例"
       ],
-      "evidence": []
+      "remaining": [],
+      "evidence": [
+        "src/agent_platform/finance/combined_analysis.py",
+        "tests/test_combined_analysis.py",
+        "Scripts/demo_combined_analysis.py",
+        "tests/test_demo_combined_analysis.py",
+        "src/agent_platform/finance/structured_debate.py",
+        "tests/test_structured_debate.py",
+        "src/agent_platform/finance/c1_decision.py",
+        "tests/test_c1_decision.py",
+        "docs/combined-analysis.md",
+        "docs/examples/combined-analysis-summary-sz000001.json",
+        "docs/examples/structured-debate-sz000001.json",
+        "docs/examples/c1-decision-sz000001.json"
+      ]
     },
     {
       "id": "T3.2",

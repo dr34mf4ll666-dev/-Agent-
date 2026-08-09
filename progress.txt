@@ -324,3 +324,41 @@
 
 下一步
 - 进入交付包三：用 Graph 编排四类 Agent，增加综合研判、结构化辩论、Trader、Risk Manager 和真实交易关闭边界的端到端验收。
+
+[2026-08-07] C1 四 Agent 并行联合分析第一切片完成
+- 新增 `CombinedAnalysisQuery` 和 `CombinedAnalysisRuntime`，把四个已有 Specialist 的查询与运行过程收拢到一个稳定入口。
+- Planner 先生成四路查询，Graph 再把技术、基本面、行业和大盘/宏观放入同一并行波次，最后由 aggregate 汇总。
+- 联合层复用四个 Specialist 原有的 Data Hub、确定性计算、认知 Loop 和 Harness，没有复制指标、估值或宏观规则。
+- 汇总结果保留四份完整报告、原始证据、来源、Loop 轨迹、Graph 状态和执行 trace，并生成可读的四路摘要。
+- 新增离线联合演示、固定样例、专项文档、4 项联合 Runtime 测试和 1 项演示测试；缺失 Specialist 结果的拒绝路径也有覆盖。
+- 首次运行发现技术 Agent 的证据是 K 线列表而不是对象，已将联合边 Schema 和完整性校验改为兼容合法证据集合；没有放宽 Specialist 自己的校验。
+- 本轮只完成四路并行编排和联合底稿，T3.1 仍为 `in_progress`。
+
+下一步
+- 在联合底稿之上实现 Claim → Evidence → Reasoning 格式的 Bull/Bear 结构化辩论，并保留每轮证据引用和失败 trace。
+
+[2026-08-08] C1 结构化 Bull/Bear 辩论第二切片完成
+- 新增 `StructuredDebateQuery` 和 `StructuredDebateRuntime`，在四 Agent 联合报告上生成 2–3 轮结构化辩论。
+- 每轮都输出 Claim、Evidence、Reasoning；第 2、3 轮通过 `counter_to` 回应上一轮对方观点。
+- 每条证据都保留 Specialist、报告路径、实际值、source 和 as_of；校验器会重新读取报告字段，拒绝篡改路径或值。
+- Bull 固定引用 fundamental/industry，Bear 固定引用 technical/macro，双方各至少覆盖两个 Specialist，避免把单边证据包装成共识。
+- 联合演示新增辩论输出和 `--rounds 3` 入口，新增结构化辩论样例和 4 项专项测试。
+- 实现过程中发现并修复技术报告 MACD 柱值字段应使用 `histogram` 的映射错误，并通过真实离线运行验证。
+- 本轮仍不实现 Synthesis、目标价区间、置信度、Market Regime 门控、Trader 或 Risk Manager；T3.1 继续保持 `in_progress`。
+
+下一步
+- 在辩论结果上实现 Synthesis：综合倾向、目标价区间和 0–100% 置信度，并为 Market Regime 门控预留确定性输入。
+
+[2026-08-09] C1 综合研判与辩论正式完成
+- 新增 `C1DecisionQuery` 和 `C1DecisionRuntime`，用一个稳定入口串联四 Agent 并行联合分析、2–3 轮结构化辩论、Synthesis、质量检查和 Market Regime 门控；同一 Runtime 也可直接作为 Graph 节点。
+- Synthesis 按技术 25%、基本面 30%、行业 20%、大盘/宏观 25% 的透明权重计算综合评分和倾向。离线样本加权评分为 24.75，门控前为 positive，经过震荡市和低风险偏好修正后为 cautious_positive。
+- 以技术最新收盘价和基本面实时价格均值作为参考价，由正向证据强度和风险压力确定性生成 Bear 下限、Bull 上限和完整研究区间。离线样本为 10.49 <= 11.22 <= 13.02；这些数值是研究边界，不是未来价格预测。
+- 新增 0–100 证据一致性置信度。离线样本为 69 分，含义是来源、结构、正反证据和方向的一致程度，不是 69% 的盈利概率。
+- 新增 Consistency Check，检查四份报告证券代码、source/timestamp/as_of、技术价与基本面实时价口径、方向分歧和辩论证据回放；发现硬矛盾时拒绝生成 C1 结果。
+- 新增 Bias Detector，要求 Bull 和 Bear 各引用至少两个 Specialist、不得只有单边证据，并要求联合来源具备多样性。
+- 新增 Market Regime Gate：熊市仓位上限不超过 10%，震荡市不超过 20%，低风险偏好不超过 15%。当前离线样本把基础上限 30% 降为 15%，`real_trading_allowed` 固定为 false。
+- 联合演示现在一次打印四路分析、结构化辩论、综合倾向、目标价研究区间、置信度、质量检查、仓位门控和完整 C1 trace；新增固定结果样例并同步 README、SPEC、ROADMAP、checklist、dev-map 和专项文档。
+- C1 专项 17 项测试通过；项目完整回归 187 项测试全部通过；源码编译、4 份关键 JSON 解析、离线演示和 Git diff 检查全部通过。T3.1 正式标记为 `done`。
+
+下一步
+- 进入 C2 Trader 与 Risk Manager：把 C1 研究结论转换为买入、卖出或持有的模拟候选信号，并用确定性规则检查单笔风险、行业仓位、总回撤、交易时间、流动性、止损止盈和人工确认。真实交易继续关闭。

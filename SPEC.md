@@ -9,32 +9,31 @@
 - 输出结构化、数据可追溯、行为可约束、过程可审计；
 - 在不接入真实下单的前提下完成分析、风控、模拟执行和回测。
 
-## 2. 当前小功能：B2 四类专业分析 Agent 收尾
+## 2. 当前小功能：C1 综合研判与辩论正式完成
 
-本轮完成 B2 剩余的行业 Agent 和大盘/宏观 Agent。至此技术、基本面、行业、大盘/宏观四类 Agent 都统一消费 B1 Data Hub，各自拥有确定性分析引擎、自治认知 Loop、Harness、Graph 节点、真实只读验证、离线 fixture、样例报告和自动化测试。B2 正式任务 T2.2 已达到四类 Specialist 的交付包验收条件；后续进入交付包三，不能把这些分析结果直接当成交易指令。
+本轮用 `C1DecisionRuntime` 收拢四 Agent 联合分析、2–3 轮结构化辩论、Synthesis、质量检查和 Market Regime 门控。调用方只提交一份 `C1DecisionQuery`，便可得到可追溯、可重算、不会直接下单的完整 C1 研究结果。正式任务 T3.1 达到验收条件。
 
 ### 本轮验收内容
 
-1. 行业 Agent 通过 `IndustryAnalysisRuntime.run(query)` 独立运行，并通过 `run_graph_node(state)` 接入 Graph。
-2. 行业 Agent 确定性计算行业画像、竞争格局、LPR 政策信号、景气度、产业链模板、代表股排序和四项评分。
-3. 大盘/宏观 Agent 通过 `MacroAnalysisRuntime.run(query)` 独立运行，并通过 `run_graph_node(state)` 接入 Graph。
-4. 大盘/宏观 Agent 确定性计算指数趋势、关联股票资金面代理、研报情绪、GDP/SHIBOR/LPR 环境、Market Regime、风险偏好和评分。
-5. 两个 Agent 都拥有 Plan、Action、Observation、Reflection 闭环，只允许调用各自的受控分析工具，最多运行两步。
-6. 两个 Agent 都使用 JSON Schema、完整来源校验和代码重算 Guardrail；篡改评分、排序、Regime 或风险偏好会被拒绝。
-7. 默认离线演示回放 2026-08-07 真实验证的样本；真实模式必须显式使用 `--live`，外部失败时仍可离线复现。
-8. 测试覆盖正常路径、来源缺失、结果篡改、非法查询、Graph 节点和命令行演示。
+1. `C1DecisionRuntime.run(query)` 通过一个稳定接口串联四 Specialist 并行分析和 2–3 轮 Bull/Bear 辩论。
+2. Bull 和 Bear 的 Claim、Evidence、Reasoning 必须引用真实报告路径、值、来源和 `as_of`，双方各覆盖至少两个 Specialist。
+3. Synthesis 使用确定性权重输出门控前倾向、最终综合倾向、Bull 目标价上限、Bear 目标价下限、完整研究区间和 0–100 置信度。
+4. 置信度只表示证据完整性与一致性，不表示未来上涨或盈利概率；目标价区间只表示规则化研究边界。
+5. Consistency Check 检查证券代码、来源、时间、价格口径和辩论证据回放；Bias Detector 检查多来源和正反双方证据覆盖。
+6. Market Regime Gate 根据市场环境和风险偏好降低仓位上限；熊市不超过 10%，震荡市不超过 20%，低风险偏好不超过 15%。
+7. 完整结果保留 C1 trace、支持作为 Graph 节点运行，并通过离线演示和成功/失败路径自动化测试。
 
-### 口径边界
+### 明确不做
 
-- “估值分位”是透明的规则区间分位，不冒充历史估值分位；报告会明确标注方法。
-- 银行不适合直接套用工业企业自由现金流 DCF，本轮使用“折现股东收益代理模型”，并在报告中明确这是简化模型。
-- LLM 不计算、改写或补全财务数值；指标、估值、DCF 和评分全部由确定性代码计算。
-- 结果不转换成买卖指令，不连接真实下单。
-- 不修改 Harness、Loop、Graph、Memory 或 Model Gateway 的公共 interface。
+- 不在 C1 实现 Trader 的买入、卖出、持有信号、完整 Risk Manager、人工确认或模拟撮合。
+- 不接入真实下单，`real_trading_allowed` 固定为 `false`。
+- 不把目标价研究边界宣传成价格预测，也不把证据置信度宣传成盈利概率。
+- 不让 LLM 计算指标、估值、仓位或风控数值；C1 数值由确定性代码生成和校验。
+- 不改变 Harness、Loop、Graph、Memory 或 Model Gateway 的公共语义；C1 通过独立 Runtime 复用已有模块。
 
 ### 已完成基线
 
-B1 Data Hub 与只读 MCP 已完成；B2 四类 Agent 均已完成各自的指标/规则、评分、独立 Loop、Harness、Graph 节点、真实样本和离线演示。
+B1 Data Hub、B2 四类 Specialist、C1 并行联合分析和结构化辩论均作为本轮基线。本轮完成最终 Synthesis、质量检查、Market Regime Gate 和统一运行入口，不改变四个 Specialist 的独立计算、Loop、Harness 和 Graph 节点。
 
 ## 3. 架构原则
 
@@ -225,4 +224,4 @@ python -m unittest discover -s tests -v
 
 ## 12. 下一步
 
-B2 四类 Agent 已完成，T2.2 已达到交付包二的四类 Specialist 验收条件。下一小功能进入交付包三：用 Graph 编排四类分析，加入综合研判、结构化辩论、Trader 和 Risk Manager。
+C1 已完整完成四 Agent 并行编排、联合汇总、2–3 轮结构化 Bull/Bear 辩论、Synthesis、目标区间、证据置信度、Consistency Check、Bias Detector 和 Market Regime Gate。下一小功能进入 C2：Trader 与 Risk Manager，仍只允许模拟执行。

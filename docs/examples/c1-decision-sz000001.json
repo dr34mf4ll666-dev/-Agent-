@@ -1,0 +1,35 @@
+{
+  "status": "c1_completed",
+  "symbol": "sz000001",
+  "mode": "offline",
+  "specialist_weighted_score": "24.75",
+  "synthesis": {
+    "raw_inclination": "positive",
+    "inclination": "cautious_positive",
+    "confidence": 69,
+    "confidence_meaning": "confidence in evidence consistency, not probability of profit",
+    "target_price_interval": {
+      "lower": "10.49",
+      "reference": "11.22",
+      "upper": "13.02"
+    },
+    "side_targets": {
+      "bull_target_price_upper": "13.02",
+      "bear_target_price_lower": "10.49"
+    }
+  },
+  "quality": {
+    "status": "passed",
+    "consistency_check": "passed",
+    "bias_detector": "passed"
+  },
+  "market_regime_gate": {
+    "regime": "mixed",
+    "risk_appetite": "low",
+    "base_position_cap_percent": "30",
+    "effective_position_cap_percent": "15",
+    "real_trading_allowed": false
+  },
+  "next_stage": "trader_and_risk_manager",
+  "caveat": "The target interval is a deterministic research bound, not a price forecast or trading instruction."
+}

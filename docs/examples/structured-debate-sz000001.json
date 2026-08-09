@@ -1,0 +1,33 @@
+{
+  "status": "debate_completed",
+  "symbol": "sz000001",
+  "mode": "offline",
+  "round_count": 2,
+  "format": "Claim → Evidence → Reasoning",
+  "rounds": [
+    {
+      "round": 1,
+      "bull_claim_id": "bull.r1",
+      "bull_evidence_specialists": ["fundamental", "industry"],
+      "bear_claim_id": "bear.r1",
+      "bear_evidence_specialists": ["macro", "technical"]
+    },
+    {
+      "round": 2,
+      "bull_claim_id": "bull.r2",
+      "bull_evidence_specialists": ["fundamental", "industry"],
+      "bear_claim_id": "bear.r2",
+      "bear_evidence_specialists": ["macro", "technical"],
+      "bull_counters": "bear.r1",
+      "bear_counters": "bull.r1"
+    }
+  ],
+  "evidence_balance": {
+    "bull_specialists": ["fundamental", "industry"],
+    "bear_specialists": ["macro", "technical"],
+    "minimum_specialists_per_side": 2,
+    "single_sided_evidence": false
+  },
+  "next_stage": "synthesis_and_regime_gate",
+  "caveat": "This is an evidence-backed deterministic debate scaffold, not a final investment conclusion."
+}

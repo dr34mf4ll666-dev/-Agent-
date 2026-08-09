@@ -13,6 +13,7 @@
 - `fundamental-analysis-agent.md`：B2 基本面 Agent 的三大报表、估值、DCF、Loop、Harness、Graph 接入和验收方式。
 - `industry-analysis-agent.md`：B2 行业 Agent 的行业画像、竞争、政策、景气度、产业链、代表股排序和验收方式。
 - `macro-analysis-agent.md`：B2 大盘/宏观 Agent 的指数、资金面代理、情绪、Market Regime、风险偏好和验收方式。
+- `combined-analysis.md`：C1 四 Agent 并行编排、结构化辩论、Synthesis、目标区间、置信度、质量检查和 Market Regime 门控。
 - `harness-guardrails.md`：五类 Guardrail、配置注册、错误语义和 trace。
 - `cognitive-loop.md`、`working-memory.md`、`loop-engineering.md`：认知闭环、三层记忆、调度和上下文注入。
 - `graph-engineering.md`、`langgraph-mapping.md`：Graph 配置、可靠性和框架映射。
