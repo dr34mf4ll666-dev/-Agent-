@@ -40,9 +40,10 @@
 | C2 Trading | `C2TradingRuntime.run(query)`、`run_graph_node(state)` | Trader→Risk Manager 统一入口、模拟执行许可和真实交易硬关闭 | `demo_c2_trading.py`、`test_demo_c2_trading.py`、`docs/risk-manager.md` |
 | Financial Graph | `FinancialGraphRuntime.run(query)`、`run_graph_node(state)` | C1→Trader→Market Regime 条件路由→Risk Manager/阻断→Finalize | `demo_financial_graph.py`、`test_financial_graph.py`、`docs/financial-graph.md` |
 | Financial Batch | `FinancialBatchRuntime.run(query)` | 隔离运行多只股票并汇总标准化报告、交易建议和 Graph/Harness 审计记录 | `demo_financial_batch.py`、`test_financial_batch.py`、`docs/financial-graph.md` |
+| Backtest | `BacktestEngine.run(request)`、`BacktestExperimentRunner.run(...)` | 历史时点 C3 适配、下一开盘撮合、成本、停牌/涨跌停、公司行为、固定多股票组合和基准 | `demo_backtest_experiment.py`、`test_backtest_completion.py`、`docs/backtest.md` |
 
 ## 当前主线
 
-交付包一、B1 金融 Data Hub、B2 四个 Specialist 和 C1–C3 综合决策链均已完成。当前主线进入 D1 回测系统，继续保持真实交易关闭。
+交付包一、B1 金融 Data Hub、B2 四个 Specialist、C1–C3 综合决策链和 D1 回测系统均已完成。当前主线进入 D2 Harness 工程化加固，继续保持真实交易关闭。
 
 真实交易继续关闭。任何新外部数据都必须保留 `source`、`timestamp` 和 `as_of`，任何密钥都只能来自本地环境变量。

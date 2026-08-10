@@ -4,7 +4,7 @@
 
 ## 项目进度
 
-项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究 Demo 等可运行能力，通用平台交付包已经完成。金融数据基础设施 B1、B2 四类专业分析 Agent、C1 综合研判与辩论、C2 Trader/Risk Manager 和 C3 完整金融 Graph 均已完成；C3 已通过 Checkpoint 恢复和 20 只真实股票同批次端到端验收。回测和工程化交付仍待实现。
+项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究 Demo 等可运行能力，通用平台交付包已经完成。金融数据基础设施 B1、B2 四类专业分析 Agent、C1–C3 综合决策链和 D1 回测系统均已完成。D1 现在具备历史时点证据门禁、下一可交易开盘撮合、成本、停牌/涨跌停方向约束、分红送转、多股票组合、真实基准和固定实验；固定基线未达标也会如实展示。
 
 任务 1.2 Loop Engineering 已完成认知闭环、受控工具、三层记忆、三类触发循环、任务隔离和上下文注入。任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、可靠性、Checkpoint 和可视化。A4 Model Gateway 已通过 DeepSeek 真实调用验证。A5 又在不修改核心框架语义的前提下接入非金融资料研究。B1 已形成统一金融 Data Hub 与只读 MCP Server；行情、财务、宏观行业、新闻、公告、LPR、研报和 Tushare 第二日线来源均已真实验证，19 个 dataset 都有真实最小样本和离线回放。真实交易始终关闭。
 
@@ -117,6 +117,22 @@ D:\Anaconda\python.exe Scripts\demo_financial_batch.py --live --confirm --attemp
 ```
 
 该入口默认逐只分析 20 只银行股，使用真实股票数据和“金融行业”板块数据，终端显示进度与交易建议，并在返回值中保留完整报告和 Graph/Harness 审计记录。默认不生成文件。2026-08-10 的验收结果为请求 20、完成 20、失败 0；所有建议仍是模拟研究结果，绝不创建订单。
+
+### 运行 D1 多股票总验收
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_backtest_experiment.py
+```
+
+该入口使用固定的 3 只银行股和沪深 300：每个标的均为 243 根已真实抓取日线。终端直接展示历史证据拒绝、30 个滚动信号、11 次模拟成交、单股/组合/基准结果、成本、夏普基线、涨跌停方向拦截、分红送转和交易安全边界。固定结果为组合收益 `-0.5408%`、夏普 `-0.8463`，未达到 `>0.5` 基线，系统不会用未来数据或事后调参美化结果。回放信号明确标为固定滚动 Agent 规则，不冒充历史现场四 Agent 结论。
+
+### 运行 D1 单股票原理演示
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_backtest.py
+```
+
+该演示回放 30 根已真实抓取的平安银行日线，用两条明确标记的脚本化目标仓位信号解释单笔撮合。信号在 T 日收盘后产生，只能在下一根可交易 K 线开盘执行；结果显示佣金、卖出印花税、滑点、收益率、最大回撤、夏普、胜率和盈亏比。脚本默认不生成文件，完整 D1 验收请运行上面的多股票入口。
 
 ### 运行腾讯日线数据 Tool
 
@@ -287,7 +303,7 @@ Graph 节点仍是受注册表控制的 Python 函数；后续专业 Agent 可�
 ├── src/agent_platform/
 │   ├── core/               # Harness、Loop、Graph 和 Checkpoint
 │   ├── research/           # 非金融资料研究参考接入
-│   └── finance/            # 金融数据契约与后续分析逻辑
+│   └── finance/            # 金融数据、分析 Graph、风控与回测逻辑
 └── tests/                  # 自动化测试和离线 fixture
 ```
 
@@ -299,6 +315,6 @@ Graph 节点仍是受注册表控制的 Python 函数；后续专业 Agent 可�
 
 ## 下一步
 
-通用平台交付包 A1–A5、B1 金融数据基础设施、B2 四类专业分析 Agent，以及 C1–C3 综合决策链均已完成。下一步进入 D1 回测系统，首先固定可复现实验配置并明确“信号产生时间”和“下一可执行时间”。
+通用平台交付包 A1–A5、B1 金融数据基础设施、B2 四类专业分析 Agent、C1–C3 综合决策链和 D1 回测系统均已完成。下一步进入 D2：补齐统一可观测面板、独立 Evaluator、运行级熔断、最小工具权限和稳定主入口。
 
 最终交付路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。

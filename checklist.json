@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "2.3.0",
+  "version": "2.5.0",
   "updated_at": "2026-08-10",
-  "current_focus": "C3 完整金融 Graph 已完成，下一步进入 D1 回测系统",
+  "current_focus": "D1 回测系统已完成，下一步进入 D2 Harness 工程化加固",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "in_progress",
   "items": [
@@ -363,17 +363,35 @@
     {
       "id": "T4.1",
       "title": "回测系统",
-      "status": "pending",
-      "completed_slices": [],
-      "remaining": [
-        "Backtrader 或自研回测框架",
-        "信号时间和下一可执行时间分离，禁止未来数据",
-        "佣金、印花税、滑点、复权、停牌和涨跌停约束",
-        "夏普比率、最大回撤、胜率、盈亏比和滑点分析",
-        "夏普比率大于 0.5 的基线目标和未达标原因分析",
-        "固定股票池、时间区间、基准、参数和可复现实验配置"
+      "status": "done",
+      "completed_slices": [
+        "自研 BacktestEngine 通过一个接口完成长仓目标仓位撮合、现金持仓记账、订单和权益曲线",
+        "信号绑定已完成日线并严格在下一根可交易 K 线开盘执行，同一根 K 线禁止成交",
+        "成交量为 0 时视为停牌并延迟执行；最后一根 K 线信号保持 pending",
+        "Decimal 确定性计算佣金、最低佣金、卖出印花税、滑点和 100 股整手约束",
+        "输出总收益率、最大回撤、年化夏普、已平仓次数、胜率、盈亏比和滑点成本",
+        "30 根已真实抓取日线的离线机制演示可见信号/执行时间、成本、指标和安全边界，默认不生成文件",
+        "C3DecisionSnapshot 同时校验 signal_at、generated_at、证据 as_of/available_at 和完整金融 Graph 一致性，未来证据直接拒绝",
+        "TradingSessionConstraint 处理开盘前已知的涨跌停方向权限，CorporateAction 在原始价格上处理分红送转并调整现金、股数和成本",
+        "固定 3 只银行股和沪深 300 各 243 根真实日线，固定一年区间、300000 元资金、成本参数和回放规则",
+        "多股票组合输出收益率、最大回撤、年化夏普、真实基准和总成本；夏普 -0.8463 未达到大于 0.5 基线并如实分析原因",
+        "中文终端总验收直观展示证据拒绝、撮合、单股/组合/基准、市场约束、公司行为和真实交易关闭"
       ],
-      "evidence": []
+      "remaining": [],
+      "evidence": [
+        "src/agent_platform/finance/backtest.py",
+        "src/agent_platform/finance/backtest_experiment.py",
+        "Scripts/demo_backtest.py",
+        "Scripts/demo_backtest_experiment.py",
+        "Scripts/capture_d1_market_pool.py",
+        "tests/test_backtest.py",
+        "tests/test_backtest_completion.py",
+        "tests/test_demo_backtest.py",
+        "tests/test_demo_backtest_experiment.py",
+        "tests/fixtures/d1_real_market_pool.json",
+        "Workflow/examples/d1_backtest_experiment.json",
+        "docs/backtest.md"
+      ]
     },
     {
       "id": "T4.2",

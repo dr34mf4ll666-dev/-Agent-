@@ -1,0 +1,30 @@
+{
+  "name": "D1_FIXED_BANK_POOL_2025_2026",
+  "symbols": [
+    "sz000001",
+    "sh600000",
+    "sh601398"
+  ],
+  "benchmark_symbol": "sh000300",
+  "start_date": "20250807",
+  "end_date": "20260807",
+  "initial_cash": "300000",
+  "sharpe_baseline": "0.5",
+  "execution": {
+    "commission_rate": "0.0003",
+    "minimum_commission": "5",
+    "stamp_duty_rate": "0.0005",
+    "slippage_basis_points": "5",
+    "board_lot": 100,
+    "annual_trading_days": 252
+  },
+  "signal_policy": {
+    "kind": "deterministic_walk_forward_agent_replay",
+    "warmup_bars": 60,
+    "rebalance_every_bars": 20,
+    "short_window": 20,
+    "long_window": 60,
+    "positive_target_percent": "15",
+    "negative_target_percent": "0"
+  }
+}

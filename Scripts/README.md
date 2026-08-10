@@ -122,6 +122,22 @@ D:\Anaconda\python.exe Scripts\demo_financial_batch.py --live --confirm --attemp
 
 脚本默认逐只运行 20 只银行股，每只都经过完整 C1、Trader、条件路由和 Risk Manager。它在终端显示进度、交易建议和汇总，并在内存返回 20 份标准化报告、20 条建议和 20 份 Graph/Harness 审计记录；默认不生成文件。离线模式会被明确拒绝，避免用同一份 fixture 冒充 20 只股票。
 
+## D1 多股票总验收
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_backtest_experiment.py
+```
+
+脚本读取固定配置和离线真实行情快照，展示 3 只银行股、沪深 300、历史证据门禁、滚动信号、组合绩效、夏普基线、涨跌停方向权限、公司行为和交易安全边界。默认不生成报告文件。`capture_d1_market_pool.py` 只用于显式刷新真实行情 fixture，普通验收不需要联网。
+
+## D1 单股票原理演示
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_backtest.py
+```
+
+脚本回放 30 根已真实抓取的平安银行日线，并使用两条明确标记的脚本化目标仓位信号解释回测执行机制。终端展示信号日、下一交易日执行时间、开盘价、含滑点成交价、佣金、卖出印花税、滑点、收益率、最大回撤、夏普、胜率、盈亏比和安全字段。默认不生成文件；完整验收使用上面的多股票入口。
+
 ## 腾讯日线数据 Tool 演示
 
 ```powershell

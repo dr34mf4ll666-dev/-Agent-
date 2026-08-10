@@ -149,6 +149,25 @@ from .financial_batch import (
     FinancialBatchResult,
     FinancialBatchRuntime,
 )
+from .backtest import (
+    BacktestConfig,
+    BacktestEngine,
+    BacktestError,
+    BacktestRequest,
+    BacktestResult,
+    BacktestSignal,
+    CorporateAction,
+    TradingSessionConstraint,
+)
+from .backtest_experiment import (
+    BacktestExperimentConfig,
+    BacktestExperimentError,
+    BacktestExperimentResult,
+    BacktestExperimentRunner,
+    C3BacktestSignalAdapter,
+    C3DecisionSnapshot,
+    PointInTimeEvidence,
+)
 
 __all__ = [
     "MarketBar",
@@ -271,4 +290,19 @@ __all__ = [
     "FinancialBatchQuery",
     "FinancialBatchResult",
     "FinancialBatchRuntime",
+    "BacktestConfig",
+    "BacktestEngine",
+    "BacktestError",
+    "BacktestRequest",
+    "BacktestResult",
+    "BacktestSignal",
+    "CorporateAction",
+    "TradingSessionConstraint",
+    "BacktestExperimentConfig",
+    "BacktestExperimentError",
+    "BacktestExperimentResult",
+    "BacktestExperimentRunner",
+    "C3BacktestSignalAdapter",
+    "C3DecisionSnapshot",
+    "PointInTimeEvidence",
 ]
