@@ -42,7 +42,7 @@
 
 ## 4. 当前真实基线
 
-截至 2026-08-09，任务 1.1、1.2、1.3、1.4，以及 A4 真实模型运行层和 A5 非金融通用性证明均已完成。通用平台交付包已经验收；2.1 金融数据、2.2 四类 Specialist 和 3.1 综合研判与辩论均已完成。项目仍需继续完成 C2/C3、回测和工程化交付，尚未达到任务书的最终验收要求。
+截至 2026-08-09，任务 1.1、1.2、1.3、1.4，以及 A4 真实模型运行层和 A5 非金融通用性证明均已完成。通用平台交付包已经验收；2.1 金融数据、2.2 四类 Specialist、3.1 综合研判与辩论和 3.2 Trader/Risk Manager 均已完成。项目仍需继续完成 C3、回测和工程化交付，尚未达到任务书的最终验收要求。
 
 | 正式任务 | 当前状态 | 已有成果 | 主要缺口 |
 | --- | --- | --- | --- |
@@ -53,7 +53,8 @@
 | 2.1 数据基础设施 | 已完成 | 19 类统一 Data Hub、AKShare/Tushare 真实验证、只读 MCP、缓存/限流/重试/硬超时/统一错误和全真实样本离线回放 | 无；后续由 B2 Agent 消费统一数据接口 |
 | 2.2 四类分析 Agent | 已完成 | 技术、基本面、行业、大盘/宏观四类 Agent 均已完成：确定性分析、评分、独立 Loop、Harness、测试、真实样本报告和 Graph 节点 | 无；后续交由交付包三编排综合研判和交易风控 |
 | 3.1 综合研判与辩论 | 已完成 | 四 Agent 并行编排、2–3 轮证据辩论、Synthesis、Bull/Bear 目标边界、置信度、Consistency/Bias 和 Market Regime 门控 | 无；后续由 C2 消费研究结论并执行交易风控 |
-| 3.2–3.3 交易与完整 Graph | 未开始 | 无 | Trader、Risk Manager、20 只股票完整 Graph |
+| 3.2 Trader 与 Risk Manager | 已完成 | buy/sell/hold 候选、2% 单笔风险、30% 行业上限、15% 回撤、时段、Regime、流动性、止损止盈、人工确认和真实交易关闭 | 无；后续由 C3 编排完整 Graph |
+| 3.3 完整金融 Graph | 未开始 | C1 与 C2 均支持 Graph 节点入口 | 条件边、Checkpoint 恢复和 20 只股票完整 Graph |
 | 4.1–4.3 工程化交付 | 未开始 | 无 | 回测、可观测性、评估、熔断、对比实验、模拟运行和最终文档 |
 
 ## 5. 实现原则
@@ -187,6 +188,8 @@
 
 ### C2. Trader 与 Risk Manager（任务 3.2）
 
+正式任务已完成。`TraderRuntime` 校验完整 C1 输入并输出买入、卖出或持有的模拟候选；`RiskManagerRuntime` 再确定性执行全部风控硬规则；`C2TradingRuntime` 提供 Trader→Risk Manager 的统一入口。两层都通过 Schema 和结果重算 Harness，也都支持 Graph 节点。批准结果只允许后续模拟执行，`order_created` 和 `real_trading_allowed` 固定为 `false`。
+
 - Trader 输出买入、卖出或持有的模拟信号、目标价区间和置信度。
 - Risk Manager 使用确定性规则检查：单笔亏损不超过 2%、单行业不超过 30%、总回撤超过 15% 时强制减仓，以及交易时间、流动性、止损止盈。
 - 交易前 Harness Pre-Flight 同时检查仓位、交易时间、Market Regime、流动性和回撤。
@@ -279,7 +282,7 @@
 
 ## 12. 当前唯一主线
 
-当前 A1–A5 通用平台能力、B1 金融 Data Hub、B2 四个 Specialist 和 C1 综合研判与辩论均已完成。C1 已能一次运行四路 Planner/Graph 并行分析、2–3 轮结构化辩论、Synthesis、Bull/Bear 研究边界、目标区间、证据置信度、Consistency/Bias 检查和 Market Regime 仓位门控。当前唯一主线进入 C2 Trader 与 Risk Manager；真实交易继续关闭，最终验收清单中的任何一项都不能被省略。
+当前 A1–A5 通用平台能力、B1 金融 Data Hub、B2 四个 Specialist、C1 综合研判与 C2 Trader/Risk Manager 均已完成。C2 可以从 C1 生成 buy/sell/hold 候选，并执行单笔风险、行业仓位、回撤、时段、Regime、流动性、止损止盈和人工确认检查，但不会创建订单。当前唯一主线进入 C3 完整金融 Graph；真实交易继续关闭，最终验收清单中的任何一项都不能被省略。
 
 每次开始新功能前必须回答：
 

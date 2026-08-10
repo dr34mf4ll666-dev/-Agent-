@@ -1,0 +1,35 @@
+{
+  "status": "risk_review_completed",
+  "symbol": "sz000001",
+  "mode": "offline",
+  "risk_decision": {
+    "status": "approved",
+    "requested_action": "buy",
+    "approved_action": "buy"
+  },
+  "position": {
+    "current_percent": "0.00",
+    "requested_percent": "15.00",
+    "approved_percent": "15.00",
+    "market_regime_cap_percent": "15.00",
+    "single_trade_risk_cap_percent": "30.74",
+    "sector_cap_percent": "25.00",
+    "final_sector_exposure_percent": "20.00",
+    "estimated_single_trade_loss_percent": "0.98"
+  },
+  "price_controls": {
+    "reference_price": "11.22",
+    "stop_loss_price": "10.49",
+    "take_profit_price": "13.02",
+    "reward_risk_ratio": "2.47"
+  },
+  "execution": {
+    "simulation_only": true,
+    "simulation_execution_allowed": true,
+    "human_confirmation_required": true,
+    "human_confirmed": true,
+    "order_created": false,
+    "real_trading_allowed": false
+  },
+  "next_stage": "complete_financial_graph"
+}

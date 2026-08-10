@@ -9,31 +9,32 @@
 - 输出结构化、数据可追溯、行为可约束、过程可审计；
 - 在不接入真实下单的前提下完成分析、风控、模拟执行和回测。
 
-## 2. 当前小功能：C1 综合研判与辩论正式完成
+## 2. 当前小功能：C2 Trader 与 Risk Manager 正式完成
 
-本轮用 `C1DecisionRuntime` 收拢四 Agent 联合分析、2–3 轮结构化辩论、Synthesis、质量检查和 Market Regime 门控。调用方只提交一份 `C1DecisionQuery`，便可得到可追溯、可重算、不会直接下单的完整 C1 研究结果。正式任务 T3.1 达到验收条件。
+本轮用 `C2TradingRuntime` 串联 Trader 和确定性 Risk Manager。Trader 从完整 C1 报告生成 `buy`、`sell` 或 `hold` 模拟候选；Risk Manager 再检查账户风险、仓位、回撤、交易时段、市场环境、流动性、止损止盈和人工确认。完整结果只给出后续模拟执行许可，不创建订单。正式任务 T3.2 达到验收条件。
 
 ### 本轮验收内容
 
-1. `C1DecisionRuntime.run(query)` 通过一个稳定接口串联四 Specialist 并行分析和 2–3 轮 Bull/Bear 辩论。
-2. Bull 和 Bear 的 Claim、Evidence、Reasoning 必须引用真实报告路径、值、来源和 `as_of`，双方各覆盖至少两个 Specialist。
-3. Synthesis 使用确定性权重输出门控前倾向、最终综合倾向、Bull 目标价上限、Bear 目标价下限、完整研究区间和 0–100 置信度。
-4. 置信度只表示证据完整性与一致性，不表示未来上涨或盈利概率；目标价区间只表示规则化研究边界。
-5. Consistency Check 检查证券代码、来源、时间、价格口径和辩论证据回放；Bias Detector 检查多来源和正反双方证据覆盖。
-6. Market Regime Gate 根据市场环境和风险偏好降低仓位上限；熊市不超过 10%，震荡市不超过 20%，低风险偏好不超过 15%。
-7. 完整结果保留 C1 trace、支持作为 Graph 节点运行，并通过离线演示和成功/失败路径自动化测试。
+1. `TraderRuntime` 只接收完整 C1 结果，按综合倾向、加权评分和置信度确定性输出 `buy`、`sell` 或 `hold`，并继承目标区间和完整来源时间。
+2. `RiskContext` 显式提供模拟账户权益、当前/请求仓位、其他同业暴露、组合回撤、成交额、评估时间、止损止盈和人工确认状态。
+3. 单笔预计亏损不得超过账户权益 2%；最终单行业暴露不得超过 30%；组合回撤超过 15% 时禁止新增仓位并把已有目标仓位降低 50%。
+4. 买入必须位于 A 股交易时段、通过 Market Regime、平均每日成交额不低于 1000 万元、成交额参与率不超过 10%，且止损/参考价/止盈顺序正确、收益风险比不低于 1.5。
+5. 最终批准仓位取请求仓位、C1 市场门控、单笔风险、行业和流动性上限中的最小值；超过 10% 必须有显式人工确认。
+6. Risk Manager 输出 `approved`、`adjusted`、`pending_human_confirmation`、`blocked`、`forced_reduction` 或 `no_action`，并保留每项检查和计算过程。
+7. Risk Manager 在 Harness Pre-Flight 计算全部十项硬规则，执行后再经过 JSON Schema 与确定性结果重算；Trader 和 Risk Manager 均支持独立运行、统一 C2 入口和 Graph 节点。
+8. `simulation_only=true`、`order_created=false`、`real_trading_allowed=false` 由代码强制执行；离线和真实市场数据整链均可运行。
 
 ### 明确不做
 
-- 不在 C1 实现 Trader 的买入、卖出、持有信号、完整 Risk Manager、人工确认或模拟撮合。
-- 不接入真实下单，`real_trading_allowed` 固定为 `false`。
-- 不把目标价研究边界宣传成价格预测，也不把证据置信度宣传成盈利概率。
-- 不让 LLM 计算指标、估值、仓位或风控数值；C1 数值由确定性代码生成和校验。
-- 不改变 Harness、Loop、Graph、Memory 或 Model Gateway 的公共语义；C1 通过独立 Runtime 复用已有模块。
+- 不在 C2 实现 C3 的完整金融 Graph 条件边、Checkpoint 恢复或 20 只股票批量运行。
+- 不接入真实券商账户；演示中的账户权益、仓位、回撤、成交额和确认状态都是显式模拟输入。
+- 不创建模拟订单或真实订单；C2 只决定后续模拟执行是否被允许。
+- 不实现撮合、费用、滑点或回测，这些属于后续交付包。
+- 不让 LLM 决定交易动作、仓位、风控阈值或覆盖安全字段。
 
 ### 已完成基线
 
-B1 Data Hub、B2 四类 Specialist、C1 并行联合分析和结构化辩论均作为本轮基线。本轮完成最终 Synthesis、质量检查、Market Regime Gate 和统一运行入口，不改变四个 Specialist 的独立计算、Loop、Harness 和 Graph 节点。
+B1 Data Hub、B2 四类 Specialist、完整 C1 和 Trader 第一切片作为本轮基线。本轮补齐 Risk Manager 和完整 C2 统一入口，不改变前序金融分析逻辑。
 
 ## 3. 架构原则
 
@@ -224,4 +225,4 @@ python -m unittest discover -s tests -v
 
 ## 12. 下一步
 
-C1 已完整完成四 Agent 并行编排、联合汇总、2–3 轮结构化 Bull/Bear 辩论、Synthesis、目标区间、证据置信度、Consistency Check、Bias Detector 和 Market Regime Gate。下一小功能进入 C2：Trader 与 Risk Manager，仍只允许模拟执行。
+C2 已完整完成 Trader、确定性 Risk Manager、人工确认门、模拟执行许可和真实交易关闭。下一小功能进入 C3：完整金融 Graph、条件边、Checkpoint 恢复和不少于 20 只股票的批量运行。

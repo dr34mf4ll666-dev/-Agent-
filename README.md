@@ -4,7 +4,7 @@
 
 ## 项目进度
 
-项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究 Demo 等可运行能力，通用平台交付包已经完成。金融数据基础设施 B1、B2 四类专业分析 Agent 和 C1 综合研判与辩论均已完成；Trader、完整 Risk Manager、回测和工程化交付仍待实现。
+项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究 Demo 等可运行能力，通用平台交付包已经完成。金融数据基础设施 B1、B2 四类专业分析 Agent、C1 综合研判与辩论，以及 C2 Trader 与 Risk Manager 均已完成；完整金融 Graph、回测和工程化交付仍待实现。
 
 任务 1.2 Loop Engineering 已完成认知闭环、受控工具、三层记忆、三类触发循环、任务隔离和上下文注入。任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、可靠性、Checkpoint 和可视化。A4 Model Gateway 已通过 DeepSeek 真实调用验证。A5 又在不修改核心框架语义的前提下接入非金融资料研究。B1 已形成统一金融 Data Hub 与只读 MCP Server；行情、财务、宏观行业、新闻、公告、LPR、研报和 Tushare 第二日线来源均已真实验证，19 个 dataset 都有真实最小样本和离线回放。真实交易始终关闭。
 
@@ -283,6 +283,6 @@ Graph 节点仍是受注册表控制的 Python 函数；后续专业 Agent 可�
 
 ## 下一步
 
-通用平台交付包 A1–A5、B1 金融数据基础设施、B2 四类专业分析 Agent 和 C1 综合研判与辩论均已完成。下一步进入 C2，实现只允许模拟执行的 Trader 与确定性 Risk Manager，再接完整金融 Graph。
+通用平台交付包 A1–A5、B1 金融数据基础设施、B2 四类专业分析 Agent、C1 综合研判与辩论，以及 C2 Trader 与 Risk Manager 均已完成。下一步进入 C3，把全链路编入完整金融 Graph，并补条件边、Checkpoint 恢复和不少于 20 只股票的批量运行。
 
 最终交付路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。

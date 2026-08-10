@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "1.9.0",
+  "version": "2.1.0",
   "updated_at": "2026-08-09",
-  "current_focus": "C1 综合研判与辩论已完成，下一步进入 C2 Trader 与 Risk Manager",
+  "current_focus": "C2 Trader 与 Risk Manager 已完成，下一步进入 C3 完整金融 Graph",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "in_progress",
   "items": [
@@ -294,16 +294,42 @@
     {
       "id": "T3.2",
       "title": "Trader 与 Risk Manager",
-      "status": "pending",
-      "completed_slices": [],
-      "remaining": [
-        "Trader 输出买入、卖出或持有的模拟信号、目标价区间和置信度",
-        "单笔亏损不超过 2%、单行业不超过 30%、总回撤超过 15% 强制减仓",
-        "交易时间、Market Regime、流动性和止损止盈检查",
-        "仓位超过 10% 的人工确认",
-        "真实交易默认关闭"
+      "status": "done",
+      "completed_slices": [
+        "TraderQuery 只接收并校验完整 C1 研究报告",
+        "TraderRuntime 按综合倾向、四 Agent 加权评分和证据置信度确定性输出 buy、sell 或 hold 模拟候选",
+        "候选结果继承 C1 目标价研究区间、Market Regime、风险偏好、仓位上限、来源和四路 timestamp/as_of",
+        "Trader 输出经过 JSON Schema 和确定性结果重算 Harness",
+        "可行动候选必须等待 Risk Manager，研究仓位上限超过 10% 时提前标记人工确认",
+        "simulation_only 固定为 true，order_created 和 real_trading_allowed 固定为 false",
+        "Trader 支持独立运行、Graph 节点、离线/真实数据演示入口和篡改拒绝测试",
+        "RiskContext 显式描述模拟账户权益、当前和请求仓位、其他同业暴露、组合回撤、流动性、评估时间、止损止盈和人工确认",
+        "Risk Manager 根据止损距离计算单笔亏损不超过账户权益 2% 的仓位上限",
+        "最终单行业暴露不超过 30%，组合回撤超过 15% 时禁止新增仓位并把已有目标仓位降低 50%",
+        "A 股交易时间、Market Regime、最低 1000 万元日成交额、10% 成交额参与率和收益风险比均由确定性规则检查",
+        "最终批准仓位取请求、市场门控、单笔风险、行业和流动性上限的最小值",
+        "批准仓位超过 10% 时必须经过显式人工确认，否则停在 pending_human_confirmation",
+        "Risk Manager Harness Pre-Flight 同时计算全部十项硬规则，输出后再执行 Schema 与确定性结果重算",
+        "Risk Manager 输出批准、调整、等待确认、阻断、强制减仓或无操作，并保留十项检查与计算过程",
+        "C2TradingRuntime 串联 Trader 和 Risk Manager，支持统一运行和 Graph 节点入口",
+        "simulation_only 固定为 true，order_created 和 real_trading_allowed 固定为 false",
+        "完整 C2 离线和真实市场数据整链、正常/调整/阻断/强制减仓路径、演示和文档已补齐"
       ],
-      "evidence": []
+      "remaining": [],
+      "evidence": [
+        "src/agent_platform/finance/trader.py",
+        "tests/test_trader_runtime.py",
+        "Scripts/demo_trader.py",
+        "tests/test_demo_trader.py",
+        "docs/trader.md",
+        "docs/examples/trader-candidate-sz000001.json",
+        "src/agent_platform/finance/risk_manager.py",
+        "tests/test_risk_manager.py",
+        "Scripts/demo_c2_trading.py",
+        "tests/test_demo_c2_trading.py",
+        "docs/risk-manager.md",
+        "docs/examples/c2-risk-review-sz000001.json"
+      ]
     },
     {
       "id": "T3.3",

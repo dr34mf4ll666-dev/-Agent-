@@ -362,3 +362,33 @@
 
 下一步
 - 进入 C2 Trader 与 Risk Manager：把 C1 研究结论转换为买入、卖出或持有的模拟候选信号，并用确定性规则检查单笔风险、行业仓位、总回撤、交易时间、流动性、止损止盈和人工确认。真实交易继续关闭。
+
+[2026-08-09] C2 Trader 模拟候选信号第一切片完成
+- 新增 `TraderQuery` 和 `TraderRuntime`，用一个稳定接口消费完整 C1 报告，不复制四 Specialist、辩论、Synthesis 或 Market Regime 的实现。
+- Trader 使用确定性阈值生成 `buy`、`sell` 或 `hold`：正向倾向、加权评分不低于 20 且证据置信度不低于 60 时产生买入候选；负向使用对应阈值；其余情况持有/观望。
+- 候选结果继承 C1 的目标价研究区间、证据置信度、Market Regime、风险偏好、研究仓位上限、全部来源和四路 `timestamp`/`as_of`。
+- 新增 Trader 专属 Harness：JSON Schema 固定输出结构，CrossValidator 根据同一份 C1 证据重算动作、目标、置信度、来源和安全字段；篡改动作会被拒绝。
+- 可行动候选只进入 `awaiting_risk_review`，不会创建订单；C1 研究仓位上限超过 10% 时提前标记 `human_confirmation_required=true`。这不是最终仓位，后续仍由 Risk Manager 计算和强制执行。
+- `simulation_only=true`、`order_created=false` 和 `real_trading_allowed=false` 由代码强制保持；Trader 同时支持独立运行和 Graph 节点入口。
+- 新增离线/真实数据演示、固定摘要、专项文档、5 项 Runtime 测试和 1 项演示测试。离线样本输出 buy 候选、评分 24.75、研究区间 10.49–13.02、置信度 69、仓位上限 15%。
+- 真实数据整链验证成功：`mode=live`，平安银行 C1 加权评分 22.25，Trader 输出 buy 候选，研究区间 10.46–12.87，置信度 74，仓位上限 15%，人工确认标记为 true，未创建订单。
+- Trader 专项 6 项测试和项目完整回归 193 项测试全部通过；源码编译、JSON 解析、离线/真实演示和 Git diff 检查通过。T3.2 仅标记为 `in_progress`。
+
+下一步
+- 实现确定性 Risk Manager，补齐单笔亏损不超过 2%、单行业不超过 30%、总回撤超过 15% 强制减仓，以及交易时间、Market Regime、流动性、止损止盈和人工确认强制检查。
+
+[2026-08-09] C2 Trader 与 Risk Manager 正式完成
+- 新增 `RiskContext`，显式承载模拟账户权益、当前和请求目标仓位、其他同业暴露、组合回撤、平均每日成交额、评估时间、止损止盈和人工确认状态；这些场景数据不会冒充真实券商账户。
+- 新增 `RiskManagerRuntime`，根据止损距离计算“单笔预计亏损不超过账户权益 2%”的仓位上限，并与 C1 Market Regime Gate、单行业 30% 上限和流动性上限共同取最小值。
+- 组合回撤超过 15% 时禁止新增仓位；已有仓位的目标强制降低 50%。熊市/风险关闭环境禁止新增买入，卖出减仓仍可通过。
+- 新增 A 股工作日 09:30–11:30、13:00–15:00 交易时段检查，要求 `+08:00` 时间；平均每日成交额至少 1000 万元，目标名义金额不超过成交额 10%。
+- 买入必须满足止损价低于参考价、止盈价高于参考价且收益风险比不低于 1.5；批准仓位超过 10% 时必须显式人工确认。
+- 风控结果可为 approved、adjusted、pending_human_confirmation、blocked、forced_reduction 或 no_action，并保留十项检查、各仓位上限和预计亏损计算。
+- 新增 Risk Manager 专属 Harness Pre-Flight，在 Agent 执行前计算全部十项硬规则；执行后再通过 JSON Schema 和 CrossValidator 重算完整结果，篡改批准仓位会被拒绝。
+- 新增 `C2TradingRuntime` 统一串联 Trader 和 Risk Manager，并支持作为 Graph 节点运行；`simulation_only=true`、`order_created=false`、`real_trading_allowed=false` 始终由代码强制保持。
+- 完整离线演示在显式人工确认后批准 15% 模拟目标仓位：预计单笔亏损 0.98%、最终行业暴露 20%、收益风险比 2.47，十项检查全部通过，未创建订单。
+- 真实市场数据整链验证成功：平安银行 Trader 输出 buy 候选，研究区间 10.46–12.87、置信度 74；Risk Manager 批准 15% 模拟目标仓位，预计单笔亏损 0.98%、最终行业暴露 20%，真实交易关闭。账户和风控上下文仍为显式模拟输入。
+- 新增 10 项 Risk Manager 测试和 2 项完整 C2 演示测试；完整项目回归 205 项全部通过，源码编译、三份关键 JSON 解析、离线/真实演示和 Git diff 检查通过。T3.2 正式标记为 `done`。
+
+下一步
+- 进入 C3 完整金融 Graph：编排 C1、Trader 和 Risk Manager，增加“大盘看空时跳过买入”等条件边、Checkpoint 恢复，并对不少于 20 只股票输出标准化报告、交易建议清单和 Harness 审计日志。

@@ -1,0 +1,30 @@
+{
+  "status": "candidate_signal_created",
+  "symbol": "sz000001",
+  "mode": "offline",
+  "signal": {
+    "action": "buy",
+    "label": "模拟买入候选",
+    "weighted_score": "24.75"
+  },
+  "target_price_interval": {
+    "lower": "10.49",
+    "reference": "11.22",
+    "upper": "13.02"
+  },
+  "confidence": 69,
+  "market_context": {
+    "regime": "mixed",
+    "risk_appetite": "low",
+    "position_cap_percent": "15"
+  },
+  "execution": {
+    "simulation_only": true,
+    "order_created": false,
+    "real_trading_allowed": false,
+    "requires_risk_review": true,
+    "human_confirmation_required": true,
+    "status": "awaiting_risk_review"
+  },
+  "next_stage": "risk_manager"
+}

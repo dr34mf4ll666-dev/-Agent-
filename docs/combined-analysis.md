@@ -85,7 +85,7 @@ planner -> technical,fundamental,industry,macro -> aggregate
 
 C1 已完成四 Agent 并行分析、结构化 Bull/Bear 辩论、Synthesis、目标价研究区间、置信度、Consistency Check、Bias Detector 和 Market Regime Gate。每个 Specialist 自己的来源校验和确定性重算仍然生效；联合层不修改底层金融指标。
 
-当前输出仍是研究结论，不是下单指令。目标价上下限是透明规则形成的研究边界，不是模型对未来价格的承诺；置信度只衡量证据一致性。Trader、完整 Risk Manager、人工确认、模拟撮合和真实交易接口属于 C2 及后续任务，真实交易默认关闭。
+当前输出仍是研究结论，不是下单指令。目标价上下限是透明规则形成的研究边界，不是模型对未来价格的承诺；置信度只衡量证据一致性。C2 Trader 现在可以消费该结果生成模拟候选，但完整 Risk Manager、人工确认执行、模拟撮合和真实交易接口仍属于后续任务，真实交易默认关闭。
 
 ## 验证
 

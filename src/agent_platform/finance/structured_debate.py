@@ -485,7 +485,7 @@ class StructuredDebateRuntime:
             "next_stage": "synthesis_and_regime_gate",
             "caveats": [
                 "this deterministic slice structures and checks debate evidence but does not produce a final investment conclusion",
-                "target-price interval, confidence, Market Regime gate, and Trader/Risk Manager are not implemented",
+                "target-price interval, confidence, Market Regime gate, and trading controls belong to downstream C1/C2 modules",
             ],
         }
         validation = validate_structured_debate(report, bundle)

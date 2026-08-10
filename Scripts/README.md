@@ -84,6 +84,25 @@ python Scripts/demo_combined_analysis.py --base-position-cap 30
 
 该脚本一次运行完整 C1：Planner 调度技术、基本面、行业和大盘/宏观四个 Agent，在 Graph 的同一并行波次中运行；随后完成 2 或 3 轮 Claim → Evidence → Reasoning 结构化辩论，并输出综合倾向、Bull/Bear 目标价研究边界、完整区间、证据一致性置信度、Consistency Check、Bias Detector 和 Market Regime 仓位门控。`--base-position-cap` 设置门控前仓位上限；无论输入多少，真实交易都保持关闭。
 
+## C2 Trader 模拟候选信号演示
+
+```powershell
+python Scripts/demo_trader.py
+python Scripts/demo_trader.py --live --symbol sz000001
+```
+
+该脚本先运行完整 C1，再单独演示 Trader 如何确定性输出 `buy`、`sell` 或 `hold` 模拟候选，并打印目标价研究区间、证据一致性置信度、市场环境、研究仓位上限、人工确认标记和 Harness trace。它不运行 Risk Manager；完整 C2 请使用下一节的 `demo_c2_trading.py`。`simulation_only=true`、`order_created=false` 和 `real_trading_allowed=false` 均由代码强制保持。
+
+## C2 Trader + Risk Manager 完整演示
+
+```powershell
+python Scripts/demo_c2_trading.py
+python Scripts/demo_c2_trading.py --confirm
+python Scripts/demo_c2_trading.py --live --confirm --symbol sz000001
+```
+
+该脚本运行完整 C1、Trader 和确定性 Risk Manager。默认在仓位超过 10% 时停在人工确认；显式 `--confirm` 后才允许进入后续模拟执行。输出包括单笔 2% 风险、行业 30% 上限、总回撤 15%、交易时段、Market Regime、流动性、止损止盈和人工确认检查。`--live` 只表示市场数据来自真实接口，账户权益、仓位、回撤和确认状态仍是命令行提供的模拟场景；系统不会创建订单。
+
 ## 腾讯日线数据 Tool 演示
 
 ```powershell

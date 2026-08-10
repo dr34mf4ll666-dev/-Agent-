@@ -35,9 +35,12 @@
 | Combined Analysis | `CombinedAnalysisRuntime.run(query)`、`run_graph_node(state)` | Planner、四 Specialist 并行 Graph 波次、报告/证据/来源/Loop 汇总和联合层 Schema 校验 | `demo_combined_analysis.py`、`test_combined_analysis.py`、`docs/combined-analysis.md` |
 | Structured Debate | `StructuredDebateRuntime.run(query)`、`run_graph_node(state)` | 2–3 轮 Claim → Evidence → Reasoning、证据路径/来源/as_of 校验和双方证据平衡检查 | `demo_combined_analysis.py`、`test_structured_debate.py`、`docs/combined-analysis.md` |
 | C1 Decision | `C1DecisionRuntime.run(query)`、`run_graph_node(state)` | 四路加权 Synthesis、Bull/Bear 研究边界、目标区间、置信度、Consistency/Bias 和 Market Regime 门控 | `demo_combined_analysis.py`、`test_c1_decision.py`、`docs/combined-analysis.md` |
+| Trader | `TraderRuntime.run(query)`、`run_graph_node(state)` | C1 输入校验、buy/sell/hold 模拟候选、目标区间/来源传递、Harness 重算和禁止创建订单 | `demo_trader.py`、`test_trader_runtime.py`、`docs/trader.md` |
+| Risk Manager | `RiskManagerRuntime.run(query)`、`run_graph_node(state)` | 2% 单笔风险、30% 行业上限、15% 回撤、时段、Regime、流动性、止损止盈和人工确认 | `demo_c2_trading.py`、`test_risk_manager.py`、`docs/risk-manager.md` |
+| C2 Trading | `C2TradingRuntime.run(query)`、`run_graph_node(state)` | Trader→Risk Manager 统一入口、模拟执行许可和真实交易硬关闭 | `demo_c2_trading.py`、`test_demo_c2_trading.py`、`docs/risk-manager.md` |
 
 ## 当前主线
 
-交付包一的技术能力和管理证据完成后，B1 又完成了统一 Data Hub、AKShare/Tushare 多类真实数据、可靠性层、全真实样本离线回放和 MCP Server。B2 四个 Specialist 与 C1 综合研判均已完成；当前主线进入 C2 Trader 与 Risk Manager，先实现模拟交易信号和确定性风控，不开放真实交易。
+交付包一、B1 金融 Data Hub、B2 四个 Specialist、C1 综合研判和 C2 Trader/Risk Manager 均已完成。当前主线进入 C3 完整金融 Graph，继续保持真实交易关闭。
 
 真实交易继续关闭。任何新外部数据都必须保留 `source`、`timestamp` 和 `as_of`，任何密钥都只能来自本地环境变量。
