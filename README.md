@@ -150,6 +150,14 @@ D:\Anaconda\python.exe Scripts\demo_d2_engineering.py
 
 安装项目后也可以运行 `agent-platform d2-verify`。终端会直接展示独立 Evaluator、连续失败熔断与告警、9 个 Agent 工具白名单，以及有/无 Harness 的幻觉率、无效工具调用、成功率、耗时、Token 和恢复率对比。固定实验是离线工程 fixture，不代表真实模型线上质量；详细方法和边界见 `docs/d2-harness-engineering.md`。
 
+### 单独运行 D3 Harness 对比实验
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_harness_comparison.py
+```
+
+安装项目后也可以运行 `agent-platform d3-compare`。该界面只展示 D3 六项总指标、4 个逐用例原始结果、恢复状态和成本变化，方便独立验收；数据仍是固定离线工程 fixture。
+
 ### 运行腾讯日线数据 Tool
 
 ```powershell

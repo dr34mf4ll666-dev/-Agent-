@@ -479,3 +479,9 @@
 
 下一步
 - 进入 T4.3：设计可中断恢复的连续模拟运行台账，使用真实行情累计 1–2 周运行、失败、人工确认和复盘证据，再完成最终文档包。
+
+[2026-08-10] D3 Harness 对比实验新增独立可视化入口
+- D3 的六项量化实验已随 D2 完成，本次没有重复制造另一套统计逻辑，而是复用 `D2EngineeringRuntime` 新增稳定子命令 `agent-platform d3-compare` 和仓库入口 `demo_harness_comparison.py`。
+- 中文界面单独展示幻觉率、无效工具/API 调用、端到端成功率、平均耗时、Token 和故障恢复率，并展开 4 个固定用例的原始 passed、hallucinations、invalid_calls、recovered、latency 和 tokens。
+- 直观验收检查同一数据集、六项指标和成本边界，继续明确脚本化离线实验不代表真实模型线上质量；默认不生成文件。
+- 新增界面自动化测试，并把 `d3-compare` 加入 GitHub Actions CLI 校验；项目完整回归 259 项全部通过。D3 保持完成态，下一正式任务仍是 T4.3。

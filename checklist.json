@@ -425,6 +425,8 @@
         "tests/test_industrial_harness.py",
         "tests/test_d2_engineering.py",
         "tests/test_demo_d2_engineering.py",
+        "Scripts/demo_harness_comparison.py",
+        "tests/test_demo_harness_comparison.py",
         "docs/d2-harness-engineering.md",
         "requirements.lock",
         ".github/workflows/ci.yml"

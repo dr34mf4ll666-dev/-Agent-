@@ -44,7 +44,7 @@
 | Observability | `ObservationAdapter.from_execution(...)`、`ObservabilityDashboard.build(records)` | Harness/Graph/Model 结果归一化、调用链、Token、耗时、失败率与失败原因 | `demo_observability.py`、`test_observability.py`、`docs/observability.md` |
 | Industrial Harness | `IndustrialHarness.run(agent, operation, requested_tools)` | 连续失败熔断、暂停、half-open 恢复、结构化告警与工具权限前置检查 | `demo_d2_engineering.py`、`test_industrial_harness.py`、`docs/d2-harness-engineering.md` |
 | Independent Evaluator | `IndependentEvaluator.evaluate(dataset, candidates)` | 固定事实/禁用措辞/工具规则评分与六项对比指标 | `test_evaluation.py`、包内 D2 数据集、`docs/d2-harness-engineering.md` |
-| D2 Engineering | `D2EngineeringRuntime.from_files().run()`、`agent-platform d2-verify` | 配置校验、总验收、依赖锁定和 CI 入口 | `demo_d2_engineering.py`、`test_d2_engineering.py`、`.github/workflows/ci.yml` |
+| D2/D3 Engineering | `D2EngineeringRuntime.from_files().run()`、`agent-platform d2-verify`、`agent-platform d3-compare` | 配置校验、总验收、独立对比界面、依赖锁定和 CI 入口 | `demo_d2_engineering.py`、`demo_harness_comparison.py`、相关测试、`.github/workflows/ci.yml` |
 
 ## 当前主线
 

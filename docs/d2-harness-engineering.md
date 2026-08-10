@@ -27,6 +27,15 @@ agent-platform d2-verify
 D:\Anaconda\python.exe Scripts\demo_d2_engineering.py
 ```
 
+只看 D3 Harness 对比实验时运行：
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_harness_comparison.py
+# 安装项目后：agent-platform d3-compare
+```
+
+该独立界面展示六项总指标和每个固定用例的原始通过状态、幻觉数、无效调用、恢复状态、耗时与 Token。
+
 两个入口调用同一个 `D2EngineeringRuntime`，默认只打印终端结果，不生成报告文件。`--config` 和 `--dataset` 可替换 JSON；键名、版本、类型、重复 Agent、重复用例和不安全阈值都会在执行前被拒绝。
 
 ## 独立 Evaluator

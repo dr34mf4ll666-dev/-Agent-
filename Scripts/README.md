@@ -20,6 +20,14 @@ D:\Anaconda\python.exe Scripts\demo_d2_engineering.py
 
 该入口显示固定 Evaluator、运行级熔断告警、9 个 Agent 最小工具权限和有/无 Harness 六项对比指标。它与安装后的 `agent-platform d2-verify` 共用同一 Runtime；默认离线且不写文件。
 
+## D3 Harness 价值独立验收
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_harness_comparison.py
+```
+
+该入口对应安装后的 `agent-platform d3-compare`，单独打印六项总指标和 4 个逐用例原始结果，不生成文件。
+
 ## Echo Agent 演示
 
 ```powershell
