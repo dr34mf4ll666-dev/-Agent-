@@ -15,6 +15,7 @@ from .contracts import (
     TraceEvent,
 )
 from .harness import AgentHarness
+from .industrial_harness import AgentToolPolicyRegistry
 from .context_injection import ContextInjector, InjectedContext
 from .memory import (
     MemoryKind,
@@ -188,10 +189,24 @@ class CognitiveAgent(Protocol):
 class ToolRegistry:
     """Allowlist and dispatch point for all executable tools."""
 
-    def __init__(self, tools: Iterable[Tool] = ()) -> None:
+    def __init__(
+        self,
+        tools: Iterable[Tool] = (),
+        *,
+        agent_name: str | None = None,
+        permission_registry: AgentToolPolicyRegistry | None = None,
+    ) -> None:
+        if (agent_name is None) != (permission_registry is None):
+            raise ToolConfigurationError(
+                "agent_name and permission_registry must be provided together"
+            )
+        self._agent_name = agent_name
+        self._permission_registry = permission_registry
         self._tools: dict[str, Tool] = {}
         for tool in tools:
             self.register(tool)
+        if self._permission_registry is not None:
+            self._permission_registry.authorize(self._agent_name, self.names)
 
     def register(self, tool: Tool) -> None:
         name = getattr(tool, "name", None)
@@ -203,12 +218,22 @@ class ToolRegistry:
         if not callable(getattr(tool, "run", None)):
             raise ToolConfigurationError(f"tool {name} must define run")
         self._tools[name] = tool
+        if self._permission_registry is not None:
+            try:
+                self._permission_registry.authorize(
+                    self._agent_name, self.names
+                )
+            except Exception:
+                del self._tools[name]
+                raise
 
     @property
     def names(self) -> tuple[str, ...]:
         return tuple(self._tools)
 
     def execute(self, name: str, arguments: Mapping[str, Any]) -> Any:
+        if self._permission_registry is not None:
+            self._permission_registry.authorize(self._agent_name, (name,))
         try:
             tool = self._tools[name]
         except KeyError as error:

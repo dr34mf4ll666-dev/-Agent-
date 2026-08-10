@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "circuit_breaker": {
+    "failure_threshold": 3,
+    "reset_timeout_seconds": 60
+  },
+  "agent_tool_policies": [
+    {"agent": "echo", "allowed_tools": []},
+    {"agent": "gateway_research_planner", "allowed_tools": ["local_document_search"]},
+    {"agent": "gateway_research_reporter", "allowed_tools": []},
+    {"agent": "technical_analysis_loop", "allowed_tools": ["technical_market_analysis"]},
+    {"agent": "fundamental_analysis_loop", "allowed_tools": ["fundamental_analysis"]},
+    {"agent": "industry_analysis_loop", "allowed_tools": ["industry_analysis"]},
+    {"agent": "macro_analysis_loop", "allowed_tools": ["macro_analysis"]},
+    {"agent": "simulation_trader", "allowed_tools": []},
+    {"agent": "deterministic_risk_manager", "allowed_tools": []}
+  ]
+}

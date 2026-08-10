@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "2.5.0",
+  "version": "2.7.0",
   "updated_at": "2026-08-10",
-  "current_focus": "D1 回测系统已完成，下一步进入 D2 Harness 工程化加固",
+  "current_focus": "D2/T4.2 已完成，下一步进入 T4.3 连续模拟运行与最终交付",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "in_progress",
   "items": [
@@ -396,18 +396,39 @@
     {
       "id": "T4.2",
       "title": "工业化 Harness",
-      "status": "pending",
-      "completed_slices": [],
-      "remaining": [
-        "调用链、token、耗时和失败率可观测面板",
-        "固定数据集和评分规则的独立 Evaluator",
-        "连续失败 N 次自动熔断、暂停和告警",
-        "每个 Agent 的最小工具权限白名单",
-        "同任务、数据和模型配置下的 Harness 对比实验",
-        "幻觉率、无效 API 调用、端到端成功率、耗时、token 成本和恢复成功率",
-        "稳定 CLI/API、配置校验、依赖锁定和持续集成"
+      "status": "done",
+      "completed_slices": [
+        "Harness、Graph 与 Model Gateway 成功/失败结果统一为带时区、耗时、Token、错误和有序调用链的观测记录",
+        "中文终端面板汇总总览与分层运行数、失败率、Token 和平均/P95/最大耗时，并逐次展示调用链",
+        "旧 trace 缺少单事件时间时明确标记 ordered_only，不伪造节点耗时；默认不生成报告文件",
+        "独立 Evaluator 使用 4 个固定用例和确定性事实、禁用措辞及工具规则评分，不读取 Agent 自评分",
+        "运行级 IndustrialHarness 连续失败 3 次后熔断、暂停、产生结构化告警，并支持 half-open 恢复",
+        "9 个当前 Agent 均登记最小工具白名单，五个工具型 Runtime 在 ToolRegistry 注册和执行时强制复核",
+        "固定同任务、数据和脚本化模型首轮输出对比幻觉率、无效调用、成功率、耗时、Token 和恢复率",
+        "提供 D2EngineeringRuntime、agent-platform d2-verify、严格 JSON 配置校验、requirements.lock 和 GitHub Actions CI"
       ],
-      "evidence": []
+      "remaining": [],
+      "evidence": [
+        "src/agent_platform/core/observability.py",
+        "Scripts/demo_observability.py",
+        "tests/test_observability.py",
+        "tests/test_demo_observability.py",
+        "docs/observability.md",
+        "src/agent_platform/core/evaluation.py",
+        "src/agent_platform/core/industrial_harness.py",
+        "src/agent_platform/d2_engineering.py",
+        "src/agent_platform/cli.py",
+        "src/agent_platform/resources/d2_harness_config.json",
+        "src/agent_platform/resources/d2_evaluation_dataset.json",
+        "Scripts/demo_d2_engineering.py",
+        "tests/test_evaluation.py",
+        "tests/test_industrial_harness.py",
+        "tests/test_d2_engineering.py",
+        "tests/test_demo_d2_engineering.py",
+        "docs/d2-harness-engineering.md",
+        "requirements.lock",
+        ".github/workflows/ci.yml"
+      ]
     },
     {
       "id": "T4.3",

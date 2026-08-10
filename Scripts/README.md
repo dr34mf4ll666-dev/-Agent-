@@ -4,6 +4,22 @@
 
 脚本应能被命令行重复执行，并在失败时返回明确的非零退出状态。
 
+## D2 统一可观测面板演示
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_observability.py
+```
+
+该脚本实际运行成功 Harness、预期失败 Harness、两节点 Graph 和 Mock Model Gateway，统一打印调用链、Token、整次耗时、分层指标和失败率。默认离线且不写报告文件；结尾五项中文验收全部通过才返回 0。
+
+## D2 Harness 工程化总验收
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_d2_engineering.py
+```
+
+该入口显示固定 Evaluator、运行级熔断告警、9 个 Agent 最小工具权限和有/无 Harness 六项对比指标。它与安装后的 `agent-platform d2-verify` 共用同一 Runtime；默认离线且不写文件。
+
 ## Echo Agent 演示
 
 ```powershell

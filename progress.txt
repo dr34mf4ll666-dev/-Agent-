@@ -451,3 +451,31 @@
 
 下一步
 - 进入 D2 Harness 工程化加固，先实现统一可观测记录与中文调用链面板，再推进独立 Evaluator、运行级熔断和最小工具权限。
+
+[2026-08-10] D2 统一可观测记录与中文面板第一切片完成
+- 新增 `ObservationAdapter.from_execution(...)`，自动识别 Harness、Graph 和 Model Gateway 的成功结果或执行异常，把三套不同 trace 归一化为 `ObservationRecord`；业务 Agent 和既有运行器无需改写。
+- 每次记录包含唯一 run_id、运行层、组件、状态、带时区开始时间、整次耗时、有序事件、尝试次数、错误类型/消息和扩展 metadata；失败前 trace 不会丢失。
+- Model Gateway 的 input/output/total Token、provider、model 和 latency 被直接保留；Graph 的节点状态、执行顺序、尝试次数和熔断快照被保留。
+- 新增 `ObservabilityDashboard.build(...)`，统一计算总运行数、成功/失败数、失败率、Token 总量、平均/P95/最大耗时，以及 Harness/Graph/Model 三层分项；重复 run_id 会被拒绝。
+- 新增中文终端验收 `demo_observability.py`，实际执行正常 Harness、预期失败 Harness、两节点 Graph 和确定性 Mock Model。界面展示 4 次运行、成功 3、失败 1、失败率 25%、总 Token 21、三层调用链和失败原因，五项验收全部通过；默认不生成文件。
+- 旧 Harness/Graph trace 只有事件先后、没有单事件时间戳，因此统一记录明确标记 `ordered_only`，只展示真实整次耗时，不伪造节点耗时。
+- 新增 7 项核心接口测试和 1 项界面演示测试；专项 8 项、项目完整回归 246 项全部通过，源码编译、checklist JSON 和 Git diff 检查通过。T4.2 标记为 `in_progress`，没有把可观测切片完成误报为整个 D2 完成。
+
+下一步
+- 实现独立 Evaluator：固定任务集、预期事实和确定性评分规则，使质量评估不依赖被评估 Agent 自我打分；之后再推进运行级熔断告警和 Agent 最小工具权限。
+
+[2026-08-10] D2/T4.2 Harness 工程化正式完成
+- 新增独立 `IndependentEvaluator`。固定数据集包含来源约束、结构化完成、工具权限和金融措辞安全 4 个用例；评分只依据预期事实、禁用短语和允许工具，不读取 Agent 自评分。
+- 新增运行级 `IndustrialHarness.run(...)` 深 module。连续失败默认阈值为 3，达到后状态变为 open，产生 `agent_circuit_opened` critical 结构化告警；第 4 次请求在 operation 前返回 `circuit_open`，实际业务调用次数保持 3。
+- 熔断超过 reset timeout 后进入 half-open，只放行一次探测；成功后关闭并清零连续失败。当前状态为进程内状态，重启后重置；告警由调用方接外部通知，不擅自发送消息。
+- 建立 9 个当前 Agent 的集中最小工具权限。四个金融 Loop 和 Research Planner 只允许各自唯一工具，其余不需要工具的 Agent 使用空列表；未知 Agent 默认拒绝。
+- 五个实际工具型 Runtime 已把 Agent 名称和权限注册表传给 `ToolRegistry`，在工具注册和每次 dispatch 时复核。越权 `web_search` 演示在 operation 前被拒绝，实际执行次数为 0。
+- 完成固定 Harness 对比实验。两组使用同一 4 个任务、数据和脚本化模型首轮输出；无 Harness/有 Harness 的幻觉率为 80%/0%，无效工具调用 1/0，端到端成功率 25%/100%，平均耗时 40ms/86.25ms，Token 80/120，有 Harness 组失败恢复成功率 100%。结果明确不代表真实模型线上质量。
+- 新增稳定 Python interface `D2EngineeringRuntime.from_files().run()`、安装后 CLI `agent-platform d2-verify` 和仓库入口 `demo_d2_engineering.py`；默认终端展示，不生成报告文件。
+- Harness 配置和评估数据集作为版本化包资源发布，严格校验键、类型、阈值、重复 Agent 和重复 case；代码权限表、包内配置和 `SubAgents/catalog.json` 由测试保持一致。
+- 新增 `requirements.lock` 和 GitHub Actions workflow。CI 配置会在 Windows Python 3.11 安装锁定依赖、运行稳定 CLI 和完整测试；远端结果须推送后由 GitHub 实际确认。
+- 新增工业 Harness、Evaluator、总 Runtime 和界面专项测试；相关 42 项测试和项目完整回归 258 项全部通过。源码编译、JSON/YAML 配置和 Git 检查通过。
+- `T4.2` 已标记为 `done`；真实交易继续关闭。
+
+下一步
+- 进入 T4.3：设计可中断恢复的连续模拟运行台账，使用真实行情累计 1–2 周运行、失败、人工确认和复盘证据，再完成最终文档包。

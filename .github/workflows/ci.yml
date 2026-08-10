@@ -1,0 +1,24 @@
+name: project-tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unittest:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - name: Install locked dependencies
+        run: python -m pip install --requirement requirements.lock
+      - name: Install project without resolving new dependencies
+        run: python -m pip install --no-build-isolation --no-deps --editable .
+      - name: Validate D2 stable CLI
+        run: agent-platform d2-verify
+      - name: Run full test suite
+        run: python -m unittest discover -s tests -v

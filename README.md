@@ -4,7 +4,7 @@
 
 ## 项目进度
 
-项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究 Demo 等可运行能力，通用平台交付包已经完成。金融数据基础设施 B1、B2 四类专业分析 Agent、C1–C3 综合决策链和 D1 回测系统均已完成。D1 现在具备历史时点证据门禁、下一可交易开盘撮合、成本、停牌/涨跌停方向约束、分红送转、多股票组合、真实基准和固定实验；固定基线未达标也会如实展示。
+项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究 Demo 等可运行能力，通用平台交付包已经完成。金融数据基础设施 B1、B2 四类专业分析 Agent、C1–C3 综合决策链、D1 回测系统和 D2 Harness 工程化均已完成。D2 现在具备统一可观测面板、独立 Evaluator、运行级熔断告警、9 个 Agent 最小工具权限、稳定 CLI、锁定依赖、CI 配置和固定 Harness 对比实验。
 
 任务 1.2 Loop Engineering 已完成认知闭环、受控工具、三层记忆、三类触发循环、任务隔离和上下文注入。任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、可靠性、Checkpoint 和可视化。A4 Model Gateway 已通过 DeepSeek 真实调用验证。A5 又在不修改核心框架语义的前提下接入非金融资料研究。B1 已形成统一金融 Data Hub 与只读 MCP Server；行情、财务、宏观行业、新闻、公告、LPR、研报和 Tushare 第二日线来源均已真实验证，19 个 dataset 都有真实最小样本和离线回放。真实交易始终关闭。
 
@@ -133,6 +133,22 @@ D:\Anaconda\python.exe Scripts\demo_backtest.py
 ```
 
 该演示回放 30 根已真实抓取的平安银行日线，用两条明确标记的脚本化目标仓位信号解释单笔撮合。信号在 T 日收盘后产生，只能在下一根可交易 K 线开盘执行；结果显示佣金、卖出印花税、滑点、收益率、最大回撤、夏普、胜率和盈亏比。脚本默认不生成文件，完整 D1 验收请运行上面的多股票入口。
+
+### 运行 D2 统一可观测面板
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_observability.py
+```
+
+该离线演示统一展示 Harness、Graph 和 Model Gateway 的调用链、整次耗时、Token 与失败率，并保留一次预期失败的完整原因。默认只输出中文终端面板，不生成报告文件。详细契约见 `docs/observability.md`。
+
+### 运行 D2 Harness 工程化总验收
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_d2_engineering.py
+```
+
+安装项目后也可以运行 `agent-platform d2-verify`。终端会直接展示独立 Evaluator、连续失败熔断与告警、9 个 Agent 工具白名单，以及有/无 Harness 的幻觉率、无效工具调用、成功率、耗时、Token 和恢复率对比。固定实验是离线工程 fixture，不代表真实模型线上质量；详细方法和边界见 `docs/d2-harness-engineering.md`。
 
 ### 运行腾讯日线数据 Tool
 
@@ -315,6 +331,6 @@ Graph 节点仍是受注册表控制的 Python 函数；后续专业 Agent 可�
 
 ## 下一步
 
-通用平台交付包 A1–A5、B1 金融数据基础设施、B2 四类专业分析 Agent、C1–C3 综合决策链和 D1 回测系统均已完成。下一步进入 D2：补齐统一可观测面板、独立 Evaluator、运行级熔断、最小工具权限和稳定主入口。
+通用平台交付包 A1–A5、B1 金融数据基础设施、B2 四类专业分析 Agent、C1–C3 综合决策链、D1 回测系统和 D2 Harness 工程化均已完成。下一步进入 D4/T4.3：使用真实行情进行连续模拟运行，并完成最终运行手册、复盘和总交付文档。
 
 最终交付路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。

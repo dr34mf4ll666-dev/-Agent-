@@ -12,6 +12,9 @@ dependencies = [
     "PyYAML>=6.0"
 ]
 
+[project.scripts]
+agent-platform = "agent_platform.cli:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0"
@@ -29,3 +32,6 @@ addopts = "-ra"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+agent_platform = ["resources/*.json"]

@@ -25,6 +25,7 @@ class ProjectBootstrapTests(unittest.TestCase):
             "checklist.json",
             "progress.txt",
             "pyproject.toml",
+            "requirements.lock",
             ".env.example",
             "dev-map.md",
         ]
@@ -32,6 +33,8 @@ class ProjectBootstrapTests(unittest.TestCase):
         for relative_path in required_files:
             with self.subTest(relative_path=relative_path):
                 self.assertTrue((PROJECT_ROOT / relative_path).is_file())
+
+        self.assertTrue((PROJECT_ROOT / ".github/workflows/ci.yml").is_file())
 
     def test_required_directories_have_role_documents(self):
         role_directories = [

@@ -26,6 +26,7 @@ from agent_platform.core import (
     ReflectionDecision,
     SourceAttributionFilter,
     ToolRegistry,
+    build_default_agent_tool_policy_registry,
 )
 
 from .data_hub import (
@@ -527,7 +528,11 @@ class FundamentalAnalysisRuntime:
         )
         runner = CognitiveLoopRunner(
             agent=_FundamentalLoopAgent(),
-            tools=ToolRegistry([self._tool]),
+            tools=ToolRegistry(
+                [self._tool],
+                agent_name=_FundamentalLoopAgent.name,
+                permission_registry=build_default_agent_tool_policy_registry(),
+            ),
             tool_guardrails=(
                 JSONSchemaValidator(
                     output_schema=FUNDAMENTAL_TOOL_OUTPUT_SCHEMA,

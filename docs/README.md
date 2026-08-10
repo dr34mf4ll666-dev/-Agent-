@@ -18,6 +18,8 @@
 - `risk-manager.md`：C2 完整 Trader→Risk Manager 链、固定风控阈值、模拟账户上下文和验收方式。
 - `financial-graph.md`：C3 单股票/批量完整 Graph、看空条件路由、Checkpoint 恢复、20 只真实股票验收和自动止损止盈来源。
 - `backtest.md`：D1 历史时点证据、C3 信号适配、撮合成本、市场约束、公司行为、固定多股票实验和基线结果。
+- `observability.md`：D2 Harness/Graph/Model Gateway 统一观测契约、调用链、Token、耗时、失败率和中文验收面板。
+- `d2-harness-engineering.md`：D2 独立 Evaluator、运行级熔断告警、Agent 最小工具权限、稳定 CLI/CI 和 Harness 对比实验。
 - `harness-guardrails.md`：五类 Guardrail、配置注册、错误语义和 trace。
 - `cognitive-loop.md`、`working-memory.md`、`loop-engineering.md`：认知闭环、三层记忆、调度和上下文注入。
 - `graph-engineering.md`、`langgraph-mapping.md`：Graph 配置、可靠性和框架映射。

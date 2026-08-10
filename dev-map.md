@@ -41,9 +41,13 @@
 | Financial Graph | `FinancialGraphRuntime.run(query)`、`run_graph_node(state)` | C1→Trader→Market Regime 条件路由→Risk Manager/阻断→Finalize | `demo_financial_graph.py`、`test_financial_graph.py`、`docs/financial-graph.md` |
 | Financial Batch | `FinancialBatchRuntime.run(query)` | 隔离运行多只股票并汇总标准化报告、交易建议和 Graph/Harness 审计记录 | `demo_financial_batch.py`、`test_financial_batch.py`、`docs/financial-graph.md` |
 | Backtest | `BacktestEngine.run(request)`、`BacktestExperimentRunner.run(...)` | 历史时点 C3 适配、下一开盘撮合、成本、停牌/涨跌停、公司行为、固定多股票组合和基准 | `demo_backtest_experiment.py`、`test_backtest_completion.py`、`docs/backtest.md` |
+| Observability | `ObservationAdapter.from_execution(...)`、`ObservabilityDashboard.build(records)` | Harness/Graph/Model 结果归一化、调用链、Token、耗时、失败率与失败原因 | `demo_observability.py`、`test_observability.py`、`docs/observability.md` |
+| Industrial Harness | `IndustrialHarness.run(agent, operation, requested_tools)` | 连续失败熔断、暂停、half-open 恢复、结构化告警与工具权限前置检查 | `demo_d2_engineering.py`、`test_industrial_harness.py`、`docs/d2-harness-engineering.md` |
+| Independent Evaluator | `IndependentEvaluator.evaluate(dataset, candidates)` | 固定事实/禁用措辞/工具规则评分与六项对比指标 | `test_evaluation.py`、包内 D2 数据集、`docs/d2-harness-engineering.md` |
+| D2 Engineering | `D2EngineeringRuntime.from_files().run()`、`agent-platform d2-verify` | 配置校验、总验收、依赖锁定和 CI 入口 | `demo_d2_engineering.py`、`test_d2_engineering.py`、`.github/workflows/ci.yml` |
 
 ## 当前主线
 
-交付包一、B1 金融 Data Hub、B2 四个 Specialist、C1–C3 综合决策链和 D1 回测系统均已完成。当前主线进入 D2 Harness 工程化加固，继续保持真实交易关闭。
+交付包一、B1 金融 Data Hub、B2 四个 Specialist、C1–C3 综合决策链、D1 回测系统和 D2 Harness 工程化均已完成。当前进入 D4/T4.3 连续模拟运行与最终交付；真实交易保持关闭。
 
 真实交易继续关闭。任何新外部数据都必须保留 `source`、`timestamp` 和 `as_of`，任何密钥都只能来自本地环境变量。

@@ -22,6 +22,7 @@ from agent_platform.core import (
     NodeRegistry,
     SourceAttributionFilter,
     ToolRegistry,
+    build_default_agent_tool_policy_registry,
 )
 
 from .agents import GatewayResearchPlanner, GatewayResearchReporter
@@ -223,7 +224,11 @@ class NonFinancialResearchRuntime:
         search_tool = LocalDocumentSearchTool(self._documents)
         runner = CognitiveLoopRunner(
             agent=planner,
-            tools=ToolRegistry([search_tool]),
+            tools=ToolRegistry(
+                [search_tool],
+                agent_name=planner.name,
+                permission_registry=build_default_agent_tool_policy_registry(),
+            ),
             tool_guardrails=(
                 JSONSchemaValidator(
                     output_schema=SEARCH_OUTPUT_SCHEMA,

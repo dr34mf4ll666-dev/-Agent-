@@ -4,6 +4,7 @@
   "entries": [
     {
       "id": "echo",
+      "runtime_name": "echo",
       "status": "active",
       "role": "minimal deterministic Agent and Harness health check",
       "interface": "Agent.run(AgentRequest) -> AgentResponse",
@@ -20,6 +21,7 @@
     },
     {
       "id": "gateway-research-planner",
+      "runtime_name": "gateway_research_planner",
       "status": "active",
       "role": "plan local research, choose one allowed tool and reflect on its observation",
       "interface": "CognitiveAgent.create_plan + choose_action + reflect",
@@ -36,6 +38,7 @@
     },
     {
       "id": "gateway-research-reporter",
+      "runtime_name": "gateway_research_reporter",
       "status": "active",
       "role": "synthesize a report only from organized evidence",
       "interface": "Agent.run(AgentRequest) -> AgentResponse",
@@ -49,6 +52,84 @@
         "Scripts/demo_non_financial_research.py",
         "docs/non-financial-research-demo.md"
       ]
+    },
+    {
+      "id": "technical-analysis-loop",
+      "runtime_name": "technical_analysis_loop",
+      "status": "active",
+      "role": "fetch validated bars and calculate deterministic technical indicators",
+      "interface": "CognitiveAgent.create_plan + choose_action + reflect",
+      "implementation": "src/agent_platform/finance/technical_runtime.py",
+      "import_path": "agent_platform.finance.technical_runtime:_TechnicalLoopAgent",
+      "tools": ["technical_market_analysis"],
+      "model_access": "none",
+      "guardrails": ["ToolRegistry agent policy", "source attribution", "indicator recompute"],
+      "evidence": ["tests/test_technical_analysis_runtime.py", "docs/technical-analysis-agent.md"]
+    },
+    {
+      "id": "fundamental-analysis-loop",
+      "runtime_name": "fundamental_analysis_loop",
+      "status": "active",
+      "role": "fetch financial statements and calculate deterministic valuation evidence",
+      "interface": "CognitiveAgent.create_plan + choose_action + reflect",
+      "implementation": "src/agent_platform/finance/fundamental_runtime.py",
+      "import_path": "agent_platform.finance.fundamental_runtime:_FundamentalLoopAgent",
+      "tools": ["fundamental_analysis"],
+      "model_access": "none",
+      "guardrails": ["ToolRegistry agent policy", "source attribution", "value recompute"],
+      "evidence": ["tests/test_fundamental_analysis_runtime.py", "docs/fundamental-analysis-agent.md"]
+    },
+    {
+      "id": "industry-analysis-loop",
+      "runtime_name": "industry_analysis_loop",
+      "status": "active",
+      "role": "fetch industry evidence and calculate deterministic industry scoring",
+      "interface": "CognitiveAgent.create_plan + choose_action + reflect",
+      "implementation": "src/agent_platform/finance/industry_runtime.py",
+      "import_path": "agent_platform.finance.industry_runtime:_IndustryLoopAgent",
+      "tools": ["industry_analysis"],
+      "model_access": "none",
+      "guardrails": ["ToolRegistry agent policy", "source attribution", "value recompute"],
+      "evidence": ["tests/test_industry_analysis_runtime.py", "docs/industry-analysis-agent.md"]
+    },
+    {
+      "id": "macro-analysis-loop",
+      "runtime_name": "macro_analysis_loop",
+      "status": "active",
+      "role": "fetch macro evidence and calculate market regime",
+      "interface": "CognitiveAgent.create_plan + choose_action + reflect",
+      "implementation": "src/agent_platform/finance/macro_runtime.py",
+      "import_path": "agent_platform.finance.macro_runtime:_MacroLoopAgent",
+      "tools": ["macro_analysis"],
+      "model_access": "none",
+      "guardrails": ["ToolRegistry agent policy", "source attribution", "regime recompute"],
+      "evidence": ["tests/test_macro_analysis_runtime.py", "docs/macro-analysis-agent.md"]
+    },
+    {
+      "id": "simulation-trader",
+      "runtime_name": "simulation_trader",
+      "status": "active",
+      "role": "convert C1 evidence into a deterministic simulation candidate",
+      "interface": "Agent.run(AgentRequest) -> AgentResponse",
+      "implementation": "src/agent_platform/finance/trader.py",
+      "import_path": "agent_platform.finance.trader:_DeterministicTraderAgent",
+      "tools": [],
+      "model_access": "none",
+      "guardrails": ["AgentHarness", "candidate recompute", "real trading disabled"],
+      "evidence": ["tests/test_trader_runtime.py", "docs/trader.md"]
+    },
+    {
+      "id": "deterministic-risk-manager",
+      "runtime_name": "deterministic_risk_manager",
+      "status": "active",
+      "role": "apply deterministic position and risk limits to simulation candidates",
+      "interface": "Agent.run(AgentRequest) -> AgentResponse",
+      "implementation": "src/agent_platform/finance/risk_manager.py",
+      "import_path": "agent_platform.finance.risk_manager:_RiskManagerAgent",
+      "tools": [],
+      "model_access": "none",
+      "guardrails": ["risk preflight", "risk recompute", "real trading disabled"],
+      "evidence": ["tests/test_risk_manager.py", "docs/risk-manager.md"]
     }
   ]
 }
