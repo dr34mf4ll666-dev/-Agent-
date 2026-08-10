@@ -525,7 +525,9 @@ class SubprocessFinancialDataProvider:
             message = str(error_payload.get("message", "provider worker failed"))
             error_type = str(error_payload.get("type", ""))
             lowered = f"{message} {error_type}".casefold()
-            if "token" in lowered or "api init" in lowered:
+            if "provider returned no records" in lowered:
+                code = FinancialDataErrorCode.EMPTY_RESPONSE
+            elif "token" in lowered or "api init" in lowered:
                 code = FinancialDataErrorCode.AUTH_REQUIRED
             elif any(
                 marker in lowered

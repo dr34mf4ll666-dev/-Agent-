@@ -38,9 +38,11 @@
 | Trader | `TraderRuntime.run(query)`、`run_graph_node(state)` | C1 输入校验、buy/sell/hold 模拟候选、目标区间/来源传递、Harness 重算和禁止创建订单 | `demo_trader.py`、`test_trader_runtime.py`、`docs/trader.md` |
 | Risk Manager | `RiskManagerRuntime.run(query)`、`run_graph_node(state)` | 2% 单笔风险、30% 行业上限、15% 回撤、时段、Regime、流动性、止损止盈和人工确认 | `demo_c2_trading.py`、`test_risk_manager.py`、`docs/risk-manager.md` |
 | C2 Trading | `C2TradingRuntime.run(query)`、`run_graph_node(state)` | Trader→Risk Manager 统一入口、模拟执行许可和真实交易硬关闭 | `demo_c2_trading.py`、`test_demo_c2_trading.py`、`docs/risk-manager.md` |
+| Financial Graph | `FinancialGraphRuntime.run(query)`、`run_graph_node(state)` | C1→Trader→Market Regime 条件路由→Risk Manager/阻断→Finalize | `demo_financial_graph.py`、`test_financial_graph.py`、`docs/financial-graph.md` |
+| Financial Batch | `FinancialBatchRuntime.run(query)` | 隔离运行多只股票并汇总标准化报告、交易建议和 Graph/Harness 审计记录 | `demo_financial_batch.py`、`test_financial_batch.py`、`docs/financial-graph.md` |
 
 ## 当前主线
 
-交付包一、B1 金融 Data Hub、B2 四个 Specialist、C1 综合研判和 C2 Trader/Risk Manager 均已完成。当前主线进入 C3 完整金融 Graph，继续保持真实交易关闭。
+交付包一、B1 金融 Data Hub、B2 四个 Specialist 和 C1–C3 综合决策链均已完成。当前主线进入 D1 回测系统，继续保持真实交易关闭。
 
 真实交易继续关闭。任何新外部数据都必须保留 `source`、`timestamp` 和 `as_of`，任何密钥都只能来自本地环境变量。

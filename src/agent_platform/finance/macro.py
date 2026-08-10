@@ -182,6 +182,8 @@ class MacroAnalysisEngine:
         ratings: dict[str, int] = {}
         for record in research_records:
             rating = _text(record, ("东财评级", "rating"), "research rating")
+            if rating == "not_available":
+                continue
             ratings[rating] = ratings.get(rating, 0) + 1
         latest_rating = _text(
             research_records[-1], ("东财评级", "rating"), "latest research rating"
@@ -192,7 +194,13 @@ class MacroAnalysisEngine:
         negative_count = sum(
             count for rating, count in ratings.items() if rating in NEGATIVE_RATINGS
         )
-        if positive_count > negative_count and positive_count >= max(ratings.values()):
+        if not ratings:
+            research_label, research_points, research_rule = (
+                "neutral",
+                0,
+                "no research ratings were available; neutral evidence used",
+            )
+        elif positive_count > negative_count and positive_count >= max(ratings.values()):
             research_label, research_points, research_rule = (
                 "positive",
                 10,
@@ -323,7 +331,7 @@ class MacroAnalysisEngine:
                 "direction": flow_direction,
             },
             "sentiment": {
-                "research_count": len(research_records),
+                "research_count": sum(ratings.values()),
                 "latest_rating": latest_rating,
                 "rating_counts": dict(sorted(ratings.items())),
                 "research_label": research_label,
@@ -363,6 +371,11 @@ class MacroAnalysisEngine:
                 "funds uses the selected stock's fund-flow data as a capital-flow proxy, not a full-market aggregate",
                 "sentiment combines research ratings with an index/stock-flow proxy; it is not a survey index",
                 "market_regime and risk_appetite are transparent project heuristics, not official classifications",
+                *(
+                    ["no research report was available; research sentiment contributed zero points"]
+                    if not ratings
+                    else []
+                ),
             ],
         }
 

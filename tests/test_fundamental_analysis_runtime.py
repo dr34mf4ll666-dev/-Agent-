@@ -21,6 +21,10 @@ from agent_platform.finance import (
     build_default_fundamental_analysis_runtime,
     validate_fundamental_analysis_output,
 )
+from agent_platform.finance.fundamental_runtime import (
+    DERIVED_INDICATOR_SOURCE,
+    derive_indicators_from_statements,
+)
 
 
 def default_query():
@@ -127,6 +131,33 @@ class FundamentalAnalysisRuntimeTests(unittest.TestCase):
             with self.subTest(value=value):
                 with self.assertRaises(FundamentalAnalysisError):
                     FundamentalAnalysisQuery.from_mapping(value)
+
+    def test_statement_fallback_derives_transparent_period_metrics(self):
+        fixture = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+        datasets = {
+            item["dataset"].removeprefix("fundamental."): item
+            for item in fixture["datasets"]
+            if item["dataset"]
+            in {"fundamental.balance_sheet", "fundamental.income_statement"}
+        }
+
+        result = derive_indicators_from_statements(
+            datasets,
+            symbol="sz000001",
+            mode="live",
+        )
+
+        fields = result["records"][0]["fields"]
+        self.assertEqual(result["dataset"], "fundamental.indicators")
+        self.assertEqual(result["source"], DERIVED_INDICATOR_SOURCE)
+        self.assertEqual(result["mode"], "live")
+        self.assertAlmostEqual(float(fields["roe_percent"]), 2.6692, places=3)
+        self.assertAlmostEqual(
+            float(fields["return_on_assets_percent"]), 0.2407, places=3
+        )
+        self.assertEqual(fields["net_profit_growth_percent"], "0")
+        self.assertIn("unavailable", fields["growth_basis"])
+        self.assertEqual(result["trace"][0]["event"], "provider.fallback.derived")
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@
 
 ## 项目进度
 
-项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究 Demo 等可运行能力，通用平台交付包已经完成。金融数据基础设施 B1、B2 四类专业分析 Agent、C1 综合研判与辩论，以及 C2 Trader 与 Risk Manager 均已完成；完整金融 Graph、回测和工程化交付仍待实现。
+项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究 Demo 等可运行能力，通用平台交付包已经完成。金融数据基础设施 B1、B2 四类专业分析 Agent、C1 综合研判与辩论、C2 Trader/Risk Manager 和 C3 完整金融 Graph 均已完成；C3 已通过 Checkpoint 恢复和 20 只真实股票同批次端到端验收。回测和工程化交付仍待实现。
 
 任务 1.2 Loop Engineering 已完成认知闭环、受控工具、三层记忆、三类触发循环、任务隔离和上下文注入。任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、可靠性、Checkpoint 和可视化。A4 Model Gateway 已通过 DeepSeek 真实调用验证。A5 又在不修改核心框架语义的前提下接入非金融资料研究。B1 已形成统一金融 Data Hub 与只读 MCP Server；行情、财务、宏观行业、新闻、公告、LPR、研报和 Tushare 第二日线来源均已真实验证，19 个 dataset 都有真实最小样本和离线回放。真实交易始终关闭。
 
@@ -101,6 +101,22 @@ python Scripts/demo_combined_analysis.py
 ```
 
 默认离线运行 Planner、技术、基本面、行业和大盘/宏观四路 Agent：四个 Specialist 在同一 Graph 并行波次执行，汇总后进行 2 轮 Claim → Evidence → Reasoning 结构化 Bull/Bear 辩论，再输出综合倾向、Bull/Bear 目标价研究边界、完整区间、证据一致性置信度、Consistency Check、Bias Detector 和 Market Regime 仓位门控。结果是研究结论而非下单指令；显式加 `--live` 才请求真实金融数据，详细边界见 `docs/combined-analysis.md`。
+
+### 运行 C3 单股票完整金融 Graph
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_financial_graph.py --confirm
+```
+
+该入口只运行一次完整链路：C1 内部完成 Planner、四个 Specialist、辩论和 Synthesis，外层 Graph 再执行 Trader、Market Regime 条件路由、Risk Manager 和最终报告。终端默认显示十段中文（英文代码值）标准化报告，但不生成文件；只有显式添加 `--output-dir` 才保存完整报告和 Graph/Harness 审计日志。大盘看空且 Trader 提出买入时，条件边直接转入阻断分支；未手填止损止盈时使用 C1 研究区间下沿和上沿作为模拟默认值。添加 `--verify-recovery` 可验证临时 Checkpoint 恢复且不重复执行 C1/Trader。显式加 `--live --symbol sz000001` 才请求真实市场数据，账户和确认信息仍是模拟输入。
+
+### 运行 C3 二十只股票真实批量验收
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_financial_batch.py --live --confirm --attempts 2
+```
+
+该入口默认逐只分析 20 只银行股，使用真实股票数据和“金融行业”板块数据，终端显示进度与交易建议，并在返回值中保留完整报告和 Graph/Harness 审计记录。默认不生成文件。2026-08-10 的验收结果为请求 20、完成 20、失败 0；所有建议仍是模拟研究结果，绝不创建订单。
 
 ### 运行腾讯日线数据 Tool
 
@@ -283,6 +299,6 @@ Graph 节点仍是受注册表控制的 Python 函数；后续专业 Agent 可�
 
 ## 下一步
 
-通用平台交付包 A1–A5、B1 金融数据基础设施、B2 四类专业分析 Agent、C1 综合研判与辩论，以及 C2 Trader 与 Risk Manager 均已完成。下一步进入 C3，把全链路编入完整金融 Graph，并补条件边、Checkpoint 恢复和不少于 20 只股票的批量运行。
+通用平台交付包 A1–A5、B1 金融数据基础设施、B2 四类专业分析 Agent，以及 C1–C3 综合决策链均已完成。下一步进入 D1 回测系统，首先固定可复现实验配置并明确“信号产生时间”和“下一可执行时间”。
 
 最终交付路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。

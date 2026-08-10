@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "2.1.0",
-  "updated_at": "2026-08-09",
-  "current_focus": "C2 Trader 与 Risk Manager 已完成，下一步进入 C3 完整金融 Graph",
+  "version": "2.3.0",
+  "updated_at": "2026-08-10",
+  "current_focus": "C3 完整金融 Graph 已完成，下一步进入 D1 回测系统",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "in_progress",
   "items": [
@@ -334,15 +334,31 @@
     {
       "id": "T3.3",
       "title": "完整金融 Graph",
-      "status": "pending",
-      "completed_slices": [],
-      "remaining": [
-        "编排 Planner、四类分析、辩论、Synthesis、Trader 和 Risk Manager",
-        "大盘看空时跳过买入建议等条件边",
-        "节点失败后的 Checkpoint 恢复",
-        "不少于 20 只股票的标准化投研报告、交易建议清单和 Harness 审计日志"
+      "status": "done",
+      "completed_slices": [
+        "FinancialGraphRuntime 使用自研 GraphRunner 编排完整 C1、Trader、Market Regime 条件路由、Risk Manager/阻断分支和 Finalize",
+        "C1 深 module 内继续运行 Planner、四 Specialist 并行 Graph、辩论、质量检查和 Synthesis，不复制前序逻辑",
+        "Trader 为 buy 且大盘为 bearish、bear 或 risk_off 时，条件边跳过 Risk Manager 并生成 blocked + hold 安全结果",
+        "未提供止损止盈时使用 C1 研究区间下沿/上沿作为模拟默认值，并保留来源",
+        "终端默认展示十段中文标准化报告且不产生文件，显式 --output-dir 时才保存完整报告和 Graph/Harness 审计日志 JSON",
+        "单股票离线演示、正常/看空分支、默认价格、路线篡改、默认无文件和可选报告文件解析测试已通过",
+        "FinancialGraphRuntime 接入 JSON Checkpoint；Risk Manager 首次失败后恢复时 C1 和 Trader 各执行 1 次，Risk Manager 执行 2 次",
+        "FinancialBatchRuntime 隔离运行多标的并返回标准化报告、交易建议清单和 Graph/Harness 审计日志",
+        "20 只不同银行股真实数据同批次请求 20、完成 20、失败 0，默认只在终端和返回值展示，不生成文件",
+        "真实批量验证补齐任意行业快照范围、财务指标透明派生和空研报中性证据语义"
       ],
-      "evidence": []
+      "remaining": [],
+      "evidence": [
+        "src/agent_platform/finance/financial_graph.py",
+        "src/agent_platform/finance/financial_batch.py",
+        "Scripts/demo_financial_graph.py",
+        "Scripts/demo_financial_batch.py",
+        "tests/test_financial_graph.py",
+        "tests/test_demo_financial_graph.py",
+        "tests/test_financial_batch.py",
+        "tests/test_demo_financial_batch.py",
+        "docs/financial-graph.md"
+      ]
     },
     {
       "id": "T4.1",
@@ -479,8 +495,14 @@
     },
     {
       "id": "FINANCE_APPLICATION",
-      "status": "pending",
-      "required_result": "真实金融数据、四类 Agent、辩论、Trader、Risk Manager 和不少于 20 只股票的完整流程全部跑通"
+      "status": "done",
+      "required_result": "真实金融数据、四类 Agent、辩论、Trader、Risk Manager 和不少于 20 只股票的完整流程全部跑通",
+      "evidence": [
+        "src/agent_platform/finance/financial_batch.py",
+        "Scripts/demo_financial_batch.py",
+        "tests/test_financial_batch.py",
+        "docs/financial-graph.md"
+      ]
     },
     {
       "id": "ENGINEERING",

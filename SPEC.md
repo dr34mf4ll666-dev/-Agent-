@@ -9,32 +9,32 @@
 - 输出结构化、数据可追溯、行为可约束、过程可审计；
 - 在不接入真实下单的前提下完成分析、风控、模拟执行和回测。
 
-## 2. 当前小功能：C2 Trader 与 Risk Manager 正式完成
+## 2. 已完成小功能：C3 完整金融 Graph
 
-本轮用 `C2TradingRuntime` 串联 Trader 和确定性 Risk Manager。Trader 从完整 C1 报告生成 `buy`、`sell` 或 `hold` 模拟候选；Risk Manager 再检查账户风险、仓位、回撤、交易时段、市场环境、流动性、止损止盈和人工确认。完整结果只给出后续模拟执行许可，不创建订单。正式任务 T3.2 达到验收条件。
+`FinancialGraphRuntime` 使用阶段 A 的自研 `GraphRunner` 运行单股票完整研究和风控链；`FinancialBatchRuntime` 在该稳定接口之上逐只隔离运行多个标的，并统一返回报告、交易建议和审计记录。外层节点依次执行 C1、Trader、Market Regime 条件路由、Risk Manager/看空阻断分支和 Finalize；C1 内部继续复用 Planner、四 Specialist 并行 Graph、辩论、质量检查和 Synthesis。
 
 ### 本轮验收内容
 
-1. `TraderRuntime` 只接收完整 C1 结果，按综合倾向、加权评分和置信度确定性输出 `buy`、`sell` 或 `hold`，并继承目标区间和完整来源时间。
-2. `RiskContext` 显式提供模拟账户权益、当前/请求仓位、其他同业暴露、组合回撤、成交额、评估时间、止损止盈和人工确认状态。
-3. 单笔预计亏损不得超过账户权益 2%；最终单行业暴露不得超过 30%；组合回撤超过 15% 时禁止新增仓位并把已有目标仓位降低 50%。
-4. 买入必须位于 A 股交易时段、通过 Market Regime、平均每日成交额不低于 1000 万元、成交额参与率不超过 10%，且止损/参考价/止盈顺序正确、收益风险比不低于 1.5。
-5. 最终批准仓位取请求仓位、C1 市场门控、单笔风险、行业和流动性上限中的最小值；超过 10% 必须有显式人工确认。
-6. Risk Manager 输出 `approved`、`adjusted`、`pending_human_confirmation`、`blocked`、`forced_reduction` 或 `no_action`，并保留每项检查和计算过程。
-7. Risk Manager 在 Harness Pre-Flight 计算全部十项硬规则，执行后再经过 JSON Schema 与确定性结果重算；Trader 和 Risk Manager 均支持独立运行、统一 C2 入口和 Graph 节点。
-8. `simulation_only=true`、`order_created=false`、`real_trading_allowed=false` 由代码强制执行；离线和真实市场数据整链均可运行。
+1. 调用方只需提交 `FinancialGraphQuery`，不需要手工串联 C1、Trader 和 Risk Manager。
+2. 正常路径输出 C1 完整研究、Trader 候选、条件路由、Risk Manager 结果、最终决策和顶层 Graph trace。
+3. 当 Trader 为 `buy` 且 Market Regime 为 `bearish`、`bear` 或 `risk_off` 时，条件边跳过 Risk Manager，进入确定性阻断分支并保持当前仓位。
+4. 未显式提供止损/止盈时，使用 C1 研究区间下沿/上沿作为模拟默认值，并在路由结果中标明来源；不会为了获得区间重复运行 C1。
+5. 最终报告重算证券代码、模式、条件路线、Risk Manager 决策来源和安全字段，篡改路线会被拒绝。
+6. `simulation_only=true`、`order_created=false`、`real_trading_allowed=false` 继续由确定性代码强制执行。
+7. 演示默认只在终端展示四 Agent、来源时间、辩论、Synthesis、Trader、全部风控检查、Graph 审计和安全边界，不产生文件；显式提供 `--output-dir` 时才保存完整报告与审计日志 JSON。
+8. 提供正常路线、看空跳过、默认止损止盈、篡改拦截、默认无文件和可选报告文件解析测试。
+9. JSON Checkpoint 接入完整金融 Graph；中间节点失败后恢复时不重复执行已完成的 C1 和 Trader。
+10. 20 只不同银行股使用真实数据在同一批次完成 20/20 端到端运行，并在内存和终端给出 20 份报告、20 条交易建议和 20 份 Graph/Harness 审计记录。
 
 ### 明确不做
 
-- 不在 C2 实现 C3 的完整金融 Graph 条件边、Checkpoint 恢复或 20 只股票批量运行。
-- 不接入真实券商账户；演示中的账户权益、仓位、回撤、成交额和确认状态都是显式模拟输入。
-- 不创建模拟订单或真实订单；C2 只决定后续模拟执行是否被允许。
-- 不实现撮合、费用、滑点或回测，这些属于后续交付包。
-- 不让 LLM 决定交易动作、仓位、风控阈值或覆盖安全字段。
+- 不接入真实券商账户，不创建模拟或真实订单，不实现撮合、费用、滑点或回测。
+- `--live` 只切换市场数据来源；账户权益、仓位、回撤、成交额和确认状态仍是显式模拟输入。
+- 不让 LLM 决定交易动作、条件边、仓位、风控阈值或覆盖安全字段。
 
 ### 已完成基线
 
-B1 Data Hub、B2 四类 Specialist、完整 C1 和 Trader 第一切片作为本轮基线。本轮补齐 Risk Manager 和完整 C2 统一入口，不改变前序金融分析逻辑。
+B1 Data Hub、B2 四类 Specialist、完整 C1 和 C2 作为本轮基线。本轮只增加 C3 编排，不复制或改变前序分析、交易候选和风控计算。
 
 ## 3. 架构原则
 
@@ -225,4 +225,4 @@ python -m unittest discover -s tests -v
 
 ## 12. 下一步
 
-C2 已完整完成 Trader、确定性 Risk Manager、人工确认门、模拟执行许可和真实交易关闭。下一小功能进入 C3：完整金融 Graph、条件边、Checkpoint 恢复和不少于 20 只股票的批量运行。
+C3 已完成。下一主线进入 D1 回测系统：先固定股票池、时间区间、信号和下一可执行时间语义，再实现交易成本、停牌/涨跌停约束与可复算指标。

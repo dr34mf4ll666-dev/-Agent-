@@ -27,6 +27,8 @@ from agent_platform.core import (
 )
 
 from .data_hub import (
+    FinancialDataError,
+    FinancialDataErrorCode,
     FinancialDataHub,
     FinancialDataPolicy,
     FinancialDataTool,
@@ -45,6 +47,52 @@ MACRO_DATASET_KEYS = {
     "policy_lpr": "macro.policy_lpr",
     "research": "sentiment.research",
 }
+
+DERIVED_EMPTY_RESEARCH_SOURCE = "derived:akshare.stock_research_report_em:empty"
+
+
+def _empty_research_evidence(
+    macro_data: Mapping[str, Any],
+    *,
+    symbol: str,
+    mode: str,
+) -> dict[str, Any]:
+    timestamps = [
+        str(dataset["timestamp"])
+        for dataset in macro_data.values()
+        if isinstance(dataset, Mapping) and dataset.get("timestamp")
+    ]
+    if not timestamps:
+        raise MacroAnalysisError("cannot timestamp empty research evidence")
+    timestamp = max(timestamps)
+    return {
+        "dataset": "sentiment.research",
+        "record_count": 1,
+        "source": DERIVED_EMPTY_RESEARCH_SOURCE,
+        "timestamp": timestamp,
+        "attempts": 0,
+        "cache_hit": False,
+        "mode": mode,
+        "records": [
+            {
+                "subject": symbol,
+                "fields": {
+                    "rating": "not_available",
+                    "derivation": "provider returned no research reports; neutral evidence used",
+                },
+                "source": DERIVED_EMPTY_RESEARCH_SOURCE,
+                "timestamp": timestamp,
+                "as_of": timestamp,
+            }
+        ],
+        "trace": [
+            {
+                "event": "provider.fallback.empty_research",
+                "attempt": 0,
+                "detail": "no research reports; deterministic neutral evidence used",
+            }
+        ],
+    }
 
 
 MACRO_TOOL_OUTPUT_SCHEMA = {
@@ -273,18 +321,30 @@ class _MacroAnalysisTool:
                 "mode": query.mode,
             }
         )
-        macro_data["research"] = self._financial_tool.run(
-            {
-                "dataset": "sentiment.research",
-                "params": {
-                    "symbol": query.symbol,
-                    "limit": query.limit,
-                    "start_date": query.start_date,
-                    "end_date": query.end_date,
-                },
-                "mode": query.mode,
-            }
-        )
+        try:
+            macro_data["research"] = self._financial_tool.run(
+                {
+                    "dataset": "sentiment.research",
+                    "params": {
+                        "symbol": query.symbol,
+                        "limit": query.limit,
+                        "start_date": query.start_date,
+                        "end_date": query.end_date,
+                    },
+                    "mode": query.mode,
+                }
+            )
+        except FinancialDataError as error:
+            if not (
+                query.mode == "live"
+                and error.code == FinancialDataErrorCode.EMPTY_RESPONSE
+            ):
+                raise
+            macro_data["research"] = _empty_research_evidence(
+                macro_data,
+                symbol=query.symbol,
+                mode=query.mode,
+            )
         analysis = self._engine.analyze(
             _bundle_for_engine(macro_data),
             index_symbol=query.index_symbol,
@@ -493,6 +553,7 @@ def build_default_macro_analysis_runtime(
 
 
 __all__ = [
+    "DERIVED_EMPTY_RESEARCH_SOURCE",
     "MACRO_DATASET_KEYS",
     "MACRO_TOOL_OUTPUT_SCHEMA",
     "MacroAnalysisQuery",

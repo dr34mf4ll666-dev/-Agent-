@@ -232,7 +232,10 @@ class _IndustryAnalysisTool:
         industry_data["industry_snapshot"] = self._financial_tool.run(
             {
                 "dataset": "industry.snapshot",
-                "params": {"limit": query.limit},
+                # The target sector may appear late in the provider's table.
+                # Keep a broad comparison universe so arbitrary sectors do not
+                # fail merely because the user requested a short policy history.
+                "params": {"limit": max(query.limit, 50)},
                 "mode": query.mode,
             }
         )

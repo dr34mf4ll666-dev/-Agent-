@@ -103,6 +103,25 @@ python Scripts/demo_c2_trading.py --live --confirm --symbol sz000001
 
 该脚本运行完整 C1、Trader 和确定性 Risk Manager。默认在仓位超过 10% 时停在人工确认；显式 `--confirm` 后才允许进入后续模拟执行。输出包括单笔 2% 风险、行业 30% 上限、总回撤 15%、交易时段、Market Regime、流动性、止损止盈和人工确认检查。`--live` 只表示市场数据来自真实接口，账户权益、仓位、回撤和确认状态仍是命令行提供的模拟场景；系统不会创建订单。
 
+## C3 单股票完整金融 Graph 演示
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_financial_graph.py
+D:\Anaconda\python.exe Scripts\demo_financial_graph.py --confirm
+D:\Anaconda\python.exe Scripts\demo_financial_graph.py --live --confirm --symbol sz000001
+D:\Anaconda\python.exe Scripts\demo_financial_graph.py --confirm --verify-recovery
+```
+
+该脚本用一个入口运行完整 C1、Trader、Market Regime 条件路由、Risk Manager 和 Finalize。终端默认显示十段完整标准化报告，包括四 Agent、来源时间、2–3 轮辩论、Synthesis、Trader、十项风控、Graph 审计和安全边界；代码值采用“中文（英文）”。默认不生成文件，只有显式添加 `--output-dir` 时才保存完整报告与 Graph/Harness 审计日志。未指定止损止盈时自动使用 C1 研究区间边界；大盘看空且候选为买入时走阻断分支。`--verify-recovery` 会模拟 Risk Manager 首次失败，并证明恢复时 C1/Trader 不重复运行。系统不会创建订单。
+
+## C3 二十只股票真实批量验收
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_financial_batch.py --live --confirm --attempts 2
+```
+
+脚本默认逐只运行 20 只银行股，每只都经过完整 C1、Trader、条件路由和 Risk Manager。它在终端显示进度、交易建议和汇总，并在内存返回 20 份标准化报告、20 条建议和 20 份 Graph/Harness 审计记录；默认不生成文件。离线模式会被明确拒绝，避免用同一份 fixture 冒充 20 只股票。
+
 ## 腾讯日线数据 Tool 演示
 
 ```powershell

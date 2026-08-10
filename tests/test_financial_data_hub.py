@@ -201,6 +201,24 @@ class FinancialDataHubTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.code, FinancialDataErrorCode.AUTH_REQUIRED)
 
+    def test_subprocess_provider_normalizes_empty_records(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            worker = Path(temporary) / "empty_worker.py"
+            worker.write_text(
+                "import json, sys\n"
+                "sys.stdin.read()\n"
+                "print(json.dumps({'error': {'type': 'ValueError', "
+                "'message': 'provider returned no records'}}))\n"
+                "raise SystemExit(2)\n",
+                encoding="utf-8",
+            )
+            provider = SubprocessFinancialDataProvider(worker)
+
+            with self.assertRaises(FinancialDataError) as raised:
+                provider.fetch("sentiment.research", {}, timeout_seconds=2)
+
+        self.assertEqual(raised.exception.code, FinancialDataErrorCode.EMPTY_RESPONSE)
+
     def test_subprocess_provider_normalizes_tushare_permission_denied(self):
         with tempfile.TemporaryDirectory() as temporary:
             worker = Path(temporary) / "permission_worker.py"

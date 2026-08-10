@@ -392,3 +392,33 @@
 
 下一步
 - 进入 C3 完整金融 Graph：编排 C1、Trader 和 Risk Manager，增加“大盘看空时跳过买入”等条件边、Checkpoint 恢复，并对不少于 20 只股票输出标准化报告、交易建议清单和 Harness 审计日志。
+
+[2026-08-10] C3 单股票完整金融 Graph 第一切片完成
+- 新增 `FinancialGraphQuery` 和 `FinancialGraphRuntime` 深 module。调用方通过一个接口运行完整 C1、Trader、Market Regime 条件路由、Risk Manager/看空阻断和 Finalize；C1 内部继续复用 Planner、四 Specialist 并行 Graph、辩论、质量检查和 Synthesis。
+- 顶层 Graph 正常路径为 `c1_research -> trader -> market_route -> risk_manager -> finalize`。离线确认演示输出 cautious_positive、置信度 69、buy 候选、批准仓位 15.00% 和预计单笔亏损 0.98%。
+- 新增确定性条件边：Trader 为 buy 且 Regime 为 bearish、bear 或 risk_off 时，`risk_manager` 节点被标记为 skipped，转入 `market_bearish_skip` 并输出 blocked + hold；真实交易仍关闭。
+- 未显式提供止损止盈时，Graph 使用 C1 研究区间下沿/上沿作为模拟默认值并记录来源，不会为了获得区间重复执行 C1。
+- 最终报告会重算证券代码、模式、条件路线、决策来源和三项安全字段；篡改条件路线会被拒绝。
+- 新增单股票演示、专项文档、4 项 Runtime 测试和 1 项演示测试；专项 5 项和项目完整回归 210 项全部通过，源码编译、checklist JSON 与 Git diff 检查通过。T3.3 标记为 `in_progress`，未提前算作完成。
+
+下一步
+- 为金融 Graph 接入 JSON Checkpoint，复现中间节点失败并证明恢复时不重复执行已经完成的 C1/Trader 节点；之后完成不少于 20 只股票的批量报告和审计日志。
+
+[2026-08-10] C3 标准化报告改为界面可见并默认不落盘
+- `demo_financial_graph.py` 不再只打印摘要：默认在终端展示基本信息、四 Agent、数据来源与时间、完整 Bull/Bear 辩论、Synthesis、Trader 与条件路由、十项风控、Graph 审计、安全边界和输出路径十个部分。
+- 信号、状态、路由和风控检查使用“中文（英文代码值）”格式，既方便阅读又保留稳定代码字段。
+- 默认运行不写文件，避免连续分析产生大量本地报告；只有显式提供 `--output-dir` 时，才把完整 `result["report"]` 和 Graph/Harness 审计信息分别写入两个 JSON。
+- 演示测试同时检查终端关键章节、默认无文件提示、可选两个文件存在且可解析、最终决策与真实交易关闭字段未变化；项目完整回归 211 项全部通过，C3 仍保持 `in_progress`。
+
+[2026-08-10] C3 完整金融 Graph 正式完成
+- `FinancialGraphRuntime` 接入可选 JSON Checkpoint。恢复演示让 Risk Manager 首次发生预期故障，恢复后实际调用为 C1=1、Trader=1、Risk Manager=2，证明已完成节点没有重复执行；临时 Checkpoint 自动清理。
+- 新增 `FinancialBatchRuntime` 和 `demo_financial_batch.py`。批量层只依赖单股票 Graph 接口，逐只隔离运行；一只失败不会遮蔽其他结果，统一返回标准化报告、交易建议清单和 Graph/Harness 审计记录，默认不生成报告文件。
+- 第一次真实 20 只银行股批量运行完成 18、失败 2，由此发现行业快照截断、外部财务指标页失效、无个股研报和瞬时接口异常等真实边界。
+- 行业 Agent 改为保留至少 50 个板块的比较集合，避免目标板块排在数据表后部时被截掉；20 只银行股使用数据源真实板块名“金融行业”。
+- 财务指标页不可用时，系统从同源资产负债表和利润表确定性计算报告期 ROE、ROA 和负债率，并标注 `derived:` 来源；没有去年同期数据时净利润增速采用明确的中性代理，不制造假同比。
+- Data Hub 将“provider returned no records”规范为 `empty_response`。个股确实没有研报时，宏观 Agent 记录 `not_available` 和派生来源，研报情绪贡献 0 分；超时、网站不可用等其他错误仍正常失败。
+- 修复后同一批次真实请求 20、完成 20、失败 0，产出 20 份标准化投研报告、20 条交易建议和 20 份 Graph/Harness 审计记录；其中华夏银行和光大银行给出 hold，说明结果并非固定买入模板。
+- 新增批量、恢复、空数据语义、行业范围和财务派生测试；项目完整回归 220 项全部通过。`T3.3` 和 `FINANCE_APPLICATION` 标记为 `done`，真实交易继续关闭。
+
+下一步
+- 进入 D1 回测系统：先固定股票池、时间区间、基准和参数，明确信号时间与下一可执行时间，再实现佣金、印花税、滑点、复权、停牌和涨跌停约束。

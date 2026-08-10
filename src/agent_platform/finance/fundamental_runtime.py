@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +29,8 @@ from agent_platform.core import (
 )
 
 from .data_hub import (
+    FinancialDataError,
+    FinancialDataErrorCode,
     FinancialDataHub,
     FinancialDataPolicy,
     FinancialDataTool,
@@ -45,6 +49,8 @@ DATASET_KEYS = {
     "valuation": "fundamental.valuation",
     "market_realtime": "market.realtime",
 }
+
+DERIVED_INDICATOR_SOURCE = "derived:akshare.stock_financial_report_sina"
 
 
 FUNDAMENTAL_TOOL_OUTPUT_SCHEMA = {
@@ -205,6 +211,136 @@ def _bundle_for_engine(fundamental_data: Mapping[str, Any]) -> dict[str, Any]:
     return bundle
 
 
+def _record_decimal(record: Mapping[str, Any], *names: str) -> Decimal:
+    fields = record.get("fields")
+    if not isinstance(fields, Mapping):
+        raise FundamentalAnalysisError("derived indicator source is missing fields")
+    for name in names:
+        value = fields.get(name)
+        if value is None:
+            continue
+        try:
+            return Decimal(str(value))
+        except InvalidOperation as error:
+            raise FundamentalAnalysisError(
+                f"derived indicator field is not numeric: {name}"
+            ) from error
+    raise FundamentalAnalysisError(
+        f"derived indicator source is missing one of {names!r}"
+    )
+
+
+def _latest_records(dataset: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    records = dataset.get("records")
+    if not isinstance(records, list) or not records:
+        raise FundamentalAnalysisError("derived indicator source has no records")
+    if any(not isinstance(record, Mapping) for record in records):
+        raise FundamentalAnalysisError("derived indicator records must be objects")
+    return sorted(records, key=lambda record: str(record.get("as_of", "")), reverse=True)
+
+
+def _same_period_last_year(
+    latest: Mapping[str, Any],
+    records: list[Mapping[str, Any]],
+) -> Mapping[str, Any] | None:
+    try:
+        latest_date = datetime.fromisoformat(str(latest["as_of"]))
+    except (KeyError, TypeError, ValueError) as error:
+        raise FundamentalAnalysisError(
+            "derived indicator source has an invalid as_of"
+        ) from error
+    for record in records[1:]:
+        try:
+            candidate = datetime.fromisoformat(str(record["as_of"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if (
+            candidate.year == latest_date.year - 1
+            and candidate.month == latest_date.month
+            and candidate.day == latest_date.day
+        ):
+            return record
+    return None
+
+
+def derive_indicators_from_statements(
+    fundamental_data: Mapping[str, Any],
+    *,
+    symbol: str,
+    mode: str,
+) -> dict[str, Any]:
+    """Build transparent ratio proxies when the external indicator page fails."""
+
+    balance_records = _latest_records(fundamental_data["balance_sheet"])
+    income_records = _latest_records(fundamental_data["income_statement"])
+    balance = balance_records[0]
+    income = income_records[0]
+    prior_income = _same_period_last_year(income, income_records)
+    assets = _record_decimal(balance, "资产总计")
+    liabilities = _record_decimal(balance, "负债合计")
+    equity = _record_decimal(
+        balance,
+        "归属于母公司股东的权益",
+        "归属于母公司所有者权益",
+    )
+    net_profit = _record_decimal(income, "归属于母公司的净利润", "净利润")
+    if assets <= 0 or equity <= 0:
+        raise FundamentalAnalysisError(
+            "cannot derive indicators from non-positive assets or equity"
+        )
+    as_of = min(str(balance["as_of"]), str(income["as_of"]))
+    if prior_income is None:
+        profit_growth = Decimal("0")
+        growth_basis = "same-period prior-year unavailable; neutral proxy used"
+    else:
+        prior_profit = _record_decimal(
+            prior_income,
+            "归属于母公司的净利润",
+            "净利润",
+        )
+        profit_growth = (
+            (net_profit - prior_profit) / abs(prior_profit) * Decimal("100")
+            if prior_profit
+            else Decimal("0")
+        )
+        growth_basis = "same-period prior-year statement comparison"
+    timestamp = max(str(balance["timestamp"]), str(income["timestamp"]))
+    fields = {
+        "roe_percent": str(net_profit / equity * Decimal("100")),
+        "weighted_roe_percent": str(net_profit / equity * Decimal("100")),
+        "debt_to_asset_percent": str(liabilities / assets * Decimal("100")),
+        "return_on_assets_percent": str(net_profit / assets * Decimal("100")),
+        "net_profit_growth_percent": str(profit_growth),
+        "total_assets_cny": str(assets),
+        "derivation": "period-to-date statement ratio proxies",
+        "growth_basis": growth_basis,
+    }
+    record = {
+        "subject": symbol,
+        "fields": fields,
+        "source": DERIVED_INDICATOR_SOURCE,
+        "timestamp": timestamp,
+        "as_of": as_of,
+    }
+    return {
+        "dataset": "fundamental.indicators",
+        "record_count": 1,
+        "source": DERIVED_INDICATOR_SOURCE,
+        "timestamp": timestamp,
+        "attempts": 0,
+        "cache_hit": False,
+        "mode": mode,
+        "records": [record],
+        "trace": [
+            {
+                "event": "provider.fallback.derived",
+                "attempt": 0,
+                "detail": "external indicator page failed; ratios derived from statements",
+            }
+        ],
+    }
+
+
 class _FundamentalAnalysisTool:
     name = "fundamental_analysis"
 
@@ -226,13 +362,34 @@ class _FundamentalAnalysisTool:
             }
             if dataset == "fundamental.indicators":
                 params["start_year"] = query.start_year
-            fundamental_data[key] = self._financial_tool.run(
-                {
-                    "dataset": dataset,
-                    "params": params,
-                    "mode": query.mode,
-                }
-            )
+            try:
+                fundamental_data[key] = self._financial_tool.run(
+                    {
+                        "dataset": dataset,
+                        "params": params,
+                        "mode": query.mode,
+                    }
+                )
+            except FinancialDataError as error:
+                can_derive = (
+                    dataset == "fundamental.indicators"
+                    and query.mode == "live"
+                    and error.code
+                    in {
+                        FinancialDataErrorCode.PROVIDER_UNAVAILABLE,
+                        FinancialDataErrorCode.EMPTY_RESPONSE,
+                        FinancialDataErrorCode.TIMEOUT,
+                    }
+                    and "balance_sheet" in fundamental_data
+                    and "income_statement" in fundamental_data
+                )
+                if not can_derive:
+                    raise
+                fundamental_data[key] = derive_indicators_from_statements(
+                    fundamental_data,
+                    symbol=query.symbol,
+                    mode=query.mode,
+                )
         analysis = self._engine.analyze(
             _bundle_for_engine(fundamental_data),
             symbol=query.symbol,

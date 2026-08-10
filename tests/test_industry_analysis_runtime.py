@@ -38,6 +38,22 @@ class BrokenSourceFinancialTool:
         return entry
 
 
+class CapturingFinancialTool:
+    def __init__(self):
+        self.arguments = []
+
+    def run(self, arguments):
+        self.arguments.append(copy.deepcopy(arguments))
+        fixture = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+        return copy.deepcopy(
+            next(
+                item
+                for item in fixture["datasets"]
+                if item["dataset"] == arguments["dataset"]
+            )
+        )
+
+
 class IndustryAnalysisRuntimeTests(unittest.TestCase):
     def setUp(self):
         self.runtime = build_default_industry_analysis_runtime(
@@ -120,6 +136,17 @@ class IndustryAnalysisRuntimeTests(unittest.TestCase):
             with self.subTest(value=value):
                 with self.assertRaises(IndustryAnalysisError):
                     IndustryAnalysisQuery.from_mapping(value)
+
+    def test_snapshot_fetch_keeps_a_broad_sector_comparison_universe(self):
+        tool = CapturingFinancialTool()
+        runtime = IndustryAnalysisRuntime(tool)
+
+        runtime.run(IndustryAnalysisQuery(sector="玻璃行业", limit=5))
+
+        snapshot_call = next(
+            item for item in tool.arguments if item["dataset"] == "industry.snapshot"
+        )
+        self.assertEqual(snapshot_call["params"]["limit"], 50)
 
 
 if __name__ == "__main__":

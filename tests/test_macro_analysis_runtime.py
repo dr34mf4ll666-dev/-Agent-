@@ -13,12 +13,15 @@ sys.path.insert(0, str(SRC_ROOT))
 
 from agent_platform.core import CognitiveLoopExecutionError, GraphDefinition, GraphRunner
 from agent_platform.finance import (
+    FinancialDataError,
+    FinancialDataErrorCode,
     MacroAnalysisError,
     MacroAnalysisQuery,
     MacroAnalysisRuntime,
     build_default_macro_analysis_runtime,
     validate_macro_analysis_output,
 )
+from agent_platform.finance.macro_runtime import DERIVED_EMPTY_RESEARCH_SOURCE
 
 
 def default_query():
@@ -34,6 +37,24 @@ class BrokenSourceFinancialTool:
         )
         entry["records"][0].pop("source")
         return entry
+
+
+class EmptyResearchFinancialTool:
+    def run(self, arguments):
+        if arguments["dataset"] == "sentiment.research":
+            raise FinancialDataError(
+                "provider returned no records",
+                code=FinancialDataErrorCode.EMPTY_RESPONSE,
+                source="akshare.stock_research_report_em",
+            )
+        fixture = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+        return copy.deepcopy(
+            next(
+                item
+                for item in fixture["datasets"]
+                if item["dataset"] == arguments["dataset"]
+            )
+        )
 
 
 class MacroAnalysisRuntimeTests(unittest.TestCase):
@@ -106,6 +127,20 @@ class MacroAnalysisRuntimeTests(unittest.TestCase):
             with self.subTest(value=value):
                 with self.assertRaises(MacroAnalysisError):
                     MacroAnalysisQuery.from_mapping(value)
+
+    def test_live_empty_research_becomes_explicit_neutral_evidence(self):
+        runtime = MacroAnalysisRuntime(EmptyResearchFinancialTool())
+
+        result = runtime.run(
+            MacroAnalysisQuery(symbol="sh600015", mode="live")
+        ).to_mapping()
+
+        analysis = result["report"]["analysis"]
+        research = result["report"]["macro_data"]["research"]
+        self.assertEqual(analysis["sentiment"]["research_count"], 0)
+        self.assertEqual(analysis["sentiment"]["latest_rating"], "not_available")
+        self.assertEqual(research["source"], DERIVED_EMPTY_RESEARCH_SOURCE)
+        self.assertIn("no research report was available", analysis["caveats"][-1])
 
 
 if __name__ == "__main__":
