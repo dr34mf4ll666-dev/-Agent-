@@ -1,10 +1,10 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "2.7.0",
-  "updated_at": "2026-08-10",
-  "current_focus": "D2/T4.2 已完成，下一步进入 T4.3 连续模拟运行与最终交付",
+  "version": "3.0.0",
+  "updated_at": "2026-08-11",
+  "current_focus": "调整后交付范围已完成；原 1-2 周时间等待已豁免并保留未证明声明",
   "tracking_model": "official_tasks_and_final_acceptance",
-  "status": "in_progress",
+  "status": "done",
   "items": [
     {
       "id": "T1.1",
@@ -432,20 +432,36 @@
         ".github/workflows/ci.yml"
       ]
     },
-    {
-      "id": "T4.3",
-      "title": "模拟运行与最终交付",
-      "status": "pending",
-      "completed_slices": [],
-      "remaining": [
-        "券商模拟盘或本地模拟撮合使用真实行情连续运行 1–2 周",
-        "运行、失败、人工确认和复盘记录",
-        "架构图、Graph Schema、Agent 卡片和数据字典",
-        "运行手册、回测报告、Harness 对比实验和复盘报告",
-        "从环境检查开始复现主要结果的主命令或短流程"
-      ],
-      "evidence": []
-    }
+      {
+        "id": "T4.3",
+        "title": "模拟运行与最终交付",
+        "status": "done",
+        "completed_slices": [
+          "通过 C3 一致性和安全字段校验后进入本地模拟撮合，真实交易保持硬关闭",
+          "按 100 股整手、佣金、最低佣金、卖出印花税和滑点确定性计算模拟成交",
+          "单份版本化 JSON 账本保存 session、账户、运行、失败、人工确认、成交和复盘摘要并支持恢复",
+          "离线记录不计入连续真实运行周期，至少 7 个日历日且 5 个不同真实行情交易日的规则可机读",
+          "提供不生成文件的中文终端演示和显式 ledger 持久运行入口",
+          "使用腾讯实时报价完成单日真实运行验证，收盘后风控输出 hold 且未伪造成交",
+          "完成架构图、Graph Schema、九个 Agent 卡片、数据字典、运行手册、回测报告、Harness 对比报告和模拟复盘",
+          "新增 FinalDeliveryRuntime、agent-platform d4-verify 和仓库总验收入口，从环境检查开始复现五条主流程",
+          "用户于 2026-08-11 明确豁免 1-2 周时间等待；证据状态保留 waived_not_proven，不声称长周期稳定性已证明"
+        ],
+        "remaining": [],
+        "evidence": [
+          "src/agent_platform/finance/paper_trading.py",
+          "Scripts/demo_paper_trading.py",
+          "tests/test_paper_trading.py",
+          "tests/test_demo_paper_trading.py",
+          "docs/paper-trading.md",
+          "src/agent_platform/final_delivery.py",
+          "Scripts/demo_final_delivery.py",
+          "tests/test_final_delivery.py",
+          "tests/test_demo_final_delivery.py",
+          "docs/final-delivery.md",
+          "README.md"
+        ]
+      }
   ],
   "platform_delivery": [
     {
@@ -545,10 +561,37 @@
         "docs/financial-graph.md"
       ]
     },
+      {
+        "id": "ENGINEERING",
+        "status": "done",
+        "required_result": "回测、可观测性、Evaluator、熔断、最小权限、Harness 对比实验、模拟运行和完整文档全部可复现",
+        "evidence": [
+          "src/agent_platform/final_delivery.py",
+          "Scripts/demo_final_delivery.py",
+          "docs/final-delivery.md",
+          "docs/backtest.md",
+          "docs/d2-harness-engineering.md",
+          "docs/paper-trading.md",
+          ".github/workflows/ci.yml"
+        ],
+        "scope_note": "原 1-2 周时间等待由用户于 2026-08-11 明确豁免；当前真实记录仅 1 个交易日，长周期稳定性未证明"
+      }
+  ],
+  "completed_product_enhancements": [
     {
-      "id": "ENGINEERING",
-      "status": "pending",
-      "required_result": "回测、可观测性、Evaluator、熔断、最小权限、Harness 对比实验、模拟运行和完整文档全部可复现"
+      "id": "PRODUCT_UI",
+      "status": "done",
+      "result": "把 A-D 能力、操作、运行结果和 DeepSeek 辅助统一到一个本地 Web 界面",
+      "evidence": [
+        "src/agent_platform/dashboard.py",
+        "src/agent_platform/web/index.html",
+        "src/agent_platform/web/styles.css",
+        "src/agent_platform/web/app.js",
+        "Scripts/run_dashboard.py",
+        "tests/test_dashboard.py",
+        "docs/control-desk.md"
+      ],
+      "scope_note": "DeepSeek 只解释和建议；确定性指标、仓位、风控和真实交易安全边界不变"
     }
   ],
   "enhancements_to_preserve": [

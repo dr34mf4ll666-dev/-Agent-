@@ -6,6 +6,8 @@
 
 当前专项文档：
 
+- `control-desk.md`：A–D 一体化 Web 控制台、DeepSeek 助手、安全白名单和图形化验收方式。
+- `final-delivery.md`：最终架构图、Graph Schema、Agent 卡片、数据字典、运行手册、回测/Harness 报告和模拟运行复盘的统一交付视图。
 - `finance-data-contract.md`：金融行情字段、时间和来源语义。
 - `tencent-daily-market-data.md`：B1 腾讯真实日线 Tool、字段差异、成交量转换、错误与运行方式。
 - `financial-data-hub.md`：B1 全类别 Data Hub、缓存限流、硬超时、MCP Server 和 Tushare 最终验收结果。
@@ -20,6 +22,7 @@
 - `backtest.md`：D1 历史时点证据、C3 信号适配、撮合成本、市场约束、公司行为、固定多股票实验和基线结果。
 - `observability.md`：D2 Harness/Graph/Model Gateway 统一观测契约、调用链、Token、耗时、失败率和中文验收面板。
 - `d2-harness-engineering.md`：D2 独立 Evaluator、运行级熔断告警、Agent 最小工具权限、稳定 CLI/CI 和 Harness 对比实验。
+- `paper-trading.md`：D4 本地模拟撮合、执行报价、持久账本、人工确认和运行周期边界。
 - `harness-guardrails.md`：五类 Guardrail、配置注册、错误语义和 trace。
 - `cognitive-loop.md`、`working-memory.md`、`loop-engineering.md`：认知闭环、三层记忆、调度和上下文注入。
 - `graph-engineering.md`、`langgraph-mapping.md`：Graph 配置、可靠性和框架映射。

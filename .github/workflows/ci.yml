@@ -22,5 +22,7 @@ jobs:
         run: agent-platform d2-verify
       - name: Validate D3 comparison CLI
         run: agent-platform d3-compare
+      - name: Validate D4 final delivery CLI
+        run: agent-platform d4-verify
       - name: Run full test suite
         run: python -m unittest discover -s tests -v

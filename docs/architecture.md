@@ -1,4 +1,4 @@
-# 阶段一架构说明
+# 项目架构说明
 
 ## 运行关系
 
@@ -100,4 +100,4 @@ YAML/JSON 工作流只通过 `NodeRegistry` 绑定允许的 Python 处理函数�
 
 ## 当前实现边界
 
-现在已经用确定性的 Echo Agent 验证了 Harness 和有限步 Loop，用离线 Agent 验证了认知闭环、受控工具、三层记忆、三类触发循环、上下文注入和任务目录隔离，并完成 Graph Engineering。Graph 当前采用单进程线程池，超时属于拒绝迟到结果的软超时；Loop 调度采用宿主驱动的确定性 tick，不启动常驻服务。真实模型运行层仍属于 A4。
+平台、金融数据、四 Specialist、C1–C3、回测、工业化 Harness 和本地模拟撮合均已接入。Graph 当前采用单进程线程池，超时属于拒绝迟到结果的软超时；Loop 调度采用宿主驱动的确定性 tick，不启动常驻服务。Model Gateway 已支持 Mock、OpenAI 和 DeepSeek，真实调用必须显式启用并从环境变量读取密钥。项目没有券商下单接口，真实交易始终关闭。最终整体架构和交付结论见 [`final-delivery.md`](final-delivery.md)。

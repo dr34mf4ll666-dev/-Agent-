@@ -34,4 +34,4 @@ addopts = "-ra"
 where = ["src"]
 
 [tool.setuptools.package-data]
-agent_platform = ["resources/*.json"]
+agent_platform = ["resources/*.json", "web/*.html", "web/*.css", "web/*.js"]

@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 
 from .d2_engineering import D2EngineeringRuntime
+from .dashboard import serve_dashboard
+from .final_delivery import FinalDeliveryRuntime
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -19,6 +21,10 @@ def build_parser() -> argparse.ArgumentParser:
     d3 = subparsers.add_parser("d3-compare", help="单独运行 D3 Harness 价值对比")
     d3.add_argument("--config", type=Path, default=None, help="可选 Harness JSON 配置")
     d3.add_argument("--dataset", type=Path, default=None, help="可选固定评估数据集")
+    subparsers.add_parser("d4-verify", help="运行最终交付离线总验收")
+    dashboard = subparsers.add_parser("dashboard", help="启动 A-D 一体化 Web 控制台")
+    dashboard.add_argument("--port", type=int, default=8765, help="本机端口，默认 8765")
+    dashboard.add_argument("--no-browser", action="store_true", help="不自动打开浏览器")
     return parser
 
 
@@ -39,6 +45,17 @@ def main(argv: list[str] | None = None) -> int:
         else:
             _print_d3_report(report_mapping)
         return 0 if report.passed else 1
+    if args.command == "d4-verify":
+        try:
+            report = FinalDeliveryRuntime.from_project().run()
+        except (OSError, json.JSONDecodeError, ValueError) as error:
+            print(f"最终交付验收失败: {error}", file=sys.stderr)
+            return 2
+        _print_d4_report(report.to_mapping())
+        return 0 if report.passed else 1
+    if args.command == "dashboard":
+        serve_dashboard(port=args.port, open_browser=not args.no_browser)
+        return 0
     return 2
 
 
@@ -190,6 +207,65 @@ def _print_d3_report(report: dict) -> None:
         print(f"- {'通过' if passed else '失败'}: {item}")
     print(f"结论: {'D3 验收通过' if all(checks.values()) else 'D3 验收失败'}")
     print("边界: 这是固定离线工程实验，不代表真实模型线上质量。")
+
+
+def _print_d4_report(report: dict) -> None:
+    print("=== D4 最终交付统一验收 ===")
+    print("默认模式: offline（真实数据证据由已验证记录和本地账本说明）")
+
+    print("\n【1. 环境检查】")
+    for item in report["environment"]:
+        print(
+            f"- {'通过' if item['passed'] else '失败'}: "
+            f"{item['name']}（{item['detail']}）"
+        )
+
+    print("\n【2. 主要流程复现】")
+    for item in report["workflows"]:
+        print(
+            f"- {'通过' if item['passed'] else '失败'}: {item['name']}，"
+            f"耗时={item['duration_ms']}ms"
+        )
+        for line in item["summary"]:
+            print(f"  {line}")
+        if item["error"]:
+            print(f"  error={item['error']}")
+
+    print("\n【3. 最终文档包】")
+    for item in report["documents"]:
+        print(f"- {'通过' if item['passed'] else '失败'}: {item['name']} -> {item['path']}")
+
+    paper = report["paper_evidence"]
+    print("\n【4. 本地模拟运行证据】")
+    if paper["available"]:
+        print(
+            f"- session={paper['session_id']}，cycles={paper['cycle_count']}，"
+            f"failures={paper['failure_count']}，真实日期={paper['live_trading_dates']}"
+        )
+        print(f"- 账户={paper['account']}")
+    else:
+        print(f"- 当前环境没有本地账本；{paper['note']}")
+
+    duration = report["duration_requirement"]
+    print("\n【5. 时间要求处理】")
+    print(f"- 原要求: {duration['original_requirement']}")
+    print(f"- 已观察真实行情日期数: {duration['observed_live_trading_days']}")
+    print(f"- 证据状态: {duration['proof_status']}")
+    print("- 用户已明确豁免等待时间；不宣称完成长周期稳定性证明。")
+
+    safety = report["safety"]
+    print("\n【6. 安全边界】")
+    print(f"- simulation_only={str(safety['simulation_only']).lower()}")
+    print(f"- order_created={str(safety['order_created']).lower()}")
+    print(f"- real_trading_allowed={str(safety['real_trading_allowed']).lower()}")
+
+    print("\n【最终结论】")
+    print(
+        "D4 调整后验收通过；项目交付完成。"
+        if report["passed"]
+        else "D4 验收未通过，请查看失败项。"
+    )
+    print("边界: 时间条件已豁免但未被证明，项目不保证盈利且不执行真实交易。")
 
 
 if __name__ == "__main__":

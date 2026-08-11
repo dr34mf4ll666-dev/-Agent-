@@ -4,11 +4,35 @@
 
 ## 项目进度
 
-项目已经形成 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究 Demo 等可运行能力，通用平台交付包已经完成。金融数据基础设施 B1、B2 四类专业分析 Agent、C1–C3 综合决策链、D1 回测系统和 D2 Harness 工程化均已完成。D2 现在具备统一可观测面板、独立 Evaluator、运行级熔断告警、9 个 Agent 最小工具权限、稳定 CLI、锁定依赖、CI 配置和固定 Harness 对比实验。
+项目的调整后交付范围已经完成，并新增 A–D 一体化 Web 控制台。平台包含 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究；金融应用包含 19 类真实数据、四类专业 Agent、C1–C3 综合决策链、回测和本地模拟撮合；工程部分包含可观测性、Evaluator、熔断、最小权限、Harness 对比实验、统一最终验收和完整文档。原“连续运行 1–2 周”时间等待由用户明确豁免，当前只保留单日真实运行证据，因此不宣称已经证明长周期稳定性。真实交易始终关闭。
 
 任务 1.2 Loop Engineering 已完成认知闭环、受控工具、三层记忆、三类触发循环、任务隔离和上下文注入。任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、可靠性、Checkpoint 和可视化。A4 Model Gateway 已通过 DeepSeek 真实调用验证。A5 又在不修改核心框架语义的前提下接入非金融资料研究。B1 已形成统一金融 Data Hub 与只读 MCP Server；行情、财务、宏观行业、新闻、公告、LPR、研报和 Tushare 第二日线来源均已真实验证，19 个 dataset 都有真实最小样本和离线回放。真实交易始终关闭。
 
 完整任务映射、最终成果和验收条件见 [`ROADMAP.md`](ROADMAP.md)。
+
+### 推荐入口：打开统一 Web 控制台
+
+```powershell
+D:\Anaconda\python.exe Scripts\run_dashboard.py
+```
+
+运行后浏览器会打开 `http://127.0.0.1:8765/`。页面把 A 平台底座、B 金融数据与四类 Agent、C 联合决策与风控、D 回测与工程验收放在同一条执行轨道中。每个功能都有中文简介、离线/真实模式、运行按钮、核心摘要和可展开的完整记录，不再需要记住十几条演示命令。
+
+如果当前 PowerShell 能读取 `DEEPSEEK_API_KEY`，右侧助手自动使用 DeepSeek 解释当前结果并建议下一项功能；没有 Key 时自动使用本地规则助手。助手只能解释和建议，建议仍需用户点击确认，不能修改确定性指标、仓位和风控，也不能创建真实订单。详细说明见 [`docs/control-desk.md`](docs/control-desk.md)。
+
+安装项目后也可以运行：
+
+```powershell
+agent-platform dashboard
+```
+
+### 一条命令验收整个项目
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_final_delivery.py
+```
+
+安装项目后也可以运行 `agent-platform d4-verify`。该入口从环境和安全配置检查开始，实际复现通用 Harness、C3 完整金融 Graph、D1 固定回测、D2/D3 工程实验和 D4 本地模拟执行，再核对最终文档包并输出一页中文结论。默认不联网、不生成临时报告文件。完整交付说明见 [`docs/final-delivery.md`](docs/final-delivery.md)。
 
 ## 快速开始
 
@@ -157,6 +181,28 @@ D:\Anaconda\python.exe Scripts\demo_harness_comparison.py
 ```
 
 安装项目后也可以运行 `agent-platform d3-compare`。该界面只展示 D3 六项总指标、4 个逐用例原始结果、恢复状态和成本变化，方便独立验收；数据仍是固定离线工程 fixture。
+
+### 运行 D4 本地持续模拟交易
+
+先用离线数据直观看完整的 C3 决策、本地模拟成交和复盘摘要，不会留下文件：
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_paper_trading.py --confirm
+```
+
+去掉 `--confirm` 可以验收人工确认门禁：系统会记录“缺少确认”，但不会模拟成交。只有明确指定 `--ledger` 才会保留一份可恢复账本；后续同一 `session-id` 的运行继续追加到该文件：
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_paper_trading.py --live --confirm --session-id d4-live --ledger .runtime\paper_trading\d4-live.json
+```
+
+只查看累计状态，不重新运行四 Agent 或访问网络：
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_paper_trading.py --review-only --ledger .runtime\paper_trading\d4-live.json
+```
+
+真实模式会继续复用 C3 的四 Agent、Trader 和 Risk Manager，并另外调用腾讯 `market.realtime` 取得带 `source`、`timestamp`、`as_of` 的模拟执行报价，避免把尚未收盘的日线当成盘中成交价。原时间等待已按用户要求豁免；账本仍会如实统计真实日期，不能把单日记录显示成长周期证明。账本结构、费用规则和安全边界见 `docs/paper-trading.md`。
 
 ### 运行腾讯日线数据 Tool
 
@@ -337,8 +383,8 @@ Graph 节点仍是受注册表控制的 Python 函数；后续专业 Agent 可�
 
 真实交易默认关闭，仓库中不保存 API 密钥、真实账户信息或本地 `.env`。当前阶段只允许模拟撮合和离线验证。
 
-## 下一步
+## 当前结论
 
-通用平台交付包 A1–A5、B1 金融数据基础设施、B2 四类专业分析 Agent、C1–C3 综合决策链、D1 回测系统和 D2 Harness 工程化均已完成。下一步进入 D4/T4.3：使用真实行情进行连续模拟运行，并完成最终运行手册、复盘和总交付文档。
+A1–A5、B1–B2、C1–C3、D1–D4 的调整后交付范围全部完成。项目现在是一套可运行、可验证的通用 Agent 平台原型，以及建立在其上的证券金融分析参考应用。它适合教学、实训、面试展示和继续产品化，但不保证盈利、不管理真实资金，也没有证明一至两周的长周期稳定性。
 
 最终交付路线见 `ROADMAP.md`，当前小步边界见 `SPEC.md`，数据字段和时间语义见 `docs/finance-data-contract.md`，正式任务状态见 `checklist.json`，历史工作记录见 `progress.txt`。

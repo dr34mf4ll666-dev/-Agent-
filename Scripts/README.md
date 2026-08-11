@@ -4,6 +4,22 @@
 
 脚本应能被命令行重复执行，并在失败时返回明确的非零退出状态。
 
+## A–D 一体化 Web 控制台（推荐入口）
+
+```powershell
+D:\Anaconda\python.exe Scripts\run_dashboard.py
+```
+
+该入口只在 `127.0.0.1` 启动本地页面并自动打开浏览器。页面中的按钮映射到登记过的 A1–D4 演示脚本，浏览器不能传入任意系统命令。默认使用离线复现；只有用户切换到真实模式并点击支持该模式的功能时，才读取真实数据或调用 DeepSeek。交易始终只进入本地模拟撮合。
+
+## D4 最终交付统一验收
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_final_delivery.py
+```
+
+该入口对应安装后的 `agent-platform d4-verify`，从环境检查开始实际运行通用 Harness、C3、D1、D2/D3 和 D4 模拟执行，并核对最终文档包。默认离线、不生成临时报告；时间豁免和真实交易关闭会在终端明确展示。
+
 ## D2 统一可观测面板演示
 
 ```powershell

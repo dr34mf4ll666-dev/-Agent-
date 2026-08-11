@@ -1,0 +1,30 @@
+"""Start the local A-D Agent platform Web control console."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
+
+from agent_platform.dashboard import serve_dashboard  # noqa: E402
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="启动通用 Agent 平台 Web 控制台")
+    parser.add_argument("--port", type=int, default=8765, help="本机端口，默认 8765")
+    parser.add_argument("--no-browser", action="store_true", help="不自动打开浏览器")
+    return parser
+
+
+def main() -> int:
+    args = build_parser().parse_args()
+    serve_dashboard(port=args.port, open_browser=not args.no_browser)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

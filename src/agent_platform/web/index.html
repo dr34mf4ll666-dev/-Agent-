@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="通用 Agent 平台及证券金融分析应用一体化控制台">
+  <title>Agent Platform · Control Desk</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#workspace">跳到功能区</a>
+  <div class="page-shell">
+    <header class="masthead">
+      <a class="brand" href="#top" aria-label="回到顶部">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span><strong>Agent Platform</strong><small>Research Control Desk / 0.1</small></span>
+      </a>
+      <div class="status-strip" aria-label="系统状态">
+        <span class="status-pill"><i class="status-dot safe"></i>真实交易关闭</span>
+        <span class="status-pill" id="model-status"><i class="status-dot pending"></i>正在检查模型</span>
+        <button class="plain-button" id="about-button" type="button">平台说明</button>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="kicker">GENERAL AGENT INFRASTRUCTURE × FINANCIAL RESEARCH</p>
+          <h1 id="hero-title">把 Agent 的能力，<br><em>从目录里拉到台面上。</em></h1>
+          <p class="hero-intro" id="project-description">一个界面看懂、运行并验收 A 到 D 的完整能力链。</p>
+          <div class="hero-actions">
+            <button class="primary-button" type="button" data-jump-stage="A">开始探索能力</button>
+            <button class="secondary-button" type="button" data-run-action="final_delivery">一键项目验收</button>
+          </div>
+        </div>
+        <div class="hero-diagram" aria-label="A 到 D 的能力流程">
+          <div class="orbit orbit-one"></div>
+          <div class="orbit orbit-two"></div>
+          <div class="hero-node main-node"><span>Agent</span><strong>CONTROL<br>DESK</strong></div>
+          <div class="hero-node node-a">A<small>底座</small></div>
+          <div class="hero-node node-b">B<small>研究</small></div>
+          <div class="hero-node node-c">C<small>决策</small></div>
+          <div class="hero-node node-d">D<small>验收</small></div>
+        </div>
+      </section>
+
+      <section class="metric-ribbon" aria-label="项目概况">
+        <div><span id="action-count">—</span><small>可视化功能入口</small></div>
+        <div><span>4</span><small>专业金融 Agent</small></div>
+        <div><span>A→D</span><small>端到端能力链</small></div>
+        <div><span>0</span><small>真实订单</small></div>
+      </section>
+
+      <section class="workspace" id="workspace">
+        <aside class="stage-rail" aria-label="项目阶段导航">
+          <div class="rail-heading"><span>FLOW / 01</span><strong>执行轨道</strong></div>
+          <nav id="stage-nav"></nav>
+          <div class="rail-safety">
+            <span class="rail-icon" aria-hidden="true">⌁</span>
+            <p><strong>安全边界</strong><br>真实数据只读，所有交易动作只进入本地模拟撮合。</p>
+          </div>
+        </aside>
+
+        <section class="action-workbench" aria-live="polite">
+          <div class="section-head">
+            <div>
+              <p class="section-index" id="stage-eyebrow">STAGE A / PLATFORM</p>
+              <h2 id="stage-title">加载项目能力…</h2>
+              <p id="stage-description"></p>
+            </div>
+            <div class="mode-control" role="group" aria-label="运行数据模式">
+              <button class="mode-button active" type="button" data-mode="offline">离线复现</button>
+              <button class="mode-button" type="button" data-mode="live">真实数据 / 模型</button>
+            </div>
+          </div>
+          <div class="mode-note" id="mode-note">离线复现使用固定样本，最适合演示与验收。</div>
+          <div class="action-grid" id="action-grid"></div>
+        </section>
+
+        <aside class="assistant-panel" aria-labelledby="assistant-title">
+          <div class="assistant-head">
+            <span class="assistant-avatar" aria-hidden="true">DS</span>
+            <div><p>PROJECT COPILOT</p><h2 id="assistant-title">DeepSeek 助手</h2></div>
+            <span class="assistant-live" id="assistant-badge">检查中</span>
+          </div>
+          <div class="assistant-thread" id="assistant-thread">
+            <div class="chat-bubble assistant-message">
+              <span>助手</span>
+              <p>我可以解释当前结果、梳理 A–D 的关系，并推荐下一项功能。建议需要你亲自点击后才会执行。</p>
+            </div>
+          </div>
+          <form class="assistant-form" id="assistant-form">
+            <label for="assistant-input">问问当前项目</label>
+            <textarea id="assistant-input" maxlength="1200" rows="3" placeholder="例如：这个结果说明了什么？下一步该验收哪项？"></textarea>
+            <div class="assistant-form-footer">
+              <span>不提供投资建议 · 不自动执行</span>
+              <button class="send-button" type="submit" aria-label="发送问题">发送 <b>↗</b></button>
+            </div>
+          </form>
+        </aside>
+      </section>
+
+      <section class="result-section" id="result-section" aria-labelledby="result-title">
+        <div class="result-header">
+          <div>
+            <p>LIVE OUTPUT / 02</p>
+            <h2 id="result-title">运行结果</h2>
+          </div>
+          <span class="result-status idle" id="result-status">等待运行</span>
+        </div>
+        <div class="result-empty" id="result-empty">
+          <span class="empty-glyph" aria-hidden="true">⌁</span>
+          <h3>这里会显示可读的验收结果</h3>
+          <p>从上方选择一个功能。控制台会先提取核心结论，同时保留完整输出供你展开查看。</p>
+        </div>
+        <div class="result-content" id="result-content" hidden>
+          <div class="result-meta">
+            <div><span>当前功能</span><strong id="result-action">—</strong></div>
+            <div><span>数据模式</span><strong id="result-mode">—</strong></div>
+            <div><span>运行耗时</span><strong id="result-duration">—</strong></div>
+            <div><span>交易边界</span><strong>仅模拟</strong></div>
+          </div>
+          <div class="summary-panel">
+            <div class="summary-title"><span>EXECUTIVE SUMMARY</span><button type="button" id="explain-result">让 DeepSeek 解释</button></div>
+            <pre id="result-summary"></pre>
+          </div>
+          <details class="raw-details">
+            <summary>展开完整运行记录 <span>用于答辩追溯与故障排查</span></summary>
+            <pre id="result-raw"></pre>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>AGENT PLATFORM / LOCAL CONTROL DESK</span>
+      <p>指标、仓位、风控与回测由确定性代码计算；LLM 负责解释与候选建议。</p>
+    </footer>
+  </div>
+
+  <dialog id="about-dialog">
+    <button class="dialog-close" type="button" aria-label="关闭">×</button>
+    <p class="dialog-kicker">WHAT THIS PLATFORM DOES</p>
+    <h2>一套平台，两层价值。</h2>
+    <div class="dialog-columns">
+      <div><span>01</span><h3>通用 Agent 底座</h3><p>提供 Harness、Graph、Loop、记忆、模型网关、工具权限、Checkpoint 和可观测能力。</p></div>
+      <div><span>02</span><h3>金融分析应用</h3><p>在底座上组合真实数据、四类分析 Agent、联合决策、风控、回测和本地模拟交易。</p></div>
+    </div>
+    <p class="dialog-boundary">本项目不保证盈利，不连接券商下单。DeepSeek 不能修改程序算出的指标、仓位和风控结果。</p>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>

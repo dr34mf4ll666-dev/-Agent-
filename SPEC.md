@@ -9,7 +9,13 @@
 - 输出结构化、数据可追溯、行为可约束、过程可审计；
 - 在不接入真实下单的前提下完成分析、风控、模拟执行和回测。
 
-## 2. 当前完成态：D2 Harness 工程化
+## 2. 当前完成态：D4 最终交付
+
+`FinalDeliveryRuntime.from_project().run()` 是最终验收深 module。它通过一个 interface 完成环境与安全配置检查，实际调用通用 Harness、C3 金融 Graph、D1 回测、D2/D3 工程验收和 D4 本地模拟执行，再核对架构图、Graph Schema、Agent 卡片、数据字典、运行手册和三类报告。CLI、仓库演示和测试都经过同一 seam。
+
+原任务书的连续 1–2 周时间等待由用户于 2026-08-11 明确豁免。最终结果必须显示 `waived_not_proven` 和实际真实日期数，不得声称已经完成长周期稳定性证明。真实交易继续硬关闭。
+
+### 已保留的 D2 工程证据
 
 D2 使用三个深 module：`ObservabilityDashboard` 统一调用链和运行指标，`IndustrialHarness` 集中处理运行级熔断、告警和工具权限，`IndependentEvaluator` 使用固定数据集确定性评分。`D2EngineeringRuntime.from_files().run()` 是总验收 interface，CLI、演示和测试都通过同一 seam 调用。
 
@@ -212,6 +218,8 @@ analysis = result.report["analysis"]
 python -m unittest discover -s tests -v
 ```
 
+推荐的人工验收入口是 `python Scripts/run_dashboard.py`。Web 控制台只允许调用登记过的 A–D 功能；DeepSeek 只能解释和建议，不能覆盖确定性结果或自动执行动作。
+
 ## 11. 安全底线
 
 - `ALLOW_LIVE_TRADING` 默认必须为 `false`。
@@ -221,4 +229,4 @@ python -m unittest discover -s tests -v
 
 ## 12. 下一步
 
-D2/T4.2 已完成。下一项是 T4.3：使用真实行情进行 1–2 周连续模拟运行，保存失败、人工确认和复盘记录，并完成最终运行手册与总交付文档。
+当前调整后项目范围已经完成，没有未关闭的正式任务。Web UI 与 DeepSeek 项目助手已经作为产品化增强完成；后续可以继续积累真实模拟账本、做真实模型线上对照实验或扩展更多资产类别，但这些不影响本次 D4 完成结论。完整边界和最终报告见 `docs/final-delivery.md`，统一界面见 `docs/control-desk.md`。

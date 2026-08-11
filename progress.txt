@@ -485,3 +485,44 @@
 - 中文界面单独展示幻觉率、无效工具/API 调用、端到端成功率、平均耗时、Token 和故障恢复率，并展开 4 个固定用例的原始 passed、hallucinations、invalid_calls、recovered、latency 和 tokens。
 - 直观验收检查同一数据集、六项指标和成本边界，继续明确脚本化离线实验不代表真实模型线上质量；默认不生成文件。
 - 新增界面自动化测试，并把 `d3-compare` 加入 GitHub Actions CLI 校验；项目完整回归 259 项全部通过。D3 保持完成态，下一正式任务仍是 T4.3。
+
+[2026-08-10] D4/T4.3 本地持续模拟运行第一切片完成
+- 新增 `PaperTradingRuntime` 深 module，把已经通过 C3 Graph 一致性校验的标准报告接入本地模拟撮合；报告只要改变 `simulation_only`、`order_created` 或 `real_trading_allowed` 任一安全字段，就会在撮合前被拒绝并记录失败。
+- 离线复现可从 C3 技术报告读取收盘行情；真实运行单独通过腾讯 `market.realtime` 取得执行报价。两种报价都保留 `source`、`timestamp` 和 `as_of`，并检查行情时点不晚于本次执行评估时间。每轮账本同时保留 C3 倾向、置信度、Market Regime、路由、风控状态、预计单笔亏损和来源摘要。
+- 模拟成交使用 `Decimal`、100 股整手、双边佣金、最低佣金、卖出印花税和滑点；更新现金、股数、平均成本与已实现盈亏。订单始终标记 `local_simulator` 和 `real_order=false`，没有券商下单接口。
+- 新增 `JsonPaperTradingLedger`，在单个版本化 JSON 中集中保存固定 session 配置、账户、每轮运行、失败、人工确认、模拟成交和复盘摘要；原子替换写入、重复 cycle 拒绝和配置漂移检查使进程重启后可以安全续跑。
+- 人工确认门禁已接通：C3 要求确认而用户未确认时，账本记录 `missing`，状态为 `pending_human_confirmation` 且不成交；显式确认后才允许本地撮合。
+- 连续周期验收只统计 `mode=live`：至少覆盖 7 个日历日且不少于 5 个不同真实行情交易日。离线 fixture 即使运行成功也不能把 T4.3 自动标记完成。
+- 新增中文演示 `demo_paper_trading.py`。默认使用临时账本，不生成文件；显式 `--ledger` 才在 `.runtime/` 保存并让后续同 session 继续追加。已实际跑出离线 buy 1300 股、佣金 5.00 元、滑点成本 7.33 元的本地模拟结果。
+- 真实最小验证先发现并拦截了“14:30 评估却使用标记 15:00 的当日日线”时间错误，随后改用独立腾讯实时报价。最终取得 11.2900、`as_of=2026-08-10T16:14:27+08:00`；因当时已经收盘，C3 合理输出 hold，本地账本记录 `no_action`，没有绕过交易时段规则伪造成交。
+- 已正式启动本地持久 session `d4-live-20260810`，账本位于 Git 忽略的 `.runtime/paper_trading/d4-live-20260810.json`。首日累计 1 个真实行情交易日、1 个 cycle、0 次失败、0 次成交，账户现金 100000.00 元；该本地运行证据不会提交仓库，也不含密钥。
+- 新增 6 项核心测试和 3 项界面测试，专项 9 项通过；JSON、源码编译和项目完整回归 268 项全部通过。
+- `T4.3` 已从 `pending` 更新为 `in_progress`。尚未满足真实时间条件，也尚未完成最终架构图、Schema、Agent 卡片、数据字典、运行手册和复盘报告，因此没有把 D4 误报为完成。
+
+下一步
+- 用持久账本启动真实行情 session，并按交易日持续追加记录；同时准备最终文档骨架和从环境检查开始的一条主验收流程。
+
+[2026-08-11] D4/T4.3 调整后范围正式完成
+- 用户明确要求完成 D4 且不再考虑自然时间等待。原“真实行情连续运行 1–2 周”不被伪装成已达成，而是在 Runtime、总纲、清单和最终报告中统一记录为 `waived_not_proven`；目前真实证据仍只有 1 个交易日，项目不声称证明长周期稳定性。
+- 新增 `FinalDeliveryRuntime.from_project().run()` 深 module。调用方只使用一个 interface，module 内部完成 Python/项目/依赖/fixture/安全配置检查，实际运行通用 Harness、C3 完整金融 Graph、D1 固定回测、D2/D3 Harness 工程验收和 D4 本地模拟执行，并核对最终文档包。
+- 新增稳定 CLI `agent-platform d4-verify` 和仓库入口 `Scripts/demo_final_delivery.py`。中文界面分六区显示环境、五条主要流程、最终文档、本地真实账本、时间豁免和交易安全边界；默认离线且不生成临时报告文件。
+- 总入口实测全部通过：C3 批准 buy 15%，D1 组合收益 -0.5408%、最大回撤 0.7754%、夏普 -0.8463，D2 Evaluator 平均分 100、熔断状态 open，D4 离线本地模拟成交后现金 85336.67 元。所有链路保持 `real_trading_allowed=false`。
+- 新增 `docs/final-delivery.md`，用一份总文档整合最终架构 Mermaid、顶层和内部 Graph Schema、九个正式 Agent 卡片、数据字典、运行手册、固定回测报告、Harness 对比实验和模拟运行复盘；专项文档继续保存算法与边界细节。
+- 更新 `docs/architecture.md`、`docs/README.md`、`docs/paper-trading.md`、`docs/financial-graph.md`、README、SPEC、ROADMAP、dev-map、Scripts 说明、CI 和 checklist，使完成状态、时间豁免和证据路径一致。
+- 新增最终 Runtime 正常/失败/文档测试和中文界面测试；专项 4 项通过，JSON、源码编译和项目完整回归 272 项全部通过。仓库脚本和源码路径下的 `agent-platform d4-verify` 均实际返回 0；本机 Anaconda 尚未安装 editable package，因此直接使用安装式命令前仍需执行 README 的 `pip install -e .`。
+- `T4.3`、`ENGINEERING` 和项目总状态按调整后范围标记为 `done`。真实交易、保证盈利和长周期稳定性证明仍明确不属于已完成能力。
+
+后续增强（非正式任务缺口）
+- 可以继续积累真实模拟账本、增加 Web UI、运行真实模型线上 Harness 对比或扩展更多资产类别。
+
+[2026-08-11] A–D 一体化 Web Control Desk 完成
+- 新增 `DashboardRuntime` 深 module，用 `overview()`、`run_action()` 和 `ask_assistant()` 三个稳定接口统一平台展示、白名单任务执行和结果讲解；A1–D4 及最终验收共登记 18 个可视化入口。
+- 新增本地 HTTP adapter 和纯静态中文前端。页面用 A→B→C→D 执行轨道展示平台底座、金融数据与四 Agent、联合决策风控、回测与工程验收；每个功能都有简介、模式选择、运行按钮、核心摘要和完整 trace。
+- 新增 DeepSeek 项目助手 adapter，复用 A4 `ModelGateway`、结构化 JSON Schema、重试、Token 和耗时记录。助手只接收有界结果摘要，只能解释和推荐白名单 action，不能自动执行，也不能覆盖确定性指标、仓位和风控。未设置 Key 时自动使用本地规则助手。
+- 后端只接受登记过的 action id 和固定参数，拒绝任意命令；服务只绑定 127.0.0.1。真实模式只读取数据或调用模型，D4 仍是本地模拟撮合，`real_trading_allowed=false` 保持不变。
+- 新增 `Scripts/run_dashboard.py` 和安装式命令 `agent-platform dashboard`。推荐运行 `D:\Anaconda\python.exe Scripts\run_dashboard.py`，不再要求用户记住各阶段脚本。
+- 新增 10 项 Dashboard 自动测试，覆盖 A–D 总览、动作白名单、真实模式参数、DeepSeek 结构化 Gateway、助手只建议不执行、HTTP 页面/API 和前端资源，全部通过。
+- 实际浏览器验收通过：首屏正确显示 18 个入口和 4 个阶段；切换 B 阶段并点击 B1 后，0.35 秒显示 19 类 Data Hub 离线结果摘要；本地助手读取当前摘要后推荐 C1，但未自动执行；浏览器控制台无错误，375px 手机宽度无横向溢出。
+
+下一步
+- 当前统一界面已经可用于项目展示。可选增强是加入 K 线图表、把更多结构化指标转成图形组件，以及在专门实验中量化真实 DeepSeek 有/无 Harness 的线上差异。

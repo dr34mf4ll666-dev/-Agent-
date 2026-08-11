@@ -168,6 +168,15 @@ from .backtest_experiment import (
     C3DecisionSnapshot,
     PointInTimeEvidence,
 )
+from .paper_trading import (
+    JsonPaperTradingLedger,
+    PaperTradingCycleRequest,
+    PaperTradingCycleResult,
+    PaperTradingError,
+    PaperTradingQuote,
+    PaperTradingRuntime,
+    PaperTradingSessionConfig,
+)
 
 __all__ = [
     "MarketBar",
@@ -305,4 +314,11 @@ __all__ = [
     "C3BacktestSignalAdapter",
     "C3DecisionSnapshot",
     "PointInTimeEvidence",
+    "JsonPaperTradingLedger",
+    "PaperTradingCycleRequest",
+    "PaperTradingCycleResult",
+    "PaperTradingError",
+    "PaperTradingQuote",
+    "PaperTradingRuntime",
+    "PaperTradingSessionConfig",
 ]
