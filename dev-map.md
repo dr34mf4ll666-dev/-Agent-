@@ -47,10 +47,12 @@
 | D2/D3 Engineering | `D2EngineeringRuntime.from_files().run()`、`agent-platform d2-verify`、`agent-platform d3-compare` | 配置校验、总验收、独立对比界面、依赖锁定和 CI 入口 | `demo_d2_engineering.py`、`demo_harness_comparison.py`、相关测试、`.github/workflows/ci.yml` |
 | Paper Trading | `PaperTradingRuntime.run_cycle(...)`、`review()` | C3 校验、腾讯实时报价、人工确认、本地撮合和单文件账本 | `demo_paper_trading.py`、`test_paper_trading.py`、`docs/paper-trading.md` |
 | Final Delivery | `FinalDeliveryRuntime.from_project().run()`、`agent-platform d4-verify` | 环境检查、五条主流程、文档包、时间豁免和最终状态汇总 | `demo_final_delivery.py`、`test_final_delivery.py`、`docs/final-delivery.md` |
-| Web Control Desk | `DashboardRuntime.overview()`、`run_action()`、`ask_assistant()` | A–D 白名单动作、localhost HTTP adapter、静态 Web UI、本地/DeepSeek 助手 adapter | `run_dashboard.py`、`test_dashboard.py`、`docs/control-desk.md` |
+| Client Analysis App | `ClientAnalysisRuntime.analyze()`、`MarketAssistant.explain()` | 将 C3 结构化报告投影成客户可读的 K 线、四维研究、综合观点、风险区间和安全解释 | `demo_product_acceptance.py`、`test_client_app.py`、`docs/client-app.md` |
+| Product Acceptance | `ProductAcceptanceRuntime.from_project().run()`、`agent-platform verify-all` | 一条命令验收 A–D 核心、客户前台、团队后台、解释层与真实交易关闭 | `demo_product_acceptance.py`、`test_product_acceptance.py`、`docs/client-app.md` |
+| Web Admin Desk | `DashboardRuntime.overview()`、`run_action()`、`ask_assistant()` | `/admin` 的 A–D 白名单动作、localhost HTTP adapter、本地/DeepSeek 助手 adapter | `run_dashboard.py`、`test_dashboard.py`、`docs/control-desk.md` |
 
 ## 当前主线
 
-调整后交付范围已经完成，A–D 功能也已通过 Web Control Desk 统一为一个可见入口。原 1–2 周时间等待由用户明确豁免并保留 `waived_not_proven`；后续属于增强，不再是正式任务缺口。真实交易保持关闭。
+调整后交付范围已经完成。客户前台 `/` 直接展示证券研究结果，团队后台 `/admin` 统一展示 A–D 工程能力，`verify-all` 负责命令行整体验收。原 1–2 周时间等待由用户明确豁免并保留 `waived_not_proven`；后续属于增强，不再是正式任务缺口。真实交易保持关闭。
 
 真实交易继续关闭。任何新外部数据都必须保留 `source`、`timestamp` 和 `as_of`，任何密钥都只能来自本地环境变量。

@@ -6,7 +6,8 @@
 
 当前专项文档：
 
-- `control-desk.md`：A–D 一体化 Web 控制台、DeepSeek 助手、安全白名单和图形化验收方式。
+- `client-app.md`：面向客户的证券分析前台、四维研究结果、DeepSeek 解读和安全边界。
+- `control-desk.md`：面向团队的 A–D 验收后台、DeepSeek 助手、安全白名单和图形化验收方式。
 - `final-delivery.md`：最终架构图、Graph Schema、Agent 卡片、数据字典、运行手册、回测/Harness 报告和模拟运行复盘的统一交付视图。
 - `finance-data-contract.md`：金融行情字段、时间和来源语义。
 - `tencent-daily-market-data.md`：B1 腾讯真实日线 Tool、字段差异、成交量转换、错误与运行方式。

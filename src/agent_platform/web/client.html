@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="研判，多维证券研究助手">
+  <title>研判 · 多维证券研究助手</title>
+  <link rel="stylesheet" href="/client.css">
+</head>
+<body>
+  <a class="skip-link" href="#analysis">跳到分析结果</a>
+  <header class="product-header">
+    <a class="product-brand" href="/" aria-label="研判首页">
+      <span class="brand-seal" aria-hidden="true">研</span>
+      <span><strong>研判</strong><small>MULTI-LENS RESEARCH</small></span>
+    </a>
+    <nav aria-label="产品导航">
+      <a class="active" href="#analysis">个股研究</a>
+      <a href="#dimensions">多维观察</a>
+      <a href="#risk">风险边界</a>
+    </nav>
+    <div class="header-trust"><i></i><span>只读研究模式</span></div>
+  </header>
+
+  <main>
+    <section class="research-entry" aria-labelledby="entry-title">
+      <div class="entry-copy">
+        <p>ONE REPORT · FOUR PERSPECTIVES</p>
+        <h1 id="entry-title">看懂一只股票，<br><em>不只看一根线。</em></h1>
+        <span>行情、经营、行业与市场环境在同一份报告里交叉验证。</span>
+      </div>
+      <form class="stock-form" id="stock-form">
+        <label for="stock-select">选择研究标的 <small>20 只沪深银行股</small></label>
+        <div class="stock-search-row">
+          <div class="stock-select-wrap">
+            <span aria-hidden="true">⌕</span>
+            <select id="stock-select" name="symbol" aria-label="选择研究标的"></select>
+          </div>
+          <button type="submit" id="analyze-button">开始分析 <b>→</b></button>
+        </div>
+        <div class="data-choice" role="group" aria-label="数据版本">
+          <span>数据版本</span>
+          <button class="active" type="button" data-client-mode="offline">已验证快照</button>
+          <button type="button" data-client-mode="live">最新数据</button>
+          <small id="mode-helper">稳定复现，适合查看完整功能</small>
+        </div>
+      </form>
+    </section>
+
+    <section class="capability-strip" aria-label="产品能力" id="capability-strip"></section>
+
+    <section class="loading-state" id="loading-state" aria-live="polite">
+      <div class="loading-orbit"><i></i><i></i><i></i><i></i><span>研</span></div>
+      <h2>正在汇集四个维度</h2>
+      <p id="loading-message">读取行情与研究证据，形成统一结论…</p>
+    </section>
+
+    <section class="analysis" id="analysis" hidden>
+      <div class="security-ribbon">
+        <div class="security-name">
+          <span id="security-exchange">—</span>
+          <h2><strong id="security-name">—</strong><small id="security-code">—</small></h2>
+        </div>
+        <div class="quote-block">
+          <strong id="latest-close">—</strong>
+          <span id="daily-return">—</span>
+        </div>
+        <div class="data-stamp">
+          <span id="data-label">—</span>
+          <strong id="data-as-of">—</strong>
+        </div>
+        <div class="source-stamp"><span id="source-count">—</span><small>类数据来源交叉核对</small></div>
+      </div>
+
+      <div class="analysis-grid">
+        <article class="verdict-card">
+          <p class="panel-kicker">综合研判</p>
+          <div class="verdict-main">
+            <div>
+              <span class="verdict-label" id="verdict-label">—</span>
+              <h3 id="action-label">—</h3>
+              <p>由四个研究维度加权，并经过一致性与偏差检查。</p>
+            </div>
+            <div class="confidence-ring" id="confidence-ring">
+              <strong id="confidence-value">—</strong><small>/100</small><span>证据一致性</span>
+            </div>
+          </div>
+          <div class="verdict-foot">
+            <span>综合得分 <strong id="weighted-score">—</strong></span>
+            <span>研究仓位上限 <strong id="position-cap">—</strong></span>
+          </div>
+        </article>
+
+        <article class="chart-card">
+          <div class="panel-head">
+            <div><p class="panel-kicker">价格走势</p><h3>日 K 线</h3></div>
+            <div class="chart-legend"><span class="up">上涨</span><span class="down">下跌</span></div>
+          </div>
+          <div class="chart-wrap"><canvas id="kline-chart" aria-label="日 K 线图"></canvas></div>
+          <div class="chart-levels">
+            <span>支撑观察 <strong id="support-price">—</strong></span>
+            <span>当前参考 <strong id="reference-price">—</strong></span>
+            <span>压力观察 <strong id="resistance-price">—</strong></span>
+          </div>
+        </article>
+
+        <article class="ai-card" id="ai-card">
+          <div class="ai-mark" aria-hidden="true">DS</div>
+          <div>
+            <p class="panel-kicker">智能解读</p>
+            <h3 id="ai-headline">正在整理研究结论…</h3>
+            <p id="ai-explanation">确定性分析已经完成，正在转换成更容易理解的说明。</p>
+            <div class="ai-risk" id="ai-risk">智能解读不会修改原始数据与风险边界。</div>
+            <small id="ai-provider">安全解释层</small>
+          </div>
+        </article>
+      </div>
+
+      <section class="dimension-section" id="dimensions" aria-labelledby="dimension-title">
+        <div class="section-heading">
+          <div><p>FOUR RESEARCH LENSES</p><h2 id="dimension-title">四个维度，分别在说什么</h2></div>
+          <span>分数范围 -100 至 +100，仅表示规则强弱</span>
+        </div>
+        <div class="dimension-grid" id="dimension-grid"></div>
+      </section>
+
+      <section class="evidence-grid">
+        <article class="evidence-card positive-evidence">
+          <div class="evidence-icon" aria-hidden="true">↗</div>
+          <p>支持因素</p>
+          <h3 id="positive-claim">—</h3>
+          <span id="positive-reasoning">—</span>
+        </article>
+        <article class="evidence-card risk-evidence">
+          <div class="evidence-icon" aria-hidden="true">↘</div>
+          <p>需要留意</p>
+          <h3 id="risk-claim">—</h3>
+          <span id="risk-reasoning">—</span>
+        </article>
+      </section>
+
+      <section class="risk-section" id="risk" aria-labelledby="risk-title">
+        <div class="risk-copy">
+          <p>RISK BEFORE RETURN</p>
+          <h2 id="risk-title">先把边界画清楚，<br>再谈观点。</h2>
+          <span>系统不会替用户下单。以下区间和仓位只用于研究与模拟风险说明。</span>
+        </div>
+        <div class="price-band-card">
+          <div class="price-band-head"><span>研究价格区间</span><small>不是价格预测</small></div>
+          <div class="price-scale"><i id="price-marker"></i></div>
+          <div class="price-values">
+            <span>下沿<strong id="band-lower">—</strong></span>
+            <span>参考<strong id="band-reference">—</strong></span>
+            <span>上沿<strong id="band-upper">—</strong></span>
+          </div>
+          <div class="risk-metrics">
+            <span>预计单笔风险<strong id="estimated-loss">—</strong></span>
+            <span>收益风险比<strong id="reward-risk">—</strong></span>
+            <span>风险状态<strong id="risk-status">—</strong></span>
+          </div>
+        </div>
+      </section>
+
+      <details class="source-details">
+        <summary>查看数据来源与研究边界</summary>
+        <div><ul id="source-list"></ul><p id="scope-note"></p></div>
+      </details>
+    </section>
+
+    <section class="error-state" id="error-state" hidden>
+      <span>!</span><h2>这次分析没有完成</h2><p id="error-message">—</p>
+      <button type="button" id="retry-button">重新分析</button>
+    </section>
+  </main>
+
+  <footer>
+    <div><strong>研判</strong><span>多维证券研究助手</span></div>
+    <p>仅供研究与教学，不构成投资建议。系统不连接券商，不创建真实订单。</p>
+    <a href="/admin">团队验收后台</a>
+  </footer>
+  <div class="toast" id="client-toast" role="status" aria-live="polite"></div>
+  <script src="/client.js" defer></script>
+</body>
+</html>

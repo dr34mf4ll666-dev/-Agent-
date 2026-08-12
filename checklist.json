@@ -581,7 +581,7 @@
     {
       "id": "PRODUCT_UI",
       "status": "done",
-      "result": "把 A-D 能力、操作、运行结果和 DeepSeek 辅助统一到一个本地 Web 界面",
+      "result": "把 A-D 能力、操作、运行结果和 DeepSeek 辅助统一到团队验收后台",
       "evidence": [
         "src/agent_platform/dashboard.py",
         "src/agent_platform/web/index.html",
@@ -591,7 +591,25 @@
         "tests/test_dashboard.py",
         "docs/control-desk.md"
       ],
-      "scope_note": "DeepSeek 只解释和建议；确定性指标、仓位、风控和真实交易安全边界不变"
+      "scope_note": "后台路径为 /admin；DeepSeek 只解释和建议；确定性指标、仓位、风控和真实交易安全边界不变"
+    },
+    {
+      "id": "PRODUCT_CLIENT_APP",
+      "status": "done",
+      "result": "新增面向客户的证券分析前台和一条覆盖 A-D、前后台与安全边界的命令行整体验收",
+      "evidence": [
+        "src/agent_platform/client_app.py",
+        "src/agent_platform/product_acceptance.py",
+        "src/agent_platform/web/client.html",
+        "src/agent_platform/web/client.css",
+        "src/agent_platform/web/client.js",
+        "Scripts/demo_product_acceptance.py",
+        "tests/test_client_app.py",
+        "tests/test_product_acceptance.py",
+        "tests/test_dashboard.py",
+        "docs/client-app.md"
+      ],
+      "scope_note": "客户股票池为20只已真实批量验证的沪深银行股；仅平安银行支持独立离线快照，其余股票只使用最新只读数据；DeepSeek 不改变确定性结果；真实交易关闭"
     }
   ],
   "enhancements_to_preserve": [

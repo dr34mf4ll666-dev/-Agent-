@@ -16,6 +16,14 @@ from threading import Timer
 from typing import Any, Mapping, Protocol, Sequence
 from urllib.parse import urlparse
 
+from .client_app import (
+    ClientAnalysisError,
+    ClientAnalysisRequest,
+    ClientAnalysisRuntime,
+    MarketAssistant,
+    SECURITIES,
+    build_default_market_assistant,
+)
 from .core import (
     DeepSeekChatAdapter,
     ModelGateway,
@@ -435,11 +443,17 @@ class DashboardRuntime:
         project_root: Path,
         command_runner: DashboardCommandRunner | None = None,
         assistant: ProjectAssistant | None = None,
+        client_runtime: ClientAnalysisRuntime | None = None,
+        market_assistant: MarketAssistant | None = None,
         timeout_seconds: float = 180.0,
     ) -> None:
         self.project_root = project_root.resolve()
         self.command_runner = command_runner or SubprocessDashboardCommandRunner()
         self.assistant = assistant or build_default_assistant()
+        self.client_runtime = client_runtime or ClientAnalysisRuntime.from_project(
+            self.project_root
+        )
+        self.market_assistant = market_assistant or build_default_market_assistant()
         self.timeout_seconds = timeout_seconds
 
     @classmethod
@@ -473,6 +487,61 @@ class DashboardRuntime:
                 "note": "真实数据只读；交易动作只进入本地模拟撮合。",
             },
         }
+
+    def client_overview(self) -> dict[str, Any]:
+        return {
+            "product": {
+                "name": "研判 · 多维证券研究助手",
+                "description": "把行情、经营、行业和市场环境放在一张报告里。",
+            },
+            "securities": [
+                {
+                    "symbol": symbol,
+                    "code": symbol[2:],
+                    "name": value["name"],
+                    "exchange": value["exchange"],
+                    "modes": list(value["sectors"]),
+                }
+                for symbol, value in SECURITIES.items()
+            ],
+            "capabilities": [
+                "K 线与技术指标",
+                "经营质量与估值",
+                "行业景气与政策",
+                "市场环境与资金",
+                "多观点综合研判",
+                "风险区间与智能解读",
+            ],
+            "assistant": {
+                "provider": self.market_assistant.provider,
+                "model": self.market_assistant.model,
+                "live": self.market_assistant.live,
+            },
+            "safety": {
+                "research_only": True,
+                "real_trading_allowed": False,
+                "notice": "仅供研究与教学，不构成投资建议。",
+            },
+        }
+
+    def analyze_client(self, value: Mapping[str, Any]) -> dict[str, Any]:
+        try:
+            request = ClientAnalysisRequest.from_mapping(value)
+            return self.client_runtime.analyze(request).to_mapping()
+        except ClientAnalysisError as error:
+            raise DashboardError(str(error)) from error
+
+    def explain_client(self, analysis: Mapping[str, Any]) -> dict[str, Any]:
+        if not isinstance(analysis, Mapping):
+            raise DashboardError("缺少可解释的分析结果。")
+        safety = analysis.get("safety")
+        if not isinstance(safety, Mapping) or (
+            safety.get("simulation_only") is not True
+            or safety.get("order_created") is not False
+            or safety.get("real_trading_allowed") is not False
+        ):
+            raise DashboardError("分析结果没有通过研究安全边界校验。")
+        return self.market_assistant.explain(analysis)
 
     def run_action(self, action_id: str, *, mode: str = "offline") -> dict[str, Any]:
         spec = ACTION_BY_ID.get(action_id)
@@ -565,8 +634,16 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/overview":
             self._send_json(HTTPStatus.OK, self.server.runtime.overview())
             return
+        if path == "/api/client/overview":
+            self._send_json(HTTPStatus.OK, self.server.runtime.client_overview())
+            return
         static_files = {
-            "/": ("index.html", "text/html; charset=utf-8"),
+            "/": ("client.html", "text/html; charset=utf-8"),
+            "/client.html": ("client.html", "text/html; charset=utf-8"),
+            "/client.css": ("client.css", "text/css; charset=utf-8"),
+            "/client.js": ("client.js", "text/javascript; charset=utf-8"),
+            "/admin": ("index.html", "text/html; charset=utf-8"),
+            "/admin/": ("index.html", "text/html; charset=utf-8"),
             "/index.html": ("index.html", "text/html; charset=utf-8"),
             "/styles.css": ("styles.css", "text/css; charset=utf-8"),
             "/app.js": ("app.js", "text/javascript; charset=utf-8"),
@@ -599,6 +676,14 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                     body.get("message", ""),
                     context=body.get("context"),
                 )
+                self._send_json(HTTPStatus.OK, result)
+                return
+            if path == "/api/client/analyze":
+                result = self.server.runtime.analyze_client(body)
+                self._send_json(HTTPStatus.OK, result)
+                return
+            if path == "/api/client/explain":
+                result = self.server.runtime.explain_client(body.get("analysis", {}))
                 self._send_json(HTTPStatus.OK, result)
                 return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "接口不存在。"})

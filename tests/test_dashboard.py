@@ -21,6 +21,7 @@ from agent_platform.dashboard import (  # noqa: E402
     LocalProjectAssistant,
     create_server,
 )
+from agent_platform.client_app import LocalMarketAssistant  # noqa: E402
 
 
 class _FakeRunner:
@@ -65,6 +66,7 @@ class DashboardRuntimeTests(unittest.TestCase):
             PROJECT_ROOT,
             command_runner=self.runner,
             assistant=LocalProjectAssistant(),
+            market_assistant=LocalMarketAssistant(),
         )
 
     def test_overview_unifies_every_stage_and_keeps_trading_disabled(self):
@@ -75,6 +77,19 @@ class DashboardRuntimeTests(unittest.TestCase):
         self.assertEqual({item["stage"] for item in overview["actions"]}, {"A", "B", "C", "D"})
         self.assertFalse(overview["safety"]["real_trading_allowed"])
         self.assertFalse(overview["safety"]["order_created"])
+
+    def test_client_overview_exposes_twenty_stocks_and_mode_availability(self):
+        overview = self.runtime.client_overview()
+
+        self.assertEqual(len(overview["securities"]), 20)
+        self.assertEqual(
+            next(item for item in overview["securities"] if item["symbol"] == "sz000001")["modes"],
+            ["offline", "live"],
+        )
+        self.assertEqual(
+            next(item for item in overview["securities"] if item["symbol"] == "sh600000")["modes"],
+            ["live"],
+        )
 
     def test_run_action_uses_only_allowlisted_script_and_extracts_summary(self):
         result = self.runtime.run_action("a4_model")
@@ -137,6 +152,7 @@ class DashboardHTTPTests(unittest.TestCase):
             PROJECT_ROOT,
             command_runner=_FakeRunner(),
             assistant=LocalProjectAssistant(),
+            market_assistant=LocalMarketAssistant(),
         )
         cls.server = create_server(port=0, runtime=runtime)
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
@@ -149,15 +165,44 @@ class DashboardHTTPTests(unittest.TestCase):
         cls.server.server_close()
         cls.thread.join(timeout=2)
 
-    def test_serves_frontend_and_overview_api(self):
+    def test_serves_customer_frontend_admin_and_both_overview_apis(self):
         with urlopen(f"{self.base_url}/", timeout=2) as response:
-            html = response.read().decode("utf-8")
+            client_html = response.read().decode("utf-8")
+        with urlopen(f"{self.base_url}/admin", timeout=2) as response:
+            admin_html = response.read().decode("utf-8")
         with urlopen(f"{self.base_url}/api/overview", timeout=2) as response:
             overview = json.loads(response.read().decode("utf-8"))
+        with urlopen(f"{self.base_url}/api/client/overview", timeout=2) as response:
+            client_overview = json.loads(response.read().decode("utf-8"))
 
-        self.assertIn("把 Agent 的能力", html)
-        self.assertIn("DeepSeek 助手", html)
+        self.assertIn("看懂一只股票", client_html)
+        self.assertNotIn("Harness", client_html)
+        self.assertIn("把 Agent 的能力", admin_html)
+        self.assertIn("DeepSeek 助手", admin_html)
         self.assertEqual(len(overview["stages"]), 4)
+        self.assertIn("K 线与技术指标", client_overview["capabilities"])
+
+    def test_customer_analysis_and_explanation_are_visible_through_http(self):
+        analyze = Request(
+            f"{self.base_url}/api/client/analyze",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps({"symbol": "sz000001", "mode": "offline"}).encode("utf-8"),
+        )
+        with urlopen(analyze, timeout=20) as response:
+            analysis = json.loads(response.read().decode("utf-8"))
+        explain = Request(
+            f"{self.base_url}/api/client/explain",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps({"analysis": analysis}).encode("utf-8"),
+        )
+        with urlopen(explain, timeout=5) as response:
+            explanation = json.loads(response.read().decode("utf-8"))
+
+        self.assertEqual(len(analysis["dimensions"]), 4)
+        self.assertEqual(len(analysis["data"]["bars"]), 30)
+        self.assertEqual(explanation["provider"], "local")
 
     def test_run_api_rejects_unregistered_commands(self):
         request = Request(
@@ -177,14 +222,22 @@ class DashboardAssetTests(unittest.TestCase):
     def test_frontend_assets_are_present_and_do_not_use_external_dependencies(self):
         web_root = PROJECT_ROOT / "src" / "agent_platform" / "web"
         html = (web_root / "index.html").read_text(encoding="utf-8")
+        client_html = (web_root / "client.html").read_text(encoding="utf-8")
         css = (web_root / "styles.css").read_text(encoding="utf-8")
+        client_css = (web_root / "client.css").read_text(encoding="utf-8")
         javascript = (web_root / "app.js").read_text(encoding="utf-8")
+        client_javascript = (web_root / "client.js").read_text(encoding="utf-8")
 
         self.assertIn("/styles.css", html)
         self.assertIn("/app.js", html)
         self.assertNotIn("https://", html)
+        self.assertNotIn("https://", client_html)
         self.assertIn("@media (max-width: 570px)", css)
+        self.assertIn("@media (max-width: 680px)", client_css)
+        self.assertIn("[hidden] { display: none !important; }", client_css)
         self.assertIn('api("/api/overview")', javascript)
+        self.assertIn('clientApi("/api/client/overview")', client_javascript)
+        self.assertIn("syncModeAvailability", client_javascript)
 
 
 if __name__ == "__main__":

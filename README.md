@@ -4,21 +4,23 @@
 
 ## 项目进度
 
-项目的调整后交付范围已经完成，并新增 A–D 一体化 Web 控制台。平台包含 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究；金融应用包含 19 类真实数据、四类专业 Agent、C1–C3 综合决策链、回测和本地模拟撮合；工程部分包含可观测性、Evaluator、熔断、最小权限、Harness 对比实验、统一最终验收和完整文档。原“连续运行 1–2 周”时间等待由用户明确豁免，当前只保留单日真实运行证据，因此不宣称已经证明长周期稳定性。真实交易始终关闭。
+项目的调整后交付范围已经完成，并形成客户前台与团队验收后台两个 Web 界面。平台包含 Harness、完整 Loop、Graph/DAG、Checkpoint、Model Gateway 和非金融资料研究；金融应用包含 19 类真实数据、四类专业 Agent、C1–C3 综合决策链、回测和本地模拟撮合；工程部分包含可观测性、Evaluator、熔断、最小权限、Harness 对比实验、统一最终验收和完整文档。原“连续运行 1–2 周”时间等待由用户明确豁免，当前只保留单日真实运行证据，因此不宣称已经证明长周期稳定性。真实交易始终关闭。
 
 任务 1.2 Loop Engineering 已完成认知闭环、受控工具、三层记忆、三类触发循环、任务隔离和上下文注入。任务 1.3 Graph Engineering 已完成 YAML/JSON 定义、边 Schema、并行、可靠性、Checkpoint 和可视化。A4 Model Gateway 已通过 DeepSeek 真实调用验证。A5 又在不修改核心框架语义的前提下接入非金融资料研究。B1 已形成统一金融 Data Hub 与只读 MCP Server；行情、财务、宏观行业、新闻、公告、LPR、研报和 Tushare 第二日线来源均已真实验证，19 个 dataset 都有真实最小样本和离线回放。真实交易始终关闭。
 
 完整任务映射、最终成果和验收条件见 [`ROADMAP.md`](ROADMAP.md)。
 
-### 推荐入口：打开统一 Web 控制台
+### 推荐入口：打开分析应用
 
 ```powershell
 D:\Anaconda\python.exe Scripts\run_dashboard.py
 ```
 
-运行后浏览器会打开 `http://127.0.0.1:8765/`。页面把 A 平台底座、B 金融数据与四类 Agent、C 联合决策与风控、D 回测与工程验收放在同一条执行轨道中。每个功能都有中文简介、离线/真实模式、运行按钮、核心摘要和可展开的完整记录，不再需要记住十几条演示命令。
+运行后浏览器会打开 `http://127.0.0.1:8765/`，这里是面向客户的证券分析应用。股票池提供 20 只已经通过真实批量链路验证的沪深银行股；选择股票和数据版本后，页面直接展示 K 线、综合观点、技术/基本面/行业/宏观四个研究维度、支持与风险因素、研究价格区间及智能解读，不要求客户理解 Graph、Harness 或命令行。平安银行同时支持可复现快照和最新数据，其余 19 只股票只使用最新只读数据，页面会自动切换并禁用不适用的快照选项。
 
-如果当前 PowerShell 能读取 `DEEPSEEK_API_KEY`，右侧助手自动使用 DeepSeek 解释当前结果并建议下一项功能；没有 Key 时自动使用本地规则助手。助手只能解释和建议，建议仍需用户点击确认，不能修改确定性指标、仓位和风控，也不能创建真实订单。详细说明见 [`docs/control-desk.md`](docs/control-desk.md)。
+团队演示和工程验收页面保留在 `http://127.0.0.1:8765/admin`。它把 A 平台底座、B 金融数据与四类 Agent、C 联合决策与风控、D 回测与工程验收放在同一条执行轨道中，提供 18 个可操作入口、结果摘要和完整 trace。
+
+如果当前 PowerShell 能读取 `DEEPSEEK_API_KEY`，客户前台会使用 DeepSeek 把确定性结果解释成通俗中文，后台助手也会基于当前结果推荐下一项功能；没有 Key 时两处都会使用本地安全解释。模型不能修改指标、仓位和风控，不能自动执行动作，也不能创建真实订单。客户前台说明见 [`docs/client-app.md`](docs/client-app.md)，团队后台说明见 [`docs/control-desk.md`](docs/control-desk.md)。
 
 安装项目后也可以运行：
 
@@ -26,13 +28,13 @@ D:\Anaconda\python.exe Scripts\run_dashboard.py
 agent-platform dashboard
 ```
 
-### 一条命令验收整个项目
+### 一条命令验收整个产品
 
 ```powershell
-D:\Anaconda\python.exe Scripts\demo_final_delivery.py
+D:\Anaconda\python.exe Scripts\demo_product_acceptance.py
 ```
 
-安装项目后也可以运行 `agent-platform d4-verify`。该入口从环境和安全配置检查开始，实际复现通用 Harness、C3 完整金融 Graph、D1 固定回测、D2/D3 工程实验和 D4 本地模拟执行，再核对最终文档包并输出一页中文结论。默认不联网、不生成临时报告文件。完整交付说明见 [`docs/final-delivery.md`](docs/final-delivery.md)。
+安装项目后也可以运行 `agent-platform verify-all`。该入口先复现 A–D 核心交付，再检查客户前台、团队后台、DeepSeek/本地解释层和交易安全边界，最终输出一页中文结论。默认不联网、不生成临时报告文件。原 D4 专项入口 `Scripts/demo_final_delivery.py` 和 `agent-platform d4-verify` 继续保留。完整交付说明见 [`docs/final-delivery.md`](docs/final-delivery.md)。
 
 ## 快速开始
 

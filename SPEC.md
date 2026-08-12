@@ -218,7 +218,9 @@ analysis = result.report["analysis"]
 python -m unittest discover -s tests -v
 ```
 
-推荐的人工验收入口是 `python Scripts/run_dashboard.py`。Web 控制台只允许调用登记过的 A–D 功能；DeepSeek 只能解释和建议，不能覆盖确定性结果或自动执行动作。
+推荐的人工展示入口是 `python Scripts/run_dashboard.py`。根路径 `/` 是面向客户的证券分析前台，`/admin` 是面向团队的 A–D 验收后台。后台只允许调用登记过的功能；DeepSeek 在两处都只能解释已有结果，不能覆盖确定性数值、自动执行动作或创建订单。
+
+推荐的命令行整体验收入口是 `python Scripts/demo_product_acceptance.py`，安装后等价命令为 `agent-platform verify-all`。它统一检查 A–D 核心交付、客户前台、团队后台、解释层和交易安全边界。
 
 ## 11. 安全底线
 
@@ -229,4 +231,4 @@ python -m unittest discover -s tests -v
 
 ## 12. 下一步
 
-当前调整后项目范围已经完成，没有未关闭的正式任务。Web UI 与 DeepSeek 项目助手已经作为产品化增强完成；后续可以继续积累真实模拟账本、做真实模型线上对照实验或扩展更多资产类别，但这些不影响本次 D4 完成结论。完整边界和最终报告见 `docs/final-delivery.md`，统一界面见 `docs/control-desk.md`。
+当前调整后项目范围已经完成，没有未关闭的正式任务。客户分析前台、团队验收后台与 DeepSeek 解释层已经作为产品化增强完成；后续可以继续积累真实模拟账本、做真实模型线上对照实验、扩展更多股票和匹配的行业数据，但这些不影响本次 D4 完成结论。完整边界和最终报告见 `docs/final-delivery.md`，两个 Web 界面分别见 `docs/client-app.md` 和 `docs/control-desk.md`。
