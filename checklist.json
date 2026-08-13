@@ -596,7 +596,7 @@
     {
       "id": "PRODUCT_CLIENT_APP",
       "status": "done",
-      "result": "新增面向客户的证券分析前台和一条覆盖 A-D、前后台与安全边界的命令行整体验收",
+      "result": "新增面向客户的证券分析前台、四维研究天平和一条覆盖 A-D、前后台与安全边界的命令行整体验收",
       "evidence": [
         "src/agent_platform/client_app.py",
         "src/agent_platform/product_acceptance.py",
@@ -609,7 +609,31 @@
         "tests/test_dashboard.py",
         "docs/client-app.md"
       ],
-      "scope_note": "客户股票池为20只已真实批量验证的沪深银行股；仅平安银行支持独立离线快照，其余股票只使用最新只读数据；DeepSeek 不改变确定性结果；真实交易关闭"
+      "scope_note": "客户股票池为20只已真实批量验证的沪深银行股；仅平安银行支持独立离线快照，其余股票只使用最新只读数据；研究天平只投影四个Agent既有分数；DeepSeek不改变确定性结果；真实交易关闭"
+    }
+  ],
+  "in_progress_product_enhancements": [
+    {
+      "id": "DYNAMIC_LLM_DEBATE",
+      "status": "in_progress",
+      "result": "受约束的动态Bull/Bear候选生成、证据复核、有限重试、固定模板降级和客户页面入口已经完成",
+      "evidence": [
+        "src/agent_platform/finance/dynamic_debate.py",
+        "src/agent_platform/dashboard_startup.py",
+        "src/agent_platform/dashboard.py",
+        "Scripts/run_dashboard.py",
+        "src/agent_platform/web/client.html",
+        "src/agent_platform/web/client.js",
+        "tests/test_dynamic_debate.py",
+        "tests/test_dashboard_startup.py",
+        "tests/test_dashboard.py",
+        "docs/client-app.md"
+      ],
+      "remaining": [
+        "使用真实DeepSeek完成受控集成验证",
+        "建立固定线上评测集并统计证据有效率、观点多样性、正反平衡、重试率、耗时、Token成本和稳定性"
+      ],
+      "scope_note": "仅改写Claim和Reasoning候选；Synthesis、价格区间、仓位、风控和真实交易边界不变"
     }
   ],
   "enhancements_to_preserve": [

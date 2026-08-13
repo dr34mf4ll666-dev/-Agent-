@@ -21,7 +21,10 @@ from agent_platform.finance import (
     build_default_macro_analysis_runtime,
     validate_macro_analysis_output,
 )
-from agent_platform.finance.macro_runtime import DERIVED_EMPTY_RESEARCH_SOURCE
+from agent_platform.finance.macro_runtime import (
+    DERIVED_EMPTY_FUND_FLOW_SOURCE,
+    DERIVED_EMPTY_RESEARCH_SOURCE,
+)
 
 
 def default_query():
@@ -46,6 +49,24 @@ class EmptyResearchFinancialTool:
                 "provider returned no records",
                 code=FinancialDataErrorCode.EMPTY_RESPONSE,
                 source="akshare.stock_research_report_em",
+            )
+        fixture = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+        return copy.deepcopy(
+            next(
+                item
+                for item in fixture["datasets"]
+                if item["dataset"] == arguments["dataset"]
+            )
+        )
+
+
+class UnavailableFundFlowFinancialTool:
+    def run(self, arguments):
+        if arguments["dataset"] == "market.fund_flow":
+            raise FinancialDataError(
+                "provider returned no records",
+                code=FinancialDataErrorCode.EMPTY_RESPONSE,
+                source="akshare.stock_fund_flow_individual",
             )
         fixture = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
         return copy.deepcopy(
@@ -141,6 +162,26 @@ class MacroAnalysisRuntimeTests(unittest.TestCase):
         self.assertEqual(analysis["sentiment"]["latest_rating"], "not_available")
         self.assertEqual(research["source"], DERIVED_EMPTY_RESEARCH_SOURCE)
         self.assertIn("no research report was available", analysis["caveats"][-1])
+
+    def test_live_unavailable_fund_flow_is_explicit_and_neutral(self):
+        runtime = MacroAnalysisRuntime(UnavailableFundFlowFinancialTool())
+
+        result = runtime.run(
+            MacroAnalysisQuery(symbol="sh601009", mode="live")
+        ).to_mapping()
+
+        analysis = result["report"]["analysis"]
+        fund_flow = result["report"]["macro_data"]["fund_flow"]
+        fund_component = next(
+            item for item in analysis["score_components"] if item["name"] == "funds"
+        )
+        self.assertEqual(fund_flow["source"], DERIVED_EMPTY_FUND_FLOW_SOURCE)
+        self.assertEqual(analysis["funds"]["availability"], "not_available")
+        self.assertEqual(analysis["funds"]["direction"], "not_available")
+        self.assertEqual(fund_component["points"], 0)
+        self.assertEqual(analysis["sentiment"]["market_proxy_points"], 0)
+        self.assertEqual(analysis["market_regime"]["label"], "mixed")
+        self.assertIn("fund-flow data was unavailable", analysis["caveats"][-1])
 
 
 if __name__ == "__main__":

@@ -50,6 +50,48 @@ MACRO_DATASET_KEYS = {
 }
 
 DERIVED_EMPTY_RESEARCH_SOURCE = "derived:akshare.stock_research_report_em:empty"
+DERIVED_EMPTY_FUND_FLOW_SOURCE = "derived:akshare.stock_fund_flow_individual:unavailable"
+
+
+def _empty_fund_flow_evidence(
+    macro_data: Mapping[str, Any],
+    *,
+    symbol: str,
+    mode: str,
+    reason: str,
+) -> dict[str, Any]:
+    index_data = macro_data.get("macro_index")
+    if not isinstance(index_data, Mapping) or not index_data.get("timestamp"):
+        raise MacroAnalysisError("cannot timestamp unavailable fund-flow evidence")
+    timestamp = str(index_data["timestamp"])
+    return {
+        "dataset": "market.fund_flow",
+        "record_count": 1,
+        "source": DERIVED_EMPTY_FUND_FLOW_SOURCE,
+        "timestamp": timestamp,
+        "attempts": 0,
+        "cache_hit": False,
+        "mode": mode,
+        "records": [
+            {
+                "subject": symbol,
+                "fields": {
+                    "availability": "not_available",
+                    "reason": reason,
+                },
+                "source": DERIVED_EMPTY_FUND_FLOW_SOURCE,
+                "timestamp": timestamp,
+                "as_of": timestamp,
+            }
+        ],
+        "trace": [
+            {
+                "event": "provider.fallback.unavailable_fund_flow",
+                "attempt": 0,
+                "detail": reason,
+            }
+        ],
+    }
 
 
 def _empty_research_evidence(
@@ -290,13 +332,33 @@ class _MacroAnalysisTool:
                 "mode": query.mode,
             }
         )
-        macro_data["fund_flow"] = self._financial_tool.run(
-            {
-                "dataset": "market.fund_flow",
-                "params": {"symbol": query.symbol, "limit": 1},
-                "mode": query.mode,
-            }
-        )
+        try:
+            macro_data["fund_flow"] = self._financial_tool.run(
+                {
+                    "dataset": "market.fund_flow",
+                    "params": {"symbol": query.symbol, "limit": 1},
+                    "mode": query.mode,
+                }
+            )
+        except FinancialDataError as error:
+            can_fallback = (
+                query.mode == "live"
+                and error.code
+                in {
+                    FinancialDataErrorCode.EMPTY_RESPONSE,
+                    FinancialDataErrorCode.TIMEOUT,
+                    FinancialDataErrorCode.PROVIDER_UNAVAILABLE,
+                    FinancialDataErrorCode.RATE_LIMITED,
+                }
+            )
+            if not can_fallback:
+                raise
+            macro_data["fund_flow"] = _empty_fund_flow_evidence(
+                macro_data,
+                symbol=query.symbol,
+                mode=query.mode,
+                reason="fund-flow provider was temporarily unavailable; neutral evidence used",
+            )
         macro_data["macro_gdp"] = self._financial_tool.run(
             {
                 "dataset": "macro.gdp",
@@ -558,6 +620,7 @@ def build_default_macro_analysis_runtime(
 
 
 __all__ = [
+    "DERIVED_EMPTY_FUND_FLOW_SOURCE",
     "DERIVED_EMPTY_RESEARCH_SOURCE",
     "MACRO_DATASET_KEYS",
     "MACRO_TOOL_OUTPUT_SCHEMA",

@@ -202,7 +202,33 @@ class DashboardHTTPTests(unittest.TestCase):
 
         self.assertEqual(len(analysis["dimensions"]), 4)
         self.assertEqual(len(analysis["data"]["bars"]), 30)
+        self.assertEqual(len(analysis["analysis_id"]), 32)
         self.assertEqual(explanation["provider"], "local")
+
+        debate = Request(
+            f"{self.base_url}/api/client/debate",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps({"analysis_id": analysis["analysis_id"]}).encode("utf-8"),
+        )
+        with urlopen(debate, timeout=5) as response:
+            dynamic = json.loads(response.read().decode("utf-8"))
+
+        self.assertEqual(dynamic["mode"], "deterministic_fallback")
+        self.assertFalse(dynamic["safety"]["real_trading_allowed"])
+
+    def test_customer_dynamic_debate_rejects_unknown_analysis_id(self):
+        request = Request(
+            f"{self.base_url}/api/client/debate",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps({"analysis_id": "not-a-real-analysis"}).encode("utf-8"),
+        )
+
+        with self.assertRaises(HTTPError) as raised:
+            urlopen(request, timeout=2)
+
+        self.assertEqual(raised.exception.code, 400)
 
     def test_run_api_rejects_unregistered_commands(self):
         request = Request(
@@ -235,9 +261,17 @@ class DashboardAssetTests(unittest.TestCase):
         self.assertIn("@media (max-width: 570px)", css)
         self.assertIn("@media (max-width: 680px)", client_css)
         self.assertIn("[hidden] { display: none !important; }", client_css)
+        self.assertIn('id="research-balance"', client_html)
+        self.assertIn('id="balance-chart"', client_html)
+        self.assertIn('id="dynamic-debate-button"', client_html)
+        self.assertIn('id="dynamic-debate-rounds"', client_html)
+        self.assertIn(".balance-zero-line", client_css)
         self.assertIn('api("/api/overview")', javascript)
         self.assertIn('clientApi("/api/client/overview")', client_javascript)
         self.assertIn("syncModeAvailability", client_javascript)
+        self.assertIn("renderResearchBalance", client_javascript)
+        self.assertIn("localizeDebateText", client_javascript)
+        self.assertIn('clientApi("/api/client/debate"', client_javascript)
 
 
 if __name__ == "__main__":

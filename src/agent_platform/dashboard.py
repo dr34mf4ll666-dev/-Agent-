@@ -8,11 +8,12 @@ import subprocess
 import sys
 import time
 import webbrowser
+from collections import OrderedDict
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from threading import Timer
+from threading import Lock, Timer
 from typing import Any, Mapping, Protocol, Sequence
 from urllib.parse import urlparse
 
@@ -32,6 +33,12 @@ from .core import (
     ModelRequest,
     ModelRetryPolicy,
 )
+from .finance import (
+    DynamicDebateRuntime,
+    StructuredDebateQuery,
+    build_default_dynamic_debate_runtime,
+)
+from uuid import uuid4
 
 
 class DashboardError(ValueError):
@@ -445,6 +452,7 @@ class DashboardRuntime:
         assistant: ProjectAssistant | None = None,
         client_runtime: ClientAnalysisRuntime | None = None,
         market_assistant: MarketAssistant | None = None,
+        dynamic_debate_runtime: DynamicDebateRuntime | None = None,
         timeout_seconds: float = 180.0,
     ) -> None:
         self.project_root = project_root.resolve()
@@ -454,6 +462,11 @@ class DashboardRuntime:
             self.project_root
         )
         self.market_assistant = market_assistant or build_default_market_assistant()
+        self.dynamic_debate_runtime = (
+            dynamic_debate_runtime or build_default_dynamic_debate_runtime()
+        )
+        self._debate_contexts: OrderedDict[str, Mapping[str, Any]] = OrderedDict()
+        self._debate_context_lock = Lock()
         self.timeout_seconds = timeout_seconds
 
     @classmethod
@@ -527,9 +540,29 @@ class DashboardRuntime:
     def analyze_client(self, value: Mapping[str, Any]) -> dict[str, Any]:
         try:
             request = ClientAnalysisRequest.from_mapping(value)
-            return self.client_runtime.analyze(request).to_mapping()
+            result = self.client_runtime.analyze(request)
+            response = result.to_mapping()
+            if result.debate_context is not None:
+                analysis_id = uuid4().hex
+                with self._debate_context_lock:
+                    self._debate_contexts[analysis_id] = result.debate_context
+                    while len(self._debate_contexts) > 32:
+                        self._debate_contexts.popitem(last=False)
+                response["analysis_id"] = analysis_id
+            return response
         except ClientAnalysisError as error:
             raise DashboardError(str(error)) from error
+
+    def debate_client(self, analysis_id: str) -> dict[str, Any]:
+        if not isinstance(analysis_id, str) or not analysis_id.strip():
+            raise DashboardError("缺少可用于动态辩论的分析编号。")
+        with self._debate_context_lock:
+            context = self._debate_contexts.get(analysis_id.strip())
+        if context is None:
+            raise DashboardError("分析编号已失效，请重新完成一次股票分析。")
+        return self.dynamic_debate_runtime.run(
+            StructuredDebateQuery(context, rounds=2)
+        ).to_mapping()
 
     def explain_client(self, analysis: Mapping[str, Any]) -> dict[str, Any]:
         if not isinstance(analysis, Mapping):
@@ -684,6 +717,12 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/client/explain":
                 result = self.server.runtime.explain_client(body.get("analysis", {}))
+                self._send_json(HTTPStatus.OK, result)
+                return
+            if path == "/api/client/debate":
+                result = self.server.runtime.debate_client(
+                    str(body.get("analysis_id", ""))
+                )
                 self._send_json(HTTPStatus.OK, result)
                 return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "接口不存在。"})

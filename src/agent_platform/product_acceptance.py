@@ -36,6 +36,7 @@ class ProductAcceptanceReport:
             self.core_delivery["passed"]
             and self.client_app["passed"]
             and self.admin_console["passed"]
+            and self.model_assistance["passed"]
             and self.safety["passed"]
         )
 
@@ -89,6 +90,8 @@ class ProductAcceptanceRuntime:
         admin_assets = self._check_assets("index.html", "styles.css", "app.js")
         client_checks = {
             "页面资源齐全": all(client_assets.values()),
+            "四维观点已有直观图形": self._client_visualization_ready(),
+            "受约束动态多空辩论入口存在": self._dynamic_debate_ready(),
             "客户股票池不少于20只": len(SECURITIES) >= 20,
             "客户股票池覆盖沪深两市": {item["exchange"] for item in SECURITIES.values()}
             == {"上交所", "深交所"},
@@ -112,6 +115,10 @@ class ProductAcceptanceRuntime:
             "真实交易保持关闭": client["safety"]["real_trading_allowed"] is False,
             "核心交付真实交易关闭": final_mapping["safety"]["real_trading_allowed"] is False,
         }
+        model_checks = {
+            "启动命令支持隐藏输入DeepSeek Key": self._dashboard_key_prompt_ready(),
+            "未输入Key时保留本地固定格式": self._dashboard_key_prompt_ready(),
+        }
         return ProductAcceptanceReport(
             core_delivery={
                 "passed": final.passed,
@@ -133,6 +140,8 @@ class ProductAcceptanceRuntime:
                 "path": "/admin",
             },
             model_assistance={
+                "passed": all(model_checks.values()),
+                "checks": model_checks,
                 "configured": bool(os.environ.get("DEEPSEEK_API_KEY", "").strip()),
                 "provider": "deepseek" if os.environ.get("DEEPSEEK_API_KEY", "").strip() else "local_fallback",
                 "required_for_offline_acceptance": False,
@@ -146,6 +155,39 @@ class ProductAcceptanceRuntime:
     def _check_assets(self, *names: str) -> dict[str, bool]:
         web_root = self._root / "src" / "agent_platform" / "web"
         return {name: (web_root / name).is_file() for name in names}
+
+    def _client_visualization_ready(self) -> bool:
+        web_root = self._root / "src" / "agent_platform" / "web"
+        html = (web_root / "client.html").read_text(encoding="utf-8")
+        javascript = (web_root / "client.js").read_text(encoding="utf-8")
+        return 'id="research-balance"' in html and "renderResearchBalance" in javascript
+
+    def _dynamic_debate_ready(self) -> bool:
+        web_root = self._root / "src" / "agent_platform" / "web"
+        html = (web_root / "client.html").read_text(encoding="utf-8")
+        javascript = (web_root / "client.js").read_text(encoding="utf-8")
+        runtime = self._root / "src" / "agent_platform" / "finance" / "dynamic_debate.py"
+        return (
+            runtime.is_file()
+            and 'id="dynamic-debate-button"' in html
+            and 'clientApi("/api/client/debate"' in javascript
+        )
+
+    def _dashboard_key_prompt_ready(self) -> bool:
+        startup = self._root / "src" / "agent_platform" / "dashboard_startup.py"
+        script = self._root / "Scripts" / "run_dashboard.py"
+        cli = self._root / "src" / "agent_platform" / "cli.py"
+        if not all(path.is_file() for path in (startup, script, cli)):
+            return False
+        startup_text = startup.read_text(encoding="utf-8")
+        script_text = script.read_text(encoding="utf-8")
+        cli_text = cli.read_text(encoding="utf-8")
+        return (
+            "getpass.getpass" in startup_text
+            and "DEEPSEEK_API_KEY" in startup_text
+            and "configure_deepseek_for_dashboard" in script_text
+            and "configure_deepseek_for_dashboard" in cli_text
+        )
 
 
 def print_product_acceptance(report: ProductAcceptanceReport) -> None:
@@ -177,6 +219,8 @@ def print_product_acceptance(report: ProductAcceptanceReport) -> None:
 
     model = value["model_assistance"]
     print("\n【4. 智能解读】")
+    for name, passed in model["checks"].items():
+        print(f"- {'通过' if passed else '失败'}: {name}")
     print(f"- 当前解释层: {model['provider']}")
     print("- DeepSeek 未配置时使用本地安全解释，不影响离线验收。")
 

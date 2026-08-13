@@ -121,10 +121,34 @@
           <div><p>FOUR RESEARCH LENSES</p><h2 id="dimension-title">四个维度，分别在说什么</h2></div>
           <span>分数范围 -100 至 +100，仅表示规则强弱</span>
         </div>
+        <article class="research-balance" id="research-balance" aria-labelledby="balance-title">
+          <div class="balance-copy">
+            <p class="panel-kicker">研究天平</p>
+            <h3 id="balance-title">四个 Agent 的观点分布</h3>
+            <span>越靠左越谨慎，越靠右越积极；靠近中轴表示当前证据偏中性。</span>
+            <div class="balance-summary">
+              <span>主要支持<strong id="balance-strongest">—</strong></span>
+              <span>主要风险<strong id="balance-weakest">—</strong></span>
+              <span>观点分歧<strong id="balance-spread">—</strong></span>
+            </div>
+          </div>
+          <div class="balance-chart" id="balance-chart" role="img" aria-label="四个研究维度的多空分数对比">
+            <div class="balance-scale" aria-hidden="true"><span>-100 谨慎</span><span>0 中性</span><span>+100 积极</span></div>
+            <div class="balance-zero-line" aria-hidden="true"></div>
+            <div class="balance-rows" id="balance-rows"></div>
+          </div>
+        </article>
         <div class="dimension-grid" id="dimension-grid"></div>
       </section>
 
       <section class="evidence-grid">
+        <div class="debate-toolbar">
+          <div>
+            <p>多空辩论</p>
+            <span id="debate-mode-note">当前展示经过确定性证据复核的固定辩论。</span>
+          </div>
+          <button type="button" id="dynamic-debate-button">生成动态多空解读</button>
+        </div>
         <article class="evidence-card positive-evidence">
           <div class="evidence-icon" aria-hidden="true">↗</div>
           <p>支持因素</p>
@@ -137,6 +161,8 @@
           <h3 id="risk-claim">—</h3>
           <span id="risk-reasoning">—</span>
         </article>
+        <div class="debate-proof" id="debate-proof" hidden></div>
+        <div class="debate-rounds" id="dynamic-debate-rounds" hidden></div>
       </section>
 
       <section class="risk-section" id="risk" aria-labelledby="risk-title">

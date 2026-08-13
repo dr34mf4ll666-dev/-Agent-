@@ -142,18 +142,30 @@ class MacroAnalysisEngine:
             index_trend, index_points, index_rule = "flat", 0, "-1% < window return < 1%"
 
         latest_fund = fund_records[-1]
-        fund_last = _field(latest_fund, ("last", "最新价"), "fund-flow latest price")
-        fund_change = _field(
-            latest_fund, ("change_percent", "涨跌幅"), "fund-flow change percent"
-        )
-        inflow = _field(latest_fund, ("inflow_cny", "主力流入"), "fund-flow inflow")
-        outflow = _field(latest_fund, ("outflow_cny", "主力流出"), "fund-flow outflow")
-        net_flow = _field(latest_fund, ("net_flow_cny", "主力净流入"), "fund-flow net flow")
-        turnover = _field(
-            latest_fund, ("turnover_amount_cny", "成交额"), "fund-flow turnover"
-        )
-        flow_ratio = net_flow / turnover * Decimal("100") if turnover else Decimal("0")
-        if net_flow > 0:
+        fund_available = _text(
+            latest_fund, ("availability",), "fund-flow availability"
+        ) != "not_available"
+        if fund_available:
+            fund_last = _field(latest_fund, ("last", "最新价"), "fund-flow latest price")
+            fund_change = _field(
+                latest_fund, ("change_percent", "涨跌幅"), "fund-flow change percent"
+            )
+            inflow = _field(latest_fund, ("inflow_cny", "主力流入"), "fund-flow inflow")
+            outflow = _field(latest_fund, ("outflow_cny", "主力流出"), "fund-flow outflow")
+            net_flow = _field(latest_fund, ("net_flow_cny", "主力净流入"), "fund-flow net flow")
+            turnover = _field(
+                latest_fund, ("turnover_amount_cny", "成交额"), "fund-flow turnover"
+            )
+            flow_ratio = net_flow / turnover * Decimal("100") if turnover else Decimal("0")
+        else:
+            fund_last = fund_change = inflow = outflow = net_flow = turnover = flow_ratio = None
+        if not fund_available:
+            flow_direction, fund_points, fund_rule = (
+                "not_available",
+                0,
+                "target fund-flow data unavailable; neutral points used",
+            )
+        elif net_flow > 0:
             flow_direction, fund_points, fund_rule = "inflow", 20, "target net flow > 0"
         elif net_flow < 0:
             flow_direction, fund_points, fund_rule = "outflow", -20, "target net flow < 0"
@@ -218,7 +230,12 @@ class MacroAnalysisEngine:
                 0,
                 "research ratings are mixed or neutral",
             )
-        if latest_return >= 0 and net_flow >= 0:
+        if not fund_available:
+            market_proxy_points, market_proxy_rule = (
+                0,
+                "target fund flow unavailable; market proxy contributed zero points",
+            )
+        elif latest_return >= 0 and net_flow >= 0:
             market_proxy_points, market_proxy_rule = (
                 5,
                 "latest index return and target net flow are non-negative",
@@ -255,7 +272,12 @@ class MacroAnalysisEngine:
         else:
             macro_points, macro_rule = 0, "macro indicators are mixed"
 
-        if window_return >= Decimal("1") and net_flow >= 0:
+        if not fund_available:
+            regime, regime_rule = (
+                "mixed",
+                "target fund flow unavailable; one-sided regime is not inferred",
+            )
+        elif window_return >= Decimal("1") and net_flow >= 0:
             regime, regime_rule = (
                 "risk_on",
                 "index window trend is bullish and target flow is inflow",
@@ -321,13 +343,14 @@ class MacroAnalysisEngine:
             },
             "funds": {
                 "subject_symbol": symbol,
+                **({} if fund_available else {"availability": "not_available"}),
                 "latest_as_of": latest_fund["as_of"],
-                "last": _number(fund_last),
-                "change_percent": _number(fund_change),
-                "inflow_cny": _number(inflow),
-                "outflow_cny": _number(outflow),
-                "net_flow_cny": _number(net_flow),
-                "flow_ratio_percent": _number(flow_ratio),
+                "last": _number(fund_last) if fund_last is not None else None,
+                "change_percent": _number(fund_change) if fund_change is not None else None,
+                "inflow_cny": _number(inflow) if inflow is not None else None,
+                "outflow_cny": _number(outflow) if outflow is not None else None,
+                "net_flow_cny": _number(net_flow) if net_flow is not None else None,
+                "flow_ratio_percent": _number(flow_ratio) if flow_ratio is not None else None,
                 "direction": flow_direction,
             },
             "sentiment": {
@@ -374,6 +397,11 @@ class MacroAnalysisEngine:
                 *(
                     ["no research report was available; research sentiment contributed zero points"]
                     if not ratings
+                    else []
+                ),
+                *(
+                    ["fund-flow data was unavailable; fund and market-proxy scores contributed zero points"]
+                    if not fund_available
                     else []
                 ),
             ],

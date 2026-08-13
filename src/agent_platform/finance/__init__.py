@@ -100,6 +100,13 @@ from .structured_debate import (
     build_default_structured_debate_runtime,
     validate_structured_debate,
 )
+from .dynamic_debate import (
+    DYNAMIC_DEBATE_SCHEMA,
+    DynamicDebateError,
+    DynamicDebateResult,
+    DynamicDebateRuntime,
+    build_default_dynamic_debate_runtime,
+)
 from .c1_decision import (
     C1DecisionError,
     C1DecisionQuery,
@@ -260,6 +267,11 @@ __all__ = [
     "StructuredDebateRuntime",
     "build_default_structured_debate_runtime",
     "validate_structured_debate",
+    "DYNAMIC_DEBATE_SCHEMA",
+    "DynamicDebateError",
+    "DynamicDebateResult",
+    "DynamicDebateRuntime",
+    "build_default_dynamic_debate_runtime",
     "C1DecisionError",
     "C1DecisionQuery",
     "C1DecisionResult",

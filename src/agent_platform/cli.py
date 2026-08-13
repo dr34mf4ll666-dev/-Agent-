@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .d2_engineering import D2EngineeringRuntime
 from .dashboard import serve_dashboard
+from .dashboard_startup import configure_deepseek_for_dashboard
 from .final_delivery import FinalDeliveryRuntime
 from .product_acceptance import ProductAcceptanceRuntime, print_product_acceptance
 
@@ -26,6 +27,11 @@ def build_parser() -> argparse.ArgumentParser:
     dashboard = subparsers.add_parser("dashboard", help="启动 A-D 一体化 Web 控制台")
     dashboard.add_argument("--port", type=int, default=8765, help="本机端口，默认 8765")
     dashboard.add_argument("--no-browser", action="store_true", help="不自动打开浏览器")
+    dashboard.add_argument(
+        "--no-key-prompt",
+        action="store_true",
+        help="不询问 DeepSeek API Key，直接使用已有环境变量或固定格式",
+    )
     subparsers.add_parser("verify-all", help="验收 A-D、客户前台和团队后台")
     return parser
 
@@ -56,6 +62,11 @@ def main(argv: list[str] | None = None) -> int:
         _print_d4_report(report.to_mapping())
         return 0 if report.passed else 1
     if args.command == "dashboard":
+        selection = configure_deepseek_for_dashboard(
+            prompt_enabled=not args.no_key_prompt,
+            interactive=sys.stdin.isatty(),
+        )
+        print(selection.message)
         serve_dashboard(port=args.port, open_browser=not args.no_browser)
         return 0
     if args.command == "verify-all":

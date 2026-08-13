@@ -142,6 +142,7 @@ class DefaultFinancialGraphAdapter:
 @dataclass(frozen=True)
 class ClientAnalysisResult:
     value: Mapping[str, Any]
+    debate_context: Mapping[str, Any] | None = None
 
     def to_mapping(self) -> dict[str, Any]:
         return dict(self.value)
@@ -240,19 +241,22 @@ class ClientAnalysisRuntime:
                 "mode": request.mode,
             }
         )
-        return ClientAnalysisResult(
-            _project_for_customer(
-                graph_result,
-                chart_output,
-                name=str(security["name"]),
-                exchange=str(security["exchange"]),
-                data_note=(
-                    "已验证历史快照"
-                    if request.mode == "offline"
-                    else "最新只读市场数据"
-                ),
-            )
+        projected = _project_for_customer(
+            graph_result,
+            chart_output,
+            name=str(security["name"]),
+            exchange=str(security["exchange"]),
+            data_note=(
+                "已验证历史快照"
+                if request.mode == "offline"
+                else "最新只读市场数据"
+            ),
         )
+        try:
+            debate_context = graph_result["report"]["research"]["report"]["combined_analysis"]
+        except (KeyError, TypeError) as error:
+            raise ClientAnalysisError(f"C3 报告缺少动态辩论上下文: {error}") from error
+        return ClientAnalysisResult(projected, debate_context=debate_context)
 
 
 def _days_ago(value: datetime, days: int) -> str:

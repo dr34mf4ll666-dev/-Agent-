@@ -92,9 +92,14 @@ function renderAnalysis(data) {
   setText("#position-cap", `${data.risk.position_cap_percent}%`);
   $("#confidence-ring").style.setProperty("--confidence", data.verdict.confidence);
   setText("#support-price", data.quote.support); setText("#reference-price", data.price_band.reference); setText("#resistance-price", data.quote.resistance);
+  renderResearchBalance(data.dimensions);
   renderDimensions(data.dimensions);
-  setText("#positive-claim", data.debate.positive); setText("#positive-reasoning", data.debate.positive_reasoning);
-  setText("#risk-claim", data.debate.risk); setText("#risk-reasoning", data.debate.risk_reasoning);
+  setText("#positive-claim", localizeDebateText(data.debate.positive)); setText("#positive-reasoning", localizeDebateText(data.debate.positive_reasoning));
+  setText("#risk-claim", localizeDebateText(data.debate.risk)); setText("#risk-reasoning", localizeDebateText(data.debate.risk_reasoning));
+  setText("#debate-mode-note", "当前展示经过确定性证据复核的固定辩论。");
+  $("#debate-proof").hidden = true;
+  $("#dynamic-debate-rounds").hidden = true;
+  $("#dynamic-debate-button").disabled = !data.analysis_id;
   setText("#band-lower", data.price_band.lower); setText("#band-reference", data.price_band.reference); setText("#band-upper", data.price_band.upper);
   setText("#estimated-loss", data.risk.estimated_loss_percent ? `${data.risk.estimated_loss_percent}%` : "未计算");
   setText("#reward-risk", data.risk.reward_risk_ratio || "未计算"); setText("#risk-status", data.risk.status);
@@ -105,6 +110,94 @@ function renderAnalysis(data) {
   data.data.sources.forEach((source) => { const item = document.createElement("li"); item.textContent = source; sourceList.append(item); });
   const industry = data.dimensions.find((item) => item.id === "industry");
   setText("#scope-note", `${data.safety.notice} 当前演示的行业观察范围为“${industry.sample_scope}”；研究区间与置信度均不是收益预测。`);
+}
+
+async function runDynamicDebate() {
+  if (!clientState.analysis?.analysis_id) return;
+  const button = $("#dynamic-debate-button"); button.disabled = true;
+  button.textContent = "正在生成并复核…";
+  try {
+    const result = await clientApi("/api/client/debate", {
+      method: "POST",
+      body: JSON.stringify({ analysis_id: clientState.analysis.analysis_id }),
+    });
+    const firstRound = result.report.rounds[0];
+    setText("#positive-claim", localizeDebateText(firstRound.bull.claim));
+    setText("#positive-reasoning", localizeDebateText(firstRound.bull.reasoning));
+    setText("#risk-claim", localizeDebateText(firstRound.bear.claim));
+    setText("#risk-reasoning", localizeDebateText(firstRound.bear.reasoning));
+    const proof = $("#debate-proof"); proof.hidden = false;
+    renderDebateRounds(result.report.rounds);
+    if (result.mode === "dynamic") {
+      setText("#debate-mode-note", "DeepSeek 已生成新的论证语言，证据路径、数值、来源和时间均已由程序复核。");
+      proof.textContent = `${result.model} · ${result.semantic_attempts} 次候选 · ${result.usage.total_tokens} tokens · 未改变综合评分与风控`;
+    } else {
+      setText("#debate-mode-note", "动态候选未启用或未通过复核，当前安全使用固定证据辩论。");
+      proof.textContent = `${result.fallback_reason} 综合评分、仓位和风控未改变。`;
+    }
+  } catch (error) {
+    showClientToast(error.message);
+    setText("#debate-mode-note", "动态辩论暂时不可用，固定证据辩论仍然有效。");
+  } finally {
+    button.disabled = false; button.textContent = "重新生成动态解读";
+  }
+}
+
+function renderDebateRounds(rounds) {
+  const container = $("#dynamic-debate-rounds"); container.replaceChildren(); container.hidden = false;
+  rounds.forEach((round) => {
+    const section = document.createElement("section");
+    const heading = document.createElement("h4"); heading.textContent = `第 ${round.round} 轮`;
+    const bull = document.createElement("article"); bull.className = "round-bull";
+    const bullLabel = document.createElement("span"); bullLabel.textContent = "多方观点";
+    const bullClaim = document.createElement("strong"); bullClaim.textContent = localizeDebateText(round.bull.claim);
+    const bear = document.createElement("article"); bear.className = "round-bear";
+    const bearLabel = document.createElement("span"); bearLabel.textContent = "空方回应";
+    const bearClaim = document.createElement("strong"); bearClaim.textContent = localizeDebateText(round.bear.claim);
+    bull.append(bullLabel, bullClaim); bear.append(bearLabel, bearClaim);
+    section.append(heading, bull, bear); container.append(section);
+  });
+}
+
+function localizeDebateText(value) {
+  const terms = [
+    ["strong_positive", "明显偏强"], ["strong_negative", "明显偏弱"],
+    ["cautious_positive", "谨慎偏强"], ["risk_on", "风险偏好上升"],
+    ["risk_off", "风险偏好下降"], ["bullish", "趋势偏强"],
+    ["bearish", "趋势偏弱"], ["positive", "偏强"], ["negative", "偏弱"],
+    ["neutral", "中性"], ["mixed", "多空交织"], ["moderate", "适中"],
+    ["hot", "景气较高"], ["low", "较低"], ["high", "较高"],
+    ["trend=", "趋势="], ["signal=", "信号="], ["Regime", "市场状态"],
+  ];
+  return terms.reduce((text, [source, target]) => text.replaceAll(source, target), String(value ?? ""));
+}
+
+function renderResearchBalance(dimensions) {
+  const strongest = dimensions.reduce((best, item) => Number(item.score) > Number(best.score) ? item : best);
+  const weakest = dimensions.reduce((worst, item) => Number(item.score) < Number(worst.score) ? item : worst);
+  const spread = Number(strongest.score) - Number(weakest.score);
+  setText("#balance-strongest", `${strongest.name} ${formatSignedScore(strongest.score)}`);
+  setText("#balance-weakest", `${weakest.name} ${formatSignedScore(weakest.score)}`);
+  setText("#balance-spread", spread >= 50 ? `较大 · ${spread}分` : spread >= 25 ? `中等 · ${spread}分` : `较小 · ${spread}分`);
+
+  const rows = $("#balance-rows"); rows.replaceChildren();
+  dimensions.forEach((item) => {
+    const score = Math.max(-100, Math.min(100, Number(item.score)));
+    const row = document.createElement("div"); row.className = "balance-row";
+    row.setAttribute("aria-label", `${item.name}，${formatSignedScore(score)}分，${item.label}`);
+    const name = document.createElement("strong"); name.textContent = item.name;
+    const lane = document.createElement("div"); lane.className = "balance-lane"; lane.setAttribute("aria-hidden", "true");
+    const bar = document.createElement("i"); bar.className = score < 0 ? "negative" : score > 0 ? "positive" : "neutral";
+    bar.style.setProperty("--score-size", `${Math.abs(score) / 2}%`);
+    lane.append(bar);
+    const value = document.createElement("span"); value.textContent = formatSignedScore(score);
+    row.append(name, lane, value); rows.append(row);
+  });
+}
+
+function formatSignedScore(value) {
+  const score = Number(value);
+  return `${score > 0 ? "+" : ""}${score}`;
 }
 
 function renderDimensions(dimensions) {
@@ -118,7 +211,9 @@ function renderDimensions(dimensions) {
     const score = document.createElement("strong"); score.textContent = `${Number(item.score) > 0 ? "+" : ""}${item.score}`;
     const label = document.createElement("em"); label.textContent = item.label; scoreBox.append(score, label);
     const track = document.createElement("div"); track.className = "score-track"; const fill = document.createElement("i");
-    fill.style.width = `${Math.max(4, Math.min(100, (Number(item.score) + 100) / 2))}%`; if (Number(item.score) < 0) fill.style.background = "var(--jade)"; track.append(fill);
+    const itemScore = Math.max(-100, Math.min(100, Number(item.score)));
+    fill.className = itemScore < 0 ? "negative" : itemScore > 0 ? "positive" : "neutral";
+    fill.style.setProperty("--score-size", `${Math.abs(itemScore) / 2}%`); track.append(fill);
     const summary = document.createElement("p"); summary.textContent = item.summary;
     card.append(caption, title, scoreBox, track, summary);
     if (item.sample_scope) { const scope = document.createElement("small"); scope.textContent = `本次观察范围：${item.sample_scope}`; card.append(scope); }
@@ -157,6 +252,7 @@ function formatDateTime(value) { if (!value) return "—"; return `${value.slice
 
 $("#stock-form").addEventListener("submit", (event) => { event.preventDefault(); runClientAnalysis(); });
 $("#retry-button").addEventListener("click", runClientAnalysis);
+$("#dynamic-debate-button").addEventListener("click", runDynamicDebate);
 $("#stock-select").addEventListener("change", syncModeAvailability);
 document.addEventListener("click", (event) => {
   const button = event.target.closest("[data-client-mode]"); if (!button) return;

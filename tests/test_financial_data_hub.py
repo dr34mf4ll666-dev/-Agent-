@@ -4,7 +4,7 @@ import os
 import sys
 import tempfile
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 
@@ -27,6 +27,7 @@ from agent_platform.finance import (
     SubprocessFinancialDataProvider,
     create_financial_mcp_server,
 )
+from agent_platform.finance._provider_worker import TZ, _record
 
 
 NOW = datetime.fromisoformat("2026-08-07T12:30:00+08:00")
@@ -68,6 +69,35 @@ class FakeProvider:
 
 
 class FinancialDataHubTests(unittest.TestCase):
+    def test_realtime_record_accepts_only_small_explicit_provider_clock_skew(self):
+        fetched_at = datetime.now(TZ)
+        provider_time = fetched_at + timedelta(seconds=5)
+
+        record = _record(
+            subject="sh600000",
+            fields={"last": "9.17"},
+            source="tencent.qt.gtimg.cn",
+            timestamp=fetched_at,
+            as_of=provider_time,
+            future_tolerance_seconds=10,
+        )
+
+        self.assertEqual(record["as_of"], provider_time.isoformat())
+        self.assertEqual(record["timestamp"], provider_time.isoformat())
+
+    def test_realtime_record_still_rejects_large_future_timestamp(self):
+        fetched_at = datetime.now(TZ)
+
+        with self.assertRaisesRegex(ValueError, "later than fetch time"):
+            _record(
+                subject="sh600000",
+                fields={"last": "9.17"},
+                source="tencent.qt.gtimg.cn",
+                timestamp=fetched_at,
+                as_of=fetched_at + timedelta(seconds=11),
+                future_tolerance_seconds=10,
+            )
+
     def test_offline_fixture_covers_every_b1_dataset_with_provenance(self):
         provider = FixtureFinancialDataProvider(FIXTURE_PATH)
         hub = FinancialDataHub(

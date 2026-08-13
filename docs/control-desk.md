@@ -31,12 +31,26 @@ D:\Anaconda\python.exe Scripts\run_dashboard.py
 
 ## 4. DeepSeek 如何接入
 
-控制台启动时读取当前进程的环境变量：
+推荐直接运行启动命令。当前进程没有 Key 时，终端会隐藏提示输入：
+
+```text
+请输入 DeepSeek API Key（输入不显示，直接回车使用固定格式）:
+```
+
+输入 Key 后，本次服务的客户智能解读、动态多空辩论和后台助手都会使用 DeepSeek；直接回车则使用本地安全解释和固定辩论。Key 只放在当前进程内存中，关闭服务后失效，不会写入 `.env`、配置文件或仓库。
+
+原来的环境变量方式仍然支持。启动时如果已经检测到 `DEEPSEEK_API_KEY`，会直接复用，不重复询问：
 
 ```powershell
 $env:DEEPSEEK_API_KEY = "你的 Key"
 $env:DEEPSEEK_MODEL = "deepseek-v4-flash"
 D:\Anaconda\python.exe Scripts\run_dashboard.py
+```
+
+自动化脚本或无人值守启动时，可用 `--no-key-prompt` 跳过询问；没有环境变量时会直接使用固定格式：
+
+```powershell
+D:\Anaconda\python.exe Scripts\run_dashboard.py --no-key-prompt
 ```
 
 如果 Key 已经保存为 Windows 用户环境变量，需要重新打开一个 PowerShell，再从这个新窗口启动控制台。页面右上角显示 `DeepSeek · 模型名`，右侧显示 `LIVE API`，就代表真实助手已启用。

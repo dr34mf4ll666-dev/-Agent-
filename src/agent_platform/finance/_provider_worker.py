@@ -7,7 +7,7 @@ import math
 import os
 import re
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -17,6 +17,7 @@ TZ = ZoneInfo("Asia/Shanghai")
 SYMBOL = re.compile(r"^(?:sh|sz|bj)\d{6}$")
 RAW_SYMBOL = re.compile(r"^\d{6}$")
 TS_CODE = re.compile(r"^\d{6}\.(?:SZ|SH|BJ)$")
+TENCENT_CLOCK_SKEW_TOLERANCE_SECONDS = 10
 
 SOURCES = {
     "market.daily": "akshare.stock_zh_a_hist_tx",
@@ -137,11 +138,15 @@ def _record(
     source: str,
     timestamp: datetime,
     as_of: datetime,
+    future_tolerance_seconds: int = 0,
 ) -> dict[str, Any]:
     if as_of > timestamp:
         observed_now = datetime.now(TZ)
-        if as_of <= observed_now:
-            timestamp = observed_now
+        accepted_until = max(timestamp, observed_now) + timedelta(
+            seconds=future_tolerance_seconds
+        )
+        if as_of <= accepted_until:
+            timestamp = max(observed_now, as_of)
         else:
             raise ValueError(
                 f"provider as_of is later than fetch time: {as_of.isoformat()}"
@@ -302,6 +307,7 @@ def _market_realtime(params: dict[str, Any], now: datetime) -> list[dict[str, An
             source=SOURCES["market.realtime"],
             timestamp=now,
             as_of=quote_time,
+            future_tolerance_seconds=TENCENT_CLOCK_SKEW_TOLERANCE_SECONDS,
             fields={
                 "name": parts[1],
                 "last": parts[3],
@@ -433,6 +439,7 @@ def _valuation(params: dict[str, Any], now: datetime) -> list[dict[str, Any]]:
             source=SOURCES["fundamental.valuation"],
             timestamp=now,
             as_of=quote_time,
+            future_tolerance_seconds=TENCENT_CLOCK_SKEW_TOLERANCE_SECONDS,
             fields={
                 "pe_dynamic": parts[39] or None,
                 "pb": parts[46] or None,
@@ -706,7 +713,8 @@ def main() -> int:
             raise ValueError("provider returned no records")
         finished_at = datetime.now(TZ)
         for record in records:
-            record["timestamp"] = finished_at.isoformat()
+            record_as_of = datetime.fromisoformat(record["as_of"])
+            record["timestamp"] = max(finished_at, record_as_of).isoformat()
         print(
             json.dumps(
                 {
