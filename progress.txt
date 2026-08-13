@@ -616,3 +616,11 @@
 - 两种模式必须来自同一冻结报告和统一快照，切换只改变展示复杂度，不得重新取数、重新运行 Graph、再次调用 DeepSeek、增加 Token 或产生不同结论。
 - P4 调整为“双层展示、专业图表和证据下钻”，由 `ReportViewRuntime.project(report_id, view)` 统一生成 `basic/professional` 投影；P6 历史、比较和导出继续复用该展示规则。
 - 专业版客户界面与 `/admin` 工程后台保持分离：专业版展示研究证据，后台保留 Harness、Graph 配置、原始日志和工程验收入口。
+
+[2026-08-13] P2 统一分析快照与数据源健康完成
+- 新增不可变 `AnalysisSnapshot` 和深 module `AnalysisSnapshotRuntime.acquire(query)`。客户分析先去重并冻结 14 类唯一数据请求，再让技术、基本面、行业、宏观四个 Agent、C3 Graph、K 线和报告消费同一快照；Graph 完成后不再单独抓取图表日线。
+- 每份报告生成 32 位 `snapshot_id`，完整快照保留 dataset、params、source、timestamp、as_of、缓存和降级状态；客户投影只展示健康元数据，不重复发送原始记录。四 Specialist、C1 研究和最终 Graph 映射都附带同一编号。
+- 统一数据源策略区分真实主源、Tushare 日线备用源、Data Hub 新鲜缓存、最近可追溯历史缓存、离线验证快照和 `not_available`。关键数据所有来源失败时拒绝报告；资金流、机构研究等非关键数据缺失继续使用已有确定性中性降级，不能把缺失冒充真实 0 值。
+- P1 任务首次运行会把完整快照原子写入本任务 Checkpoint 目录；失败重试或服务重启恢复读取原快照，不把新旧数据拼入同一报告。SQLite 长期历史、迁移和检索仍保留给 P3。
+- 客户前台新增“统一数据快照”区域，显示统一数据时点、短快照编号、可用数量和 14 类数据健康卡片；备用、缓存和缺失均有文字标签，不只依赖颜色。
+- `demo_analysis_snapshot.py` 无网络、无文件演示主源成功、备用接管、缓存降级、部分缺失和关键阻断；全量 332 项、产品整体验收与 JavaScript 语法检查通过。桌面和 375px 手机浏览器实际显示 14/14 类数据、无横向溢出且无脚本错误。P2 已在 ROADMAP、SPEC 与 checklist 标记为 `done`，下一项为 P3 SQLite 持久化与历史报告。

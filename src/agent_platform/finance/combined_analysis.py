@@ -18,7 +18,7 @@ from agent_platform.core import (
     JsonCheckpointStore,
 )
 
-from .data_hub import FinancialDataPolicy
+from .data_hub import FinancialDataPolicy, FinancialDataTool
 from .fundamental_runtime import (
     FundamentalAnalysisQuery,
     FundamentalAnalysisRuntime,
@@ -143,7 +143,7 @@ class CombinedAnalysisQuery:
                 start_date=start_date,
                 end_date=end_date,
                 mode=mode,
-                limit=30,
+                limit=60,
             ),
             fundamental=FundamentalAnalysisQuery(
                 symbol=symbol,
@@ -430,7 +430,21 @@ def build_default_combined_analysis_runtime(
     policy: FinancialDataPolicy | None = None,
     checkpoint_path: str | Path | None = None,
     event_sink: Callable[[Any], None] | None = None,
+    financial_tool: FinancialDataTool | None = None,
 ) -> CombinedAnalysisRuntime:
+    if financial_tool is not None:
+        return CombinedAnalysisRuntime(
+            technical=TechnicalAnalysisRuntime(financial_tool),
+            fundamental=FundamentalAnalysisRuntime(financial_tool),
+            industry=IndustryAnalysisRuntime(financial_tool),
+            macro=MacroAnalysisRuntime(financial_tool),
+            checkpoint_store=(
+                JsonCheckpointStore(Path(checkpoint_path))
+                if checkpoint_path is not None
+                else None
+            ),
+            event_sink=event_sink,
+        )
     return CombinedAnalysisRuntime(
         technical=build_default_technical_analysis_runtime(
             project_root=project_root, policy=policy

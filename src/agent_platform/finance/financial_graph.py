@@ -17,7 +17,7 @@ from .c1_decision import (
     C1DecisionRuntime,
     build_default_c1_decision_runtime,
 )
-from .data_hub import FinancialDataPolicy
+from .data_hub import FinancialDataPolicy, FinancialDataTool
 from .risk_manager import RiskContext, RiskManagerRuntime, build_default_risk_manager_runtime
 from .trader import TraderRuntime, build_default_trader_runtime
 
@@ -382,6 +382,7 @@ def build_default_financial_graph_runtime(
     specialist_event_sink: Callable[[Any], None] | None = None,
     progress: Callable[[str, str, int, str], None] | None = None,
     resume_specialists: bool = False,
+    financial_tool: FinancialDataTool | None = None,
 ) -> FinancialGraphRuntime:
     return FinancialGraphRuntime(
         c1_runtime=build_default_c1_decision_runtime(
@@ -391,6 +392,7 @@ def build_default_financial_graph_runtime(
             graph_event_sink=specialist_event_sink,
             progress=progress,
             resume_specialists=resume_specialists,
+            financial_tool=financial_tool,
         ),
         trader_runtime=build_default_trader_runtime(),
         risk_manager_runtime=build_default_risk_manager_runtime(),

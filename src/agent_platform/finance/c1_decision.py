@@ -16,7 +16,7 @@ from .combined_analysis import (
     CombinedAnalysisRuntime,
     build_default_combined_analysis_runtime,
 )
-from .data_hub import FinancialDataPolicy
+from .data_hub import FinancialDataPolicy, FinancialDataTool
 from .structured_debate import (
     StructuredDebateQuery,
     StructuredDebateRuntime,
@@ -623,6 +623,7 @@ def build_default_c1_decision_runtime(
     graph_event_sink: Callable[[Any], None] | None = None,
     progress: Callable[[str, str, int, str], None] | None = None,
     resume_specialists: bool = False,
+    financial_tool: FinancialDataTool | None = None,
 ) -> C1DecisionRuntime:
     return C1DecisionRuntime(
         combined_runtime=build_default_combined_analysis_runtime(
@@ -630,6 +631,7 @@ def build_default_c1_decision_runtime(
             policy=policy,
             checkpoint_path=specialist_checkpoint_path,
             event_sink=graph_event_sink,
+            financial_tool=financial_tool,
         ),
         debate_runtime=build_default_structured_debate_runtime(),
         progress=progress,

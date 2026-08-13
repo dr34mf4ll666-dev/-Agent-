@@ -93,6 +93,7 @@ class ProductAcceptanceRuntime:
             "四维观点已有直观图形": self._client_visualization_ready(),
             "受约束动态多空辩论入口存在": self._dynamic_debate_ready(),
             "异步分析任务和客户进度入口存在": self._analysis_jobs_ready(),
+            "统一数据快照和来源健康可见": self._analysis_snapshot_ready(client),
             "客户股票池不少于20只": len(SECURITIES) >= 20,
             "客户股票池覆盖沪深两市": {item["exchange"] for item in SECURITIES.values()}
             == {"上交所", "深交所"},
@@ -204,6 +205,20 @@ class ProductAcceptanceRuntime:
             and 'clientApi("/api/client/jobs"' in javascript
             and "followAnalysisJob" in javascript
             and "retryAnalysisJob" in javascript
+        )
+
+    def _analysis_snapshot_ready(self, client: dict[str, Any]) -> bool:
+        web_root = self._root / "src" / "agent_platform" / "web"
+        html = (web_root / "client.html").read_text(encoding="utf-8")
+        javascript = (web_root / "client.js").read_text(encoding="utf-8")
+        snapshot = client.get("data", {}).get("snapshot")
+        return (
+            isinstance(snapshot, dict)
+            and len(str(snapshot.get("snapshot_id", ""))) == 32
+            and snapshot.get("dataset_count", 0) >= 14
+            and snapshot.get("available_count", 0) >= 12
+            and 'id="snapshot-health"' in html
+            and "renderSnapshotHealth" in javascript
         )
 
     def _dynamic_debate_evaluation_ready(self) -> bool:

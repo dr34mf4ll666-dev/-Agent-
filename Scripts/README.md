@@ -22,6 +22,14 @@ D:\Anaconda\python.exe Scripts\demo_analysis_jobs.py
 
 该脚本真实演示提交任务、17 个节点状态、结果门禁、Checkpoint 恢复能力、总超时配置和最终客户报告。默认离线，不联网；任务存储只写入自动清理的临时目录。
 
+## P2 统一分析快照演示
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_analysis_snapshot.py
+```
+
+该脚本在同一固定查询上直观展示主源成功、备用源接管、最近缓存降级、非关键数据部分缺失和关键数据阻断，并证明重复数据请求已去重。默认离线，不联网、不生成文件。
+
 ## 产品命令行整体验收
 
 ```powershell

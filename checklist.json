@@ -2,7 +2,7 @@
   "project": "通用 Agent 平台及证券金融分析应用",
   "version": "3.0.0",
   "updated_at": "2026-08-13",
-  "current_focus": "正式任务与 P1 异步分析任务中心已完成；下一项为 P2 统一分析快照",
+  "current_focus": "正式任务、P1 异步任务和 P2 统一分析快照已完成；下一项为 P3 SQLite 持久化与历史报告",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "done",
   "items": [
@@ -633,6 +633,28 @@
       ],
       "remaining": [],
       "scope_note": "使用本地线程 Worker、JSON任务记录和两层Graph Checkpoint；不伪造节点进度，不引入分布式队列，不改变金融计算和真实交易关闭边界；阻塞中的第三方线程不能被Python安全强杀，但超时后迟到结果会被丢弃"
+    },
+    {
+      "id": "P2_ANALYSIS_SNAPSHOT",
+      "status": "done",
+      "result": "已完成14类唯一数据请求去重冻结、统一snapshot_id、四Agent/C3/K线/报告同源、主备/缓存/缺失健康状态、Checkpoint快照恢复和客户页面直观展示",
+      "evidence": [
+        "src/agent_platform/finance/analysis_snapshot.py",
+        "src/agent_platform/client_app.py",
+        "src/agent_platform/finance/combined_analysis.py",
+        "src/agent_platform/web/client.html",
+        "src/agent_platform/web/client.css",
+        "src/agent_platform/web/client.js",
+        "Scripts/demo_analysis_snapshot.py",
+        "tests/test_analysis_snapshot.py",
+        "tests/test_client_app.py",
+        "tests/test_dashboard.py",
+        "tests/test_product_acceptance.py",
+        "docs/analysis-snapshot.md",
+        "docs/client-app.md"
+      ],
+      "remaining": [],
+      "scope_note": "日线配置Tushare真实备用源；其他数据主源失败后可使用最近可追溯缓存或明确not_available；P1恢复复用原快照，P3仍负责SQLite长期历史和迁移；真实交易保持关闭"
     },
     {
       "id": "DYNAMIC_LLM_DEBATE",

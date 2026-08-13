@@ -179,6 +179,7 @@ function renderAnalysis(data) {
   changeNode.className = change >= 0 ? "up" : "down";
   setText("#data-label", data.data.label); setText("#data-as-of", formatDateTime(data.data.as_of));
   setText("#source-count", data.data.source_count);
+  renderSnapshotHealth(data.data.snapshot);
   setText("#verdict-label", data.verdict.label); setText("#action-label", data.verdict.action_label);
   setText("#confidence-value", data.verdict.confidence); setText("#weighted-score", data.verdict.weighted_score);
   setText("#position-cap", `${data.risk.position_cap_percent}%`);
@@ -202,6 +203,39 @@ function renderAnalysis(data) {
   data.data.sources.forEach((source) => { const item = document.createElement("li"); item.textContent = source; sourceList.append(item); });
   const industry = data.dimensions.find((item) => item.id === "industry");
   setText("#scope-note", `${data.safety.notice} 当前演示的行业观察范围为“${industry.sample_scope}”；研究区间与置信度均不是收益预测。`);
+}
+
+function renderSnapshotHealth(snapshot) {
+  const section = $("#snapshot-health");
+  if (!snapshot) { section.hidden = true; return; }
+  section.hidden = false;
+  const available = snapshot.datasets.filter((item) => item.status !== "not_available");
+  const degraded = snapshot.datasets.filter((item) => ["backup", "cache_stale", "not_available"].includes(item.status));
+  setText("#snapshot-status", snapshot.degraded ? "部分数据已降级" : "数据状态正常");
+  setText("#snapshot-reference", `快照 ${snapshot.snapshot_id.slice(0, 8)}`);
+  setText("#snapshot-as-of", formatDateTime(snapshot.as_of || snapshot.acquired_at));
+  setText("#snapshot-count", `${snapshot.available_count}/${snapshot.dataset_count} 类`);
+  setText("#snapshot-note", degraded.length ? `${degraded.length} 类有说明` : "未发生降级");
+  const labels = {
+    primary: "真实主源", backup: "备用来源", cache_fresh: "新鲜缓存",
+    cache_stale: "历史缓存", fixture: "验证快照", not_available: "暂不可用",
+  };
+  const names = {
+    "market.daily": "日线行情", "market.realtime": "实时报价", "market.fund_flow": "资金流",
+    "fundamental.balance_sheet": "资产负债", "fundamental.income_statement": "利润数据",
+    "fundamental.cash_flow": "现金流", "fundamental.indicators": "财务指标",
+    "fundamental.valuation": "市场估值", "industry.snapshot": "行业行情",
+    "macro.index": "市场指数", "macro.gdp": "经济增速", "macro.shibor": "市场利率",
+    "macro.policy_lpr": "贷款利率", "sentiment.research": "机构研究",
+  };
+  const container = $("#snapshot-datasets"); container.replaceChildren();
+  snapshot.datasets.forEach((item) => {
+    const card = document.createElement("article"); card.className = `snapshot-dataset ${item.status}`;
+    const title = document.createElement("strong"); title.textContent = names[item.dataset] || item.dataset;
+    const badge = document.createElement("span"); badge.textContent = labels[item.status] || item.status;
+    const time = document.createElement("small"); time.textContent = item.as_of ? formatDateTime(item.as_of) : (item.detail || "本次无可用数据");
+    card.append(title, badge, time); container.append(card);
+  });
 }
 
 async function runDynamicDebate() {

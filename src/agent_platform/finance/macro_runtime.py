@@ -400,7 +400,13 @@ class _MacroAnalysisTool:
         except FinancialDataError as error:
             if not (
                 query.mode == "live"
-                and error.code == FinancialDataErrorCode.EMPTY_RESPONSE
+                and error.code
+                in {
+                    FinancialDataErrorCode.EMPTY_RESPONSE,
+                    FinancialDataErrorCode.TIMEOUT,
+                    FinancialDataErrorCode.PROVIDER_UNAVAILABLE,
+                    FinancialDataErrorCode.RATE_LIMITED,
+                }
             ):
                 raise
             macro_data["research"] = _empty_research_evidence(

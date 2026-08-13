@@ -65,6 +65,17 @@ class ClientAnalysisTests(unittest.TestCase):
         self.assertEqual(value["verdict"]["label"], "谨慎偏强")
         self.assertFalse(value["safety"]["real_trading_allowed"])
         self.assertFalse(value["safety"]["order_created"])
+        self.assertEqual(len(value["data"]["snapshot_id"]), 32)
+        self.assertEqual(value["data"]["snapshot"]["dataset_count"], 14)
+        self.assertEqual(value["data"]["snapshot"]["available_count"], 14)
+        self.assertFalse(value["data"]["snapshot"]["degraded"])
+        daily = next(
+            item
+            for item in value["data"]["snapshot"]["datasets"]
+            if item["dataset"] == "market.daily"
+        )
+        self.assertEqual(len(value["data"]["bars"]), 30)
+        self.assertEqual(daily["status"], "fixture")
 
     def test_customer_runtime_reports_only_real_analysis_phase_transitions(self):
         events = []

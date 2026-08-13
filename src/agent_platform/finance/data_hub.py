@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
+from threading import RLock
 from typing import Any, Protocol
 
 
@@ -408,6 +409,7 @@ class JsonFinancialDataCache:
 
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
+        self._lock = RLock()
 
     def get(
         self,
@@ -415,14 +417,15 @@ class JsonFinancialDataCache:
         *,
         now: datetime,
     ) -> Mapping[str, Any] | None:
-        payload = self._read()
-        entry = payload["entries"].get(key)
-        if entry is None:
-            return None
-        expires_at = _aware_datetime(entry["expires_at"], "expires_at")
-        if expires_at <= now:
-            return None
-        return entry["value"]
+        with self._lock:
+            payload = self._read()
+            entry = payload["entries"].get(key)
+            if entry is None:
+                return None
+            expires_at = _aware_datetime(entry["expires_at"], "expires_at")
+            if expires_at <= now:
+                return None
+            return entry["value"]
 
     def put(
         self,
@@ -431,18 +434,19 @@ class JsonFinancialDataCache:
         *,
         expires_at: datetime,
     ) -> None:
-        payload = self._read()
-        payload["entries"][key] = {
-            "expires_at": expires_at.isoformat(),
-            "value": value,
-        }
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.path.with_suffix(self.path.suffix + ".tmp")
-        temporary.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        temporary.replace(self.path)
+        with self._lock:
+            payload = self._read()
+            payload["entries"][key] = {
+                "expires_at": expires_at.isoformat(),
+                "value": value,
+            }
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = self.path.with_suffix(self.path.suffix + ".tmp")
+            temporary.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            temporary.replace(self.path)
 
     def _read(self) -> dict[str, Any]:
         if not self.path.exists():

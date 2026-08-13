@@ -7,6 +7,7 @@
 当前专项文档：
 
 - `analysis-jobs.md`：P1 异步分析任务的 interface、真实阶段、HTTP 流程、协作取消和剩余缺口。
+- `analysis-snapshot.md`：P2 不可变数据快照、主备/缓存/缺失策略、P1 恢复关系和直观验收。
 - `client-app.md`：面向客户的证券分析前台、四维研究结果、DeepSeek 解读和安全边界。
 - `control-desk.md`：面向团队的 A–D 验收后台、DeepSeek 助手、安全白名单和图形化验收方式。
 - `final-delivery.md`：最终架构图、Graph Schema、Agent 卡片、数据字典、运行手册、回测/Harness 报告和模拟运行复盘的统一交付视图。

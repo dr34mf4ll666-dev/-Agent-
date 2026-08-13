@@ -49,6 +49,7 @@
 | Paper Trading | `PaperTradingRuntime.run_cycle(...)`、`review()` | C3 校验、腾讯实时报价、人工确认、本地撮合和单文件账本 | `demo_paper_trading.py`、`test_paper_trading.py`、`docs/paper-trading.md` |
 | Final Delivery | `FinalDeliveryRuntime.from_project().run()`、`agent-platform d4-verify` | 环境检查、五条主流程、文档包、时间豁免和最终状态汇总 | `demo_final_delivery.py`、`test_final_delivery.py`、`docs/final-delivery.md` |
 | Client Analysis App | `ClientAnalysisRuntime.analyze()`、`MarketAssistant.explain()` | 将 C3 结构化报告投影成客户可读的 K 线、四维研究、综合观点、风险区间和安全解释 | `demo_product_acceptance.py`、`test_client_app.py`、`docs/client-app.md` |
+| Analysis Snapshot | `AnalysisSnapshotRuntime.acquire()`、`AnalysisSnapshot.tool()` | 一次收集并冻结 14 类唯一数据请求，统一主备、缓存和缺失状态，让四 Agent、Graph、K 线与报告共用 `snapshot_id` | `demo_analysis_snapshot.py`、`test_analysis_snapshot.py`、`docs/analysis-snapshot.md` |
 | Product Acceptance | `ProductAcceptanceRuntime.from_project().run()`、`agent-platform verify-all` | 一条命令验收 A–D 核心、客户前台、团队后台、解释层与真实交易关闭 | `demo_product_acceptance.py`、`test_product_acceptance.py`、`docs/client-app.md` |
 | Web Admin Desk | `DashboardRuntime.overview()`、`run_action()`、`ask_assistant()` | `/admin` 的 A–D 白名单动作、localhost HTTP adapter、本地/DeepSeek 助手 adapter | `run_dashboard.py`、`test_dashboard.py`、`docs/control-desk.md` |
 

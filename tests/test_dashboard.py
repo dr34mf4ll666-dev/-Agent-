@@ -296,6 +296,8 @@ class DashboardAssetTests(unittest.TestCase):
         self.assertIn('id="job-progress"', client_html)
         self.assertIn('id="cancel-analysis-button"', client_html)
         self.assertIn('id="retry-job-button"', client_html)
+        self.assertIn('id="snapshot-health"', client_html)
+        self.assertIn('id="snapshot-datasets"', client_html)
         self.assertIn(".balance-zero-line", client_css)
         self.assertIn('api("/api/overview")', javascript)
         self.assertIn('clientApi("/api/client/overview")', client_javascript)
@@ -306,6 +308,8 @@ class DashboardAssetTests(unittest.TestCase):
         self.assertIn('clientApi("/api/client/jobs"', client_javascript)
         self.assertIn("followAnalysisJob", client_javascript)
         self.assertIn("retryAnalysisJob", client_javascript)
+        self.assertIn("renderSnapshotHealth", client_javascript)
+        self.assertIn(".snapshot-dataset", client_css)
         self.assertIn("只重试失败步骤", client_html)
         self.assertIn(".job-stage", client_css)
 

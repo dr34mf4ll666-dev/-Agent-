@@ -21,6 +21,8 @@ from .core import (
 )
 
 from .finance import (
+    AnalysisSnapshot,
+    AnalysisSnapshotRuntime,
     C1DecisionQuery,
     CombinedAnalysisQuery,
     FinancialDataHub,
@@ -31,6 +33,7 @@ from .finance import (
     JsonFinancialDataCache,
     RiskContext,
     SubprocessFinancialDataProvider,
+    build_default_analysis_snapshot_runtime,
     build_default_financial_graph_runtime,
 )
 
@@ -138,6 +141,18 @@ class DefaultFinancialGraphAdapter:
             policy=self._policy,
         ).run(query).to_mapping()
 
+    def run_snapshot(
+        self,
+        query: FinancialGraphQuery,
+        snapshot: AnalysisSnapshot,
+    ) -> Mapping[str, Any]:
+        result = build_default_financial_graph_runtime(
+            project_root=self._project_root,
+            policy=self._policy,
+            financial_tool=snapshot.tool(),
+        ).run(query).to_mapping()
+        return _attach_snapshot_identity(result, snapshot.snapshot_id)
+
     def run_job(
         self,
         query: FinancialGraphQuery,
@@ -145,6 +160,7 @@ class DefaultFinancialGraphAdapter:
         checkpoint_dir: Path,
         resume: bool,
         progress: Callable[[str, str, int, str], None],
+        snapshot: AnalysisSnapshot | None = None,
     ) -> Mapping[str, Any]:
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
         outer_path = checkpoint_dir / "c3-graph.json"
@@ -183,8 +199,14 @@ class DefaultFinancialGraphAdapter:
             specialist_event_sink=forward,
             progress=progress,
             resume_specialists=resume_specialists,
+            financial_tool=snapshot.tool() if snapshot is not None else None,
         )
-        return runtime.run(None if resume_outer else query, resume=resume_outer).to_mapping()
+        result = runtime.run(None if resume_outer else query, resume=resume_outer).to_mapping()
+        return (
+            _attach_snapshot_identity(result, snapshot.snapshot_id)
+            if snapshot is not None
+            else result
+        )
 
 
 @dataclass(frozen=True)
@@ -196,6 +218,24 @@ class ClientAnalysisResult:
         return dict(self.value)
 
 
+def _attach_snapshot_identity(
+    graph_result: dict[str, Any], snapshot_id: str
+) -> dict[str, Any]:
+    graph_result["snapshot_id"] = snapshot_id
+    try:
+        report = graph_result["report"]
+        report["snapshot_id"] = snapshot_id
+        research = report["research"]["report"]
+        research["snapshot_id"] = snapshot_id
+        combined = research["combined_analysis"]
+        combined["snapshot_id"] = snapshot_id
+        for specialist in combined["reports"].values():
+            specialist["snapshot_id"] = snapshot_id
+    except (KeyError, TypeError, AttributeError) as error:
+        raise ClientAnalysisError(f"无法把统一快照编号写入完整报告: {error}") from error
+    return graph_result
+
+
 class ClientAnalysisRuntime:
     """Deep customer interface: one request becomes one presentation-ready report."""
 
@@ -204,10 +244,12 @@ class ClientAnalysisRuntime:
         *,
         graph: FinancialGraphPort,
         market_tool: FinancialDataTool,
+        snapshot_runtime: AnalysisSnapshotRuntime | None = None,
         now: Any | None = None,
     ) -> None:
         self._graph = graph
         self._market_tool = market_tool
+        self._snapshot_runtime = snapshot_runtime
         self._now = now or (lambda: datetime.now(ZoneInfo("Asia/Shanghai")))
 
     @classmethod
@@ -235,6 +277,10 @@ class ClientAnalysisRuntime:
         return cls(
             graph=DefaultFinancialGraphAdapter(root, active_policy),
             market_tool=FinancialDataTool(market_hub),
+            snapshot_runtime=build_default_analysis_snapshot_runtime(
+                project_root=root,
+                policy=active_policy,
+            ),
         )
 
     def analyze(
@@ -284,6 +330,11 @@ class ClientAnalysisRuntime:
                 human_confirmed=False,
             ),
         )
+        snapshot = self._load_or_acquire_snapshot(
+            query.c1_query.combined_query,
+            checkpoint_dir=Path(checkpoint_dir) if checkpoint_dir is not None else None,
+            resume=resume,
+        )
         report_progress("research", "running")
         run_job = getattr(self._graph, "run_job", None)
         if checkpoint_dir is not None and callable(run_job):
@@ -294,22 +345,32 @@ class ClientAnalysisRuntime:
                 progress=lambda node, status, attempt, detail: report_progress(
                     node, status, attempt, detail
                 ),
+                snapshot=snapshot,
             )
         else:
-            graph_result = self._graph.run(query)
+            run_snapshot = getattr(self._graph, "run_snapshot", None)
+            graph_result = (
+                run_snapshot(query, snapshot)
+                if snapshot is not None and callable(run_snapshot)
+                else self._graph.run(query)
+            )
         report_progress("research", "completed")
         report_progress("chart", "running")
-        chart_output = self._market_tool.run(
-            {
-                "dataset": "market.daily",
-                "params": {
-                    "symbol": request.symbol,
-                    "start_date": "20260626" if request.mode == "offline" else _days_ago(now, 120),
-                    "end_date": "20260806" if request.mode == "offline" else now.strftime("%Y%m%d"),
-                    "limit": 60,
-                },
-                "mode": request.mode,
-            }
+        technical_query = query.c1_query.combined_query.technical
+        chart_arguments = {
+            "dataset": "market.daily",
+            "params": {
+                "symbol": technical_query.symbol,
+                "start_date": technical_query.start_date,
+                "end_date": technical_query.end_date,
+                "limit": technical_query.limit,
+            },
+            "mode": technical_query.mode,
+        }
+        chart_output = (
+            snapshot.tool().run(chart_arguments)
+            if snapshot is not None
+            else self._market_tool.run(chart_arguments)
         )
         report_progress("chart", "completed")
         report_progress("report", "running")
@@ -323,6 +384,7 @@ class ClientAnalysisRuntime:
                 if request.mode == "offline"
                 else "最新只读市场数据"
             ),
+            snapshot=snapshot,
         )
         try:
             debate_context = graph_result["report"]["research"]["report"]["combined_analysis"]
@@ -330,6 +392,31 @@ class ClientAnalysisRuntime:
             raise ClientAnalysisError(f"C3 报告缺少动态辩论上下文: {error}") from error
         report_progress("report", "completed")
         return ClientAnalysisResult(projected, debate_context=debate_context)
+
+    def _load_or_acquire_snapshot(
+        self,
+        query: CombinedAnalysisQuery,
+        *,
+        checkpoint_dir: Path | None,
+        resume: bool,
+    ) -> AnalysisSnapshot | None:
+        if self._snapshot_runtime is None:
+            return None
+        snapshot_path = checkpoint_dir / "analysis-snapshot.json" if checkpoint_dir is not None else None
+        if resume and snapshot_path is not None and snapshot_path.exists():
+            return AnalysisSnapshot.from_mapping(
+                json.loads(snapshot_path.read_text(encoding="utf-8"))
+            )
+        snapshot = self._snapshot_runtime.acquire(query)
+        if snapshot_path is not None:
+            snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = snapshot_path.with_suffix(".json.tmp")
+            temporary.write_text(
+                json.dumps(snapshot.to_mapping(), ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            temporary.replace(snapshot_path)
+        return snapshot
 
 
 def _days_ago(value: datetime, days: int) -> str:
@@ -376,6 +463,7 @@ def _project_for_customer(
     name: str,
     exchange: str,
     data_note: str,
+    snapshot: AnalysisSnapshot | None = None,
 ) -> dict[str, Any]:
     try:
         report = graph_result["report"]
@@ -484,6 +572,12 @@ def _project_for_customer(
             "source_count": len(all_sources),
             "sources": all_sources,
             "bars": _market_bars(chart_output),
+            "snapshot": (
+                snapshot.to_mapping(include_records=False)
+                if snapshot is not None
+                else None
+            ),
+            "snapshot_id": snapshot.snapshot_id if snapshot is not None else None,
         },
         "quote": {
             "latest_close": technical["latest_close"],
