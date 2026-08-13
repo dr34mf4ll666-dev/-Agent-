@@ -66,6 +66,26 @@ class ClientAnalysisTests(unittest.TestCase):
         self.assertFalse(value["safety"]["real_trading_allowed"])
         self.assertFalse(value["safety"]["order_created"])
 
+    def test_customer_runtime_reports_only_real_analysis_phase_transitions(self):
+        events = []
+
+        ClientAnalysisRuntime.from_project(PROJECT_ROOT).analyze(
+            ClientAnalysisRequest(),
+            progress=lambda stage, status: events.append((stage, status)),
+        )
+
+        self.assertEqual(
+            [event for event in events if event[0] in {"research", "chart", "report"}],
+            [
+                ("research", "running"),
+                ("research", "completed"),
+                ("chart", "running"),
+                ("chart", "completed"),
+                ("report", "running"),
+                ("report", "completed"),
+            ],
+        )
+
     def test_customer_request_rejects_unavailable_symbol_and_mode(self):
         with self.assertRaises(ClientAnalysisError):
             ClientAnalysisRequest(symbol="sz999999")

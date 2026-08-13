@@ -14,6 +14,14 @@ D:\Anaconda\python.exe Scripts\run_dashboard.py
 
 该入口只在 `127.0.0.1` 启动本地页面并自动打开浏览器。根路径 `/` 是客户证券分析前台，`/admin` 是 A1–D4 团队验收后台。后台按钮只映射到登记过的脚本，浏览器不能传入任意系统命令。默认使用离线复现；真实模式只读取数据或调用 DeepSeek。交易始终只进入本地模拟撮合。
 
+## P1 异步分析任务演示
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_analysis_jobs.py
+```
+
+该脚本真实演示提交任务、17 个节点状态、结果门禁、Checkpoint 恢复能力、总超时配置和最终客户报告。默认离线，不联网；任务存储只写入自动清理的临时目录。
+
 ## 产品命令行整体验收
 
 ```powershell
@@ -21,6 +29,15 @@ D:\Anaconda\python.exe Scripts\demo_product_acceptance.py
 ```
 
 该入口对应安装后的 `agent-platform verify-all`，统一检查 A–D 核心交付、客户前台、团队后台、智能解释层和真实交易关闭边界。默认离线运行，不生成报告文件。
+
+## 受约束动态辩论固定评测
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py
+D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py --live
+```
+
+该入口对应安装后的 `agent-platform debate-eval`。离线模式用可重复的脚本化 Mock 验证证据拒绝、语义重试、统计和安全边界；`--live` 使用真实 DeepSeek 运行同一固定评测集。默认只输出到终端，显式添加 `--output PATH` 才保存逐次原始结果。
 
 ## D4 最终交付统一验收
 

@@ -1,6 +1,6 @@
 "use strict";
 
-const clientState = { mode: "offline", analysis: null, overview: null, running: false };
+const clientState = { mode: "offline", analysis: null, overview: null, running: false, jobId: null, pollTimer: null };
 const $ = (selector) => document.querySelector(selector);
 
 async function clientApi(path, options = {}) {
@@ -38,8 +38,9 @@ function syncModeAvailability() {
   const security = selectedSecurity();
   if (!security) return;
   const modes = new Set(security.modes);
+  $("#stock-select").disabled = clientState.running;
   document.querySelectorAll("[data-client-mode]").forEach((button) => {
-    button.disabled = !modes.has(button.dataset.clientMode);
+    button.disabled = clientState.running || !modes.has(button.dataset.clientMode);
   });
   if (!modes.has(clientState.mode)) clientState.mode = security.modes[0];
   document.querySelectorAll("[data-client-mode]").forEach((button) => {
@@ -56,25 +57,116 @@ function syncModeAvailability() {
 async function runClientAnalysis() {
   if (clientState.running) return;
   clientState.running = true;
-  $("#analyze-button").disabled = true;
+  $("#analyze-button").disabled = true; syncModeAvailability();
   $("#analysis").hidden = true; $("#error-state").hidden = true; $("#loading-state").hidden = false;
-  setText("#loading-message", clientState.mode === "live" ? "正在读取最新只读数据，可能需要一点时间…" : "读取已验证行情与研究证据，形成统一结论…");
+  setText("#loading-message", "正在创建分析任务…");
+  $("#job-progress").replaceChildren(); $("#cancel-analysis-button").disabled = false;
+  setText("#job-reference", "等待任务编号");
   try {
-    const analysis = await clientApi("/api/client/analyze", {
+    const job = await clientApi("/api/client/jobs", {
       method: "POST",
       body: JSON.stringify({ symbol: $("#stock-select").value, mode: clientState.mode }),
     });
-    clientState.analysis = analysis;
-    renderAnalysis(analysis);
-    $("#loading-state").hidden = true; $("#analysis").hidden = false;
-    window.requestAnimationFrame(() => drawKline(analysis.data.bars));
-    explainAnalysis(analysis);
+    clientState.jobId = job.job_id; window.sessionStorage.setItem("active_analysis_job", job.job_id);
+    await followAnalysisJob(job);
   } catch (error) {
-    $("#loading-state").hidden = true; $("#error-state").hidden = false;
-    setText("#error-message", error.message); showClientToast(error.message);
-  } finally {
-    clientState.running = false; $("#analyze-button").disabled = false;
+    finishJobWithError(error.message);
   }
+}
+
+async function followAnalysisJob(initialJob = null) {
+  let job = initialJob;
+  try {
+    while (clientState.jobId) {
+      if (!job) job = await clientApi(`/api/client/jobs/${clientState.jobId}`);
+      renderJobProgress(job);
+      if (job.status === "succeeded") {
+        const analysis = await clientApi(`/api/client/jobs/${job.job_id}/result`);
+        clientState.analysis = analysis; clientState.jobId = null;
+        window.sessionStorage.removeItem("active_analysis_job"); renderAnalysis(analysis);
+        $("#loading-state").hidden = true; $("#analysis").hidden = false;
+        window.requestAnimationFrame(() => drawKline(analysis.data.bars)); explainAnalysis(analysis);
+        finishJobControls(); return;
+      }
+      if (job.status === "failed") { finishFailedJob(job); return; }
+      if (job.status === "cancelled") throw new Error("本次分析已停止，你可以重新开始。");
+      await new Promise((resolve) => { clientState.pollTimer = window.setTimeout(resolve, 500); });
+      job = null;
+    }
+  } catch (error) { finishJobWithError(error.message); }
+}
+
+function renderJobProgress(job) {
+  if (job.request?.symbol) {
+    $("#stock-select").value = job.request.symbol;
+    clientState.mode = job.request.mode || clientState.mode;
+    syncModeAvailability();
+  }
+  clientState.jobId = job.job_id; setText("#job-reference", `任务 ${job.job_id.slice(0, 8)}`);
+  const text = { queued: "已进入队列，等待开始", running: "后台正在分析，可继续停留在本页", succeeded: "分析完成", failed: "分析未完成", cancelled: "分析已停止" };
+  setText("#loading-message", text[job.status] || "正在读取任务状态");
+  const list = $("#job-progress"); list.replaceChildren();
+  let currentGroup = null;
+  const groupLabels = { setup: "研究准备", specialist: "四个 Agent", decision: "综合决策", risk: "交易与风控", report: "报告整理" };
+  job.progress.stages.forEach((stage) => {
+    if (stage.group !== currentGroup) {
+      currentGroup = stage.group;
+      const heading = document.createElement("li"); heading.className = "job-group-title";
+      heading.textContent = groupLabels[currentGroup] || currentGroup; list.append(heading);
+    }
+    const item = document.createElement("li"); item.className = `job-stage ${stage.status}`;
+    const marker = document.createElement("i"); marker.setAttribute("aria-hidden", "true");
+    const copy = document.createElement("div"); const label = document.createElement("strong"); label.textContent = stage.label;
+    const state = document.createElement("span"); state.textContent = ({ pending: "等待中", running: "进行中", completed: "已完成", failed: "失败", cancelled: "已停止", skipped: "无需执行", retrying: "正在重试" })[stage.status] || stage.status;
+    if (stage.attempts > 1) state.textContent += ` · 第 ${stage.attempts} 次`;
+    copy.append(label, state); item.append(marker, copy); list.append(item);
+  });
+  $("#cancel-analysis-button").disabled = ["succeeded", "failed", "cancelled"].includes(job.status) || job.cancel_requested;
+  $("#cancel-analysis-button").hidden = ["succeeded", "failed", "cancelled"].includes(job.status);
+  $("#retry-job-button").hidden = !job.can_retry;
+  const recovery = job.recovered ? "服务重启后已从检查点恢复。" : "";
+  const retries = job.retry_count ? ` 已重试 ${job.retry_count} 次。` : "";
+  setText("#job-progress-note", job.cancel_requested ? "停止请求已提交，当前步骤会在下一个安全点结束。" : `${recovery}${retries}这里只显示程序确认的真实节点，不使用模拟百分比。`);
+}
+
+async function cancelAnalysisJob() {
+  if (!clientState.jobId) return;
+  const button = $("#cancel-analysis-button"); button.disabled = true; button.textContent = "正在安全停止…";
+  try {
+    const job = await clientApi(`/api/client/jobs/${clientState.jobId}/cancel`, { method: "POST", body: "{}" });
+    renderJobProgress(job);
+  } catch (error) { showClientToast(error.message); button.disabled = false; }
+}
+
+async function retryAnalysisJob() {
+  if (!clientState.jobId || clientState.running) return;
+  clientState.running = true; $("#analyze-button").disabled = true; syncModeAvailability();
+  $("#retry-job-button").disabled = true; setText("#loading-message", "正在从失败步骤继续…");
+  try {
+    const job = await clientApi(`/api/client/jobs/${clientState.jobId}/retry`, { method: "POST", body: "{}" });
+    window.sessionStorage.setItem("active_analysis_job", job.job_id); renderJobProgress(job); await followAnalysisJob(job);
+  } catch (error) { finishJobWithError(error.message); }
+}
+
+function finishJobControls() { clientState.running = false; $("#analyze-button").disabled = false; $("#cancel-analysis-button").textContent = "停止本次分析"; syncModeAvailability(); }
+function finishFailedJob(job) {
+  window.clearTimeout(clientState.pollTimer); clientState.running = false; renderJobProgress(job);
+  $("#loading-state").hidden = false; $("#analysis").hidden = true; $("#error-state").hidden = true;
+  $("#retry-job-button").disabled = false; $("#analyze-button").disabled = false; syncModeAvailability();
+  showClientToast(job.error?.message || "分析任务执行失败，可从失败步骤继续。");
+}
+function finishJobWithError(message) {
+  window.clearTimeout(clientState.pollTimer); clientState.jobId = null; window.sessionStorage.removeItem("active_analysis_job");
+  $("#loading-state").hidden = true; $("#error-state").hidden = false;
+  setText("#error-message", message); showClientToast(message); finishJobControls();
+}
+async function resumeOrStartAnalysis() {
+  const existing = window.sessionStorage.getItem("active_analysis_job");
+  if (!existing) return runClientAnalysis();
+  clientState.jobId = existing; clientState.running = true; $("#analyze-button").disabled = true;
+  syncModeAvailability();
+  $("#analysis").hidden = true; $("#error-state").hidden = true; $("#loading-state").hidden = false;
+  await followAnalysisJob();
 }
 
 function renderAnalysis(data) {
@@ -252,6 +344,8 @@ function formatDateTime(value) { if (!value) return "—"; return `${value.slice
 
 $("#stock-form").addEventListener("submit", (event) => { event.preventDefault(); runClientAnalysis(); });
 $("#retry-button").addEventListener("click", runClientAnalysis);
+$("#cancel-analysis-button").addEventListener("click", cancelAnalysisJob);
+$("#retry-job-button").addEventListener("click", retryAnalysisJob);
 $("#dynamic-debate-button").addEventListener("click", runDynamicDebate);
 $("#stock-select").addEventListener("change", syncModeAvailability);
 document.addEventListener("click", (event) => {
@@ -263,5 +357,5 @@ document.addEventListener("click", (event) => {
 window.addEventListener("resize", () => { if (clientState.analysis) drawKline(clientState.analysis.data.bars); });
 
 clientApi("/api/client/overview")
-  .then((overview) => { populateOverview(overview); return runClientAnalysis(); })
+  .then((overview) => { populateOverview(overview); return resumeOrStartAnalysis(); })
   .catch((error) => { $("#loading-state").hidden = true; $("#error-state").hidden = false; setText("#error-message", error.message); });

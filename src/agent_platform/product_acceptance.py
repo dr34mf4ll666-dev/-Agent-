@@ -92,6 +92,7 @@ class ProductAcceptanceRuntime:
             "页面资源齐全": all(client_assets.values()),
             "四维观点已有直观图形": self._client_visualization_ready(),
             "受约束动态多空辩论入口存在": self._dynamic_debate_ready(),
+            "异步分析任务和客户进度入口存在": self._analysis_jobs_ready(),
             "客户股票池不少于20只": len(SECURITIES) >= 20,
             "客户股票池覆盖沪深两市": {item["exchange"] for item in SECURITIES.values()}
             == {"上交所", "深交所"},
@@ -107,7 +108,8 @@ class ProductAcceptanceRuntime:
             "后台页面资源齐全": all(admin_assets.values()),
             "A-D四阶段均有入口": {action.stage for action in ACTIONS}
             == {"A", "B", "C", "D"},
-            "后台登记功能不少于18项": len(ACTIONS) >= 18,
+            "动态辩论固定评测入口存在": self._dynamic_debate_evaluation_ready(),
+            "后台登记功能不少于19项": len(ACTIONS) >= 19,
         }
         safety_checks = {
             "客户报告仅用于模拟研究": client["safety"]["simulation_only"] is True,
@@ -187,6 +189,31 @@ class ProductAcceptanceRuntime:
             and "DEEPSEEK_API_KEY" in startup_text
             and "configure_deepseek_for_dashboard" in script_text
             and "configure_deepseek_for_dashboard" in cli_text
+        )
+
+    def _analysis_jobs_ready(self) -> bool:
+        runtime = self._root / "src" / "agent_platform" / "analysis_jobs.py"
+        web_root = self._root / "src" / "agent_platform" / "web"
+        html = (web_root / "client.html").read_text(encoding="utf-8")
+        javascript = (web_root / "client.js").read_text(encoding="utf-8")
+        return (
+            runtime.is_file()
+            and 'id="job-progress"' in html
+            and 'id="cancel-analysis-button"' in html
+            and 'id="retry-job-button"' in html
+            and 'clientApi("/api/client/jobs"' in javascript
+            and "followAnalysisJob" in javascript
+            and "retryAnalysisJob" in javascript
+        )
+
+    def _dynamic_debate_evaluation_ready(self) -> bool:
+        required = (
+            self._root / "src" / "agent_platform" / "finance" / "dynamic_debate_evaluation.py",
+            self._root / "src" / "agent_platform" / "resources" / "dynamic_debate_evaluation.json",
+            self._root / "Scripts" / "demo_dynamic_debate_evaluation.py",
+        )
+        return all(path.is_file() for path in required) and any(
+            action.id == "c1_debate_eval" for action in ACTIONS
         )
 
 

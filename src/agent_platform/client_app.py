@@ -9,7 +9,7 @@ from decimal import Decimal, InvalidOperation
 import json
 import os
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 from zoneinfo import ZoneInfo
 
 from .core import (
@@ -138,6 +138,54 @@ class DefaultFinancialGraphAdapter:
             policy=self._policy,
         ).run(query).to_mapping()
 
+    def run_job(
+        self,
+        query: FinancialGraphQuery,
+        *,
+        checkpoint_dir: Path,
+        resume: bool,
+        progress: Callable[[str, str, int, str], None],
+    ) -> Mapping[str, Any]:
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        outer_path = checkpoint_dir / "c3-graph.json"
+        specialist_path = checkpoint_dir / "specialist-graph.json"
+
+        def forward(event: Any) -> None:
+            status_by_event = {
+                "graph.node.started": "running",
+                "graph.node.completed": "completed",
+                "graph.node.skipped": "skipped",
+                "graph.node.retry": "retrying",
+                "graph.node.attempt_failed": "retrying",
+                "graph.node.timeout": "retrying",
+                "graph.node.failed": "failed",
+                "graph.circuit.blocked": "failed",
+                "graph.circuit.opened": "failed",
+            }
+            status = status_by_event.get(str(getattr(event, "event", "")))
+            node = str(getattr(event, "node", ""))
+            if status is not None and node:
+                progress(
+                    node,
+                    status,
+                    int(getattr(event, "attempt", 0) or 0),
+                    str(getattr(event, "detail", "")),
+                )
+
+        resume_outer = resume and outer_path.exists()
+        resume_specialists = resume and specialist_path.exists()
+        runtime = build_default_financial_graph_runtime(
+            project_root=self._project_root,
+            policy=self._policy,
+            checkpoint_path=outer_path,
+            specialist_checkpoint_path=specialist_path,
+            event_sink=forward,
+            specialist_event_sink=forward,
+            progress=progress,
+            resume_specialists=resume_specialists,
+        )
+        return runtime.run(None if resume_outer else query, resume=resume_outer).to_mapping()
+
 
 @dataclass(frozen=True)
 class ClientAnalysisResult:
@@ -189,7 +237,15 @@ class ClientAnalysisRuntime:
             market_tool=FinancialDataTool(market_hub),
         )
 
-    def analyze(self, request: ClientAnalysisRequest) -> ClientAnalysisResult:
+    def analyze(
+        self,
+        request: ClientAnalysisRequest,
+        *,
+        progress: Callable[..., None] | None = None,
+        checkpoint_dir: str | Path | None = None,
+        resume: bool = False,
+    ) -> ClientAnalysisResult:
+        report_progress = progress or (lambda *_event: None)
         security = SECURITIES[request.symbol]
         sector = security["sectors"][request.mode]
         now = self._now()
@@ -228,7 +284,21 @@ class ClientAnalysisRuntime:
                 human_confirmed=False,
             ),
         )
-        graph_result = self._graph.run(query)
+        report_progress("research", "running")
+        run_job = getattr(self._graph, "run_job", None)
+        if checkpoint_dir is not None and callable(run_job):
+            graph_result = run_job(
+                query,
+                checkpoint_dir=Path(checkpoint_dir),
+                resume=resume,
+                progress=lambda node, status, attempt, detail: report_progress(
+                    node, status, attempt, detail
+                ),
+            )
+        else:
+            graph_result = self._graph.run(query)
+        report_progress("research", "completed")
+        report_progress("chart", "running")
         chart_output = self._market_tool.run(
             {
                 "dataset": "market.daily",
@@ -241,6 +311,8 @@ class ClientAnalysisRuntime:
                 "mode": request.mode,
             }
         )
+        report_progress("chart", "completed")
+        report_progress("report", "running")
         projected = _project_for_customer(
             graph_result,
             chart_output,
@@ -256,6 +328,7 @@ class ClientAnalysisRuntime:
             debate_context = graph_result["report"]["research"]["report"]["combined_analysis"]
         except (KeyError, TypeError) as error:
             raise ClientAnalysisError(f"C3 报告缺少动态辩论上下文: {error}") from error
+        report_progress("report", "completed")
         return ClientAnalysisResult(projected, debate_context=debate_context)
 
 

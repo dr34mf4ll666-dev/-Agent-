@@ -11,6 +11,7 @@ from .d2_engineering import D2EngineeringRuntime
 from .dashboard import serve_dashboard
 from .dashboard_startup import configure_deepseek_for_dashboard
 from .final_delivery import FinalDeliveryRuntime
+from .finance import DynamicDebateEvaluationRuntime, print_dynamic_debate_evaluation
 from .product_acceptance import ProductAcceptanceRuntime, print_product_acceptance
 
 
@@ -33,6 +34,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="不询问 DeepSeek API Key，直接使用已有环境变量或固定格式",
     )
     subparsers.add_parser("verify-all", help="验收 A-D、客户前台和团队后台")
+    debate = subparsers.add_parser("debate-eval", help="运行受约束动态多空辩论固定评测")
+    debate.add_argument("--live", action="store_true", help="使用真实 DeepSeek")
+    debate.add_argument("--model", default="deepseek-v4-flash", help="DeepSeek 模型名")
+    debate.add_argument("--dataset", type=Path, default=None, help="可选固定评测集")
+    debate.add_argument("--no-key-prompt", action="store_true", help="不询问 DeepSeek API Key")
+    debate.add_argument("--output", type=Path, default=None, help="可选：保存含逐次原始结果的 JSON")
     return parser
 
 
@@ -76,6 +83,34 @@ def main(argv: list[str] | None = None) -> int:
             print(f"项目整体验收失败: {error}", file=sys.stderr)
             return 2
         print_product_acceptance(report)
+        return 0 if report.passed else 1
+    if args.command == "debate-eval":
+        if args.live:
+            selection = configure_deepseek_for_dashboard(
+                prompt_enabled=not args.no_key_prompt,
+                interactive=sys.stdin.isatty(),
+            )
+            print(selection.message)
+            if not selection.enabled:
+                print("真实评测未启动：需要 DeepSeek API Key。", file=sys.stderr)
+                return 2
+        try:
+            report = DynamicDebateEvaluationRuntime.from_project(
+                live=args.live,
+                model=args.model,
+            ).run(args.dataset)
+        except (OSError, json.JSONDecodeError, ValueError) as error:
+            print(f"动态辩论评测失败: {error}", file=sys.stderr)
+            return 2
+        value = report.to_mapping()
+        if args.output is not None:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(
+                json.dumps(value, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            print(f"原始评测结果已保存: {args.output}")
+        print_dynamic_debate_evaluation(value)
         return 0 if report.passed else 1
     return 2
 

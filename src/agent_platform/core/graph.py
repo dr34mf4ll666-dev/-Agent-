@@ -20,6 +20,7 @@ NodeHandler = Callable[["GraphState"], Mapping[str, Any]]
 EdgeCondition = Callable[["GraphState"], bool]
 Clock = Callable[[], float]
 Sleeper = Callable[[float], None]
+EventSink = Callable[["GraphEvent"], None]
 
 
 @dataclass(frozen=True)
@@ -141,6 +142,19 @@ class GraphEvent:
     detail: str = ""
 
 
+class _EventBuffer(list[GraphEvent]):
+    """Collect node events while forwarding them to an optional live observer."""
+
+    def __init__(self, sink: EventSink | None = None) -> None:
+        super().__init__()
+        self._sink = sink
+
+    def append(self, event: GraphEvent) -> None:
+        super().append(event)
+        if self._sink is not None:
+            self._sink(event)
+
+
 @dataclass(frozen=True)
 class GraphResult:
     """Successful graph state and auditable runtime metadata."""
@@ -232,11 +246,18 @@ class GraphRunner:
         checkpoint_store: JsonCheckpointStore | None = None,
         clock: Clock = time.time,
         sleeper: Sleeper = time.sleep,
+        event_sink: EventSink | None = None,
     ) -> None:
         self._graph = graph
         self._checkpoint_store = checkpoint_store
         self._clock = clock
         self._sleeper = sleeper
+        self._event_sink = event_sink
+
+    def _append_trace(self, trace: list[GraphEvent], event: GraphEvent) -> None:
+        trace.append(event)
+        if self._event_sink is not None:
+            self._event_sink(event)
 
     def validate(self) -> tuple[str, ...]:
         """Validate structure, policies and schemas; return topological order."""
@@ -286,7 +307,8 @@ class GraphRunner:
                 name: _closed_breaker() for name in self._graph.nodes
             }
 
-        trace: list[GraphEvent] = [GraphEvent(event="graph.started")]
+        trace: list[GraphEvent] = []
+        self._append_trace(trace, GraphEvent(event="graph.started"))
 
         while any(status not in {"completed", "skipped"} for status in statuses.values()):
             skipped = self._propagate_skips(
@@ -298,7 +320,9 @@ class GraphRunner:
             )
             if skipped:
                 for name in skipped:
-                    trace.append(GraphEvent(event="graph.node.skipped", node=name))
+                    self._append_trace(
+                        trace, GraphEvent(event="graph.node.skipped", node=name)
+                    )
                 self._save_checkpoint(
                     signature,
                     state,
@@ -338,7 +362,8 @@ class GraphRunner:
             if self._graph.execution.strategy == "sequential":
                 ready = ready[:1]
 
-            trace.append(
+            self._append_trace(
+                trace,
                 GraphEvent(
                     event="graph.wave.started",
                     detail=",".join(ready),
@@ -355,7 +380,8 @@ class GraphRunner:
                     )
                 except Exception as error:
                     statuses[node_name] = "failed"
-                    trace.append(
+                    self._append_trace(
+                        trace,
                         GraphEvent(
                             event="graph.node.failed",
                             node=node_name,
@@ -414,7 +440,8 @@ class GraphRunner:
                     valid_outcomes[name] = outcome
                 except Exception as error:
                     failures[name] = error
-                    trace.append(
+                    self._append_trace(
+                        trace,
                         GraphEvent(
                             event="graph.node.failed",
                             node=name,
@@ -427,7 +454,8 @@ class GraphRunner:
             except GraphMergeConflictError as error:
                 for name in valid_outcomes:
                     failures[name] = error
-                    trace.append(
+                    self._append_trace(
+                        trace,
                         GraphEvent(
                             event="graph.node.failed",
                             node=name,
@@ -472,7 +500,7 @@ class GraphRunner:
                     trace,
                 )
 
-        trace.append(GraphEvent(event="graph.completed"))
+        self._append_trace(trace, GraphEvent(event="graph.completed"))
         return GraphResult(
             state=state,
             statuses=dict(statuses),
@@ -528,7 +556,7 @@ class GraphRunner:
     ) -> _NodeOutcome:
         policy = self._graph.node_policies.get(name, NodeExecutionPolicy())
         breaker = dict(breaker_snapshot)
-        events: list[GraphEvent] = []
+        events: list[GraphEvent] = _EventBuffer(self._event_sink)
 
         if policy.circuit_breaker is not None and breaker["state"] == "open":
             reset_after = policy.circuit_breaker.reset_timeout_seconds

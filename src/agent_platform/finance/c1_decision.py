@@ -7,7 +7,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from agent_platform.core import CrossValidationResult
 
@@ -501,9 +501,13 @@ class C1DecisionRuntime:
         *,
         combined_runtime: CombinedAnalysisRuntime,
         debate_runtime: StructuredDebateRuntime,
+        progress: Callable[[str, str, int, str], None] | None = None,
+        resume_specialists: bool = False,
     ) -> None:
         self._combined_runtime = combined_runtime
         self._debate_runtime = debate_runtime
+        self._progress = progress or (lambda _node, _status, _attempt, _detail: None)
+        self._resume_specialists = resume_specialists
 
     def run(self, query: C1DecisionQuery) -> C1DecisionResult:
         if not isinstance(query, C1DecisionQuery):
@@ -514,7 +518,12 @@ class C1DecisionRuntime:
                 "detail": f"symbol={query.combined_query.symbol}; mode={query.combined_query.mode}",
             }
         ]
-        combined = self._combined_runtime.run(query.combined_query).to_mapping()
+        self._progress("c1_research", "running", 1, "开始四维研究")
+        combined = (
+            self._combined_runtime.run(None, resume=True)
+            if self._resume_specialists
+            else self._combined_runtime.run(query.combined_query)
+        ).to_mapping()
         bundle = combined["report"]
         trace.append(
             {
@@ -522,6 +531,7 @@ class C1DecisionRuntime:
                 "detail": "four Specialist reports and Graph evidence are ready",
             }
         )
+        self._progress("c1_debate", "running", 1, "开始多空辩论")
         debate = self._debate_runtime.run(
             StructuredDebateQuery(bundle, rounds=query.debate_rounds)
         ).to_mapping()
@@ -532,6 +542,8 @@ class C1DecisionRuntime:
                 "detail": f"rounds={len(debate_report['rounds'])}",
             }
         )
+        self._progress("c1_debate", "completed", 1, "多空辩论完成")
+        self._progress("c1_quality", "running", 1, "检查一致性与偏差")
         consistency = _consistency_check(bundle, debate_report)
         bias = _bias_detector(bundle, debate_report)
         trace.append(
@@ -540,6 +552,8 @@ class C1DecisionRuntime:
                 "detail": "consistency and bias checks passed",
             }
         )
+        self._progress("c1_quality", "completed", 1, "一致性与偏差检查通过")
+        self._progress("c1_synthesis", "running", 1, "生成综合结论")
         synthesis = _synthesis(
             bundle,
             debate_report,
@@ -556,6 +570,7 @@ class C1DecisionRuntime:
                 ),
             }
         )
+        self._progress("c1_synthesis", "completed", 1, "综合结论完成")
         report = {
             "status": "c1_completed",
             "symbol": bundle["symbol"],
@@ -587,6 +602,7 @@ class C1DecisionRuntime:
                 "detail": "synthesis, quality checks, and regime gate passed",
             }
         )
+        self._progress("c1_research", "completed", 1, "C1 研究完成")
         return C1DecisionResult(
             report=report,
             specialist_graph=combined["graph"],
@@ -603,13 +619,21 @@ def build_default_c1_decision_runtime(
     *,
     project_root: str | Path | None = None,
     policy: FinancialDataPolicy | None = None,
+    specialist_checkpoint_path: str | Path | None = None,
+    graph_event_sink: Callable[[Any], None] | None = None,
+    progress: Callable[[str, str, int, str], None] | None = None,
+    resume_specialists: bool = False,
 ) -> C1DecisionRuntime:
     return C1DecisionRuntime(
         combined_runtime=build_default_combined_analysis_runtime(
             project_root=project_root,
             policy=policy,
+            checkpoint_path=specialist_checkpoint_path,
+            event_sink=graph_event_sink,
         ),
         debate_runtime=build_default_structured_debate_runtime(),
+        progress=progress,
+        resume_specialists=resume_specialists,
     )
 
 

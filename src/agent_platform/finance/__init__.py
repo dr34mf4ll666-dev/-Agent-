@@ -107,6 +107,11 @@ from .dynamic_debate import (
     DynamicDebateRuntime,
     build_default_dynamic_debate_runtime,
 )
+from .dynamic_debate_evaluation import (
+    DynamicDebateEvaluationReport,
+    DynamicDebateEvaluationRuntime,
+    print_dynamic_debate_evaluation,
+)
 from .c1_decision import (
     C1DecisionError,
     C1DecisionQuery,
@@ -272,6 +277,9 @@ __all__ = [
     "DynamicDebateResult",
     "DynamicDebateRuntime",
     "build_default_dynamic_debate_runtime",
+    "DynamicDebateEvaluationReport",
+    "DynamicDebateEvaluationRuntime",
+    "print_dynamic_debate_evaluation",
     "C1DecisionError",
     "C1DecisionQuery",
     "C1DecisionResult",

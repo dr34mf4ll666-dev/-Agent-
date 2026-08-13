@@ -587,3 +587,32 @@
 - 新增两项回归测试，证明 5 秒偏差通过、11 秒偏差拒绝。真实验证中浦发、招商和平安估值均成功；浦发和招商完整客户分析均返回 60 根 K 线、12 类来源和完整综合结论。
 - 随后按客户网页同一条真实完整链逐一验收 20 只股票，首轮暴露个股资金流接口会空响应或偶发超时。宏观 Agent 现仅在 live 模式把 `EMPTY_RESPONSE`、`TIMEOUT`、`PROVIDER_UNAVAILABLE` 或 `RATE_LIMITED` 转成有来源标记的 `not_available` 证据，资金流和相关市场代理固定贡献 0 分，并在 caveat 明示缺失；不会把 0 冒充真实净流入，也不会据此推断单边 Market Regime。
 - 最终 20/20 真实完整客户分析通过、失败 0。每只均返回 60 根 K 线、四个 Agent 维度、12 类来源、综合结论和 `real_trading_allowed=false`；总耗时 571.25 秒，单只约 16–63 秒，说明可靠性已恢复但冷启动性能仍有优化空间。
+
+[2026-08-13] 强化计划：动态辩论固定评测与统一展示完成
+- 新增 `DynamicDebateEvaluationRuntime.run(dataset)` 深 module，固定使用同一份四 Agent 离线研究底稿，分别执行 2 轮和 3 轮辩论并各重复两次；数据集版本、用例和重复次数集中在 JSON 资源中校验。
+- 同时运行固定模板基线与受约束动态辩论，量化候选/最终证据有效率、观点多样性、正反平衡、重试、降级、平均耗时、Token 和重复结果稳定性；终端保留四次逐项原始结果，不再只写“更灵活”。
+- 脚本化 Mock 首次故意引用未知证据，证明候选会被拒绝、第二次语义尝试能恢复；最终结果继续由确定性证据重放、双方覆盖和安全字段检查决定。Mock 只验证链路，不冒充真实模型质量。
+- 新增 `agent-platform debate-eval`、`Scripts/demo_dynamic_debate_evaluation.py` 和后台 C 阶段“C1+ · 动态辩论量化评测”卡片。默认不生成文件；只有用户显式使用 `--output` 才保存含逐次结果的 JSON。
+- 产品整体验收新增动态辩论固定评测入口检查，团队后台从 18 个增加到 19 个操作入口；README、总纲、SPEC、开发地图、客户/后台说明和专项文档已同步。
+- 当前运行环境未读取到真实 DeepSeek Key，因此代码、离线评测与展示已完成，增强项仍保留 `in_progress`；剩余外部验收仅为用户执行 `--live --output ...`，不能把 Mock 结果误报成真实 DeepSeek 结论。
+
+[2026-08-13] P1 异步分析任务中心首个纵向切片（历史记录）
+- 新增 `AnalysisJobRuntime` 深 module，通过 `submit/get/cancel/result` 四个 interface 隐藏本地线程 Worker、任务容量、状态转换、错误归一化和协作取消；首版最多并行 2 项、内存保存 64 项，不提前引入分布式队列。
+- 客户分析 HTTP 改为先返回 `202 Accepted + job_id`，浏览器再查询状态，成功后单独读取报告。旧 `/api/client/analyze` 同步入口暂时保留，避免破坏现有调用方。
+- `ClientAnalysisRuntime` 在真实执行点上报“四维联合研究与风险检查、行情图表整理、客户报告”三个阶段；没有用计时器伪造四个 Agent 的完成百分比。
+- 客户页新增任务编号、纵向进度轨道、真实阶段状态和“停止本次分析”。任务编号保存在当前浏览器会话，普通刷新后继续查询；成功后原 K 线、四维分析、智能解读和动态辩论流程保持不变。
+- 排队任务可以立即取消；运行中任务只在下一安全进度点协作停止，不强杀外部请求、不返回半份报告。任务失败会保留异常类型、可读消息和失败阶段。
+- 当时首个切片专项 26 项、项目全量 319 项测试通过；该状态已由下方“P1 正式完成”记录取代。
+
+[2026-08-13] P1 异步分析任务中心正式完成
+- `GraphRunner` 新增可选事件 sink，Combined Specialist Graph 与 C3 外层 Graph 在真实节点开始、完成、跳过、重试、超时和失败时直接上报，不改变原有 Graph 结果和 trace。客户任务现在展示 Planner、四 Specialist、证据汇总、C1 辩论/质量/综合、Trader、条件路由、Risk Manager、Finalize、图表和报告共 17 个节点。
+- `AnalysisJobRuntime` 外部 interface 增加 `retry(job_id)`；每项任务使用 Specialist/C3 两层 Checkpoint，失败后只执行失败或未完成节点，已完成节点不重跑。HTTP 新增 `POST /api/client/jobs/{job_id}/retry`，客户页失败时显示“只重试失败步骤”和实际尝试次数。
+- 任务元数据和成功报告用 UTF-8 JSON 原子保存到 `.runtime/analysis_jobs/jobs.json`，服务启动时自动续跑原 `queued/running` 任务；完整历史检索、迁移和报告比较仍由 P3 SQLite Repository 负责。
+- 单任务总时限为 180 秒；超时后状态固定为可重试失败，第三方线程自然返回的迟到结果会被丢弃。取消仍采用安全点协作语义，不强杀阻塞中的 Python 线程。
+- 离线完整演示真实跑通 17/17 节点，Risk Manager 路径完成、未选择的弱市阻断路径显示 `skipped`，最终报告保持 `real_trading_allowed=false`。专项测试与产品验收通过，项目全量 324 项测试通过；P1 已在 ROADMAP、SPEC 与 checklist 标记为 `done`，下一项为 P2 统一分析快照。
+
+[2026-08-13] 总纲加入普通版/专业版双层信息架构
+- 客户页面首次访问默认普通版，只展示四段通俗进度、结论、主要理由、支持/风险因素、研究区间、数据时间和免责声明；专业版按需展开四 Agent、17 个真实节点、技术指标、来源、评分规则与风控计算。
+- 两种模式必须来自同一冻结报告和统一快照，切换只改变展示复杂度，不得重新取数、重新运行 Graph、再次调用 DeepSeek、增加 Token 或产生不同结论。
+- P4 调整为“双层展示、专业图表和证据下钻”，由 `ReportViewRuntime.project(report_id, view)` 统一生成 `basic/professional` 投影；P6 历史、比较和导出继续复用该展示规则。
+- 专业版客户界面与 `/admin` 工程后台保持分离：专业版展示研究证据，后台保留 Harness、Graph 配置、原始日志和工程验收入口。

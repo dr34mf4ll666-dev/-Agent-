@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
   "version": "3.0.0",
-  "updated_at": "2026-08-11",
-  "current_focus": "调整后交付范围已完成；原 1-2 周时间等待已豁免并保留未证明声明",
+  "updated_at": "2026-08-13",
+  "current_focus": "正式任务与 P1 异步分析任务中心已完成；下一项为 P2 统一分析快照",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "done",
   "items": [
@@ -614,26 +614,71 @@
   ],
   "in_progress_product_enhancements": [
     {
+      "id": "P1_ANALYSIS_JOBS",
+      "status": "done",
+      "result": "已完成后台任务、17个真实节点、结果门禁、失败归一化、协作取消、节点续跑、180秒总超时、JSON重启恢复和客户页面展示",
+      "evidence": [
+        "src/agent_platform/analysis_jobs.py",
+        "src/agent_platform/client_app.py",
+        "src/agent_platform/dashboard.py",
+        "src/agent_platform/web/client.html",
+        "src/agent_platform/web/client.css",
+        "src/agent_platform/web/client.js",
+        "Scripts/demo_analysis_jobs.py",
+        "tests/test_analysis_jobs.py",
+        "tests/test_demo_analysis_jobs.py",
+        "tests/test_client_app.py",
+        "tests/test_dashboard.py",
+        "docs/analysis-jobs.md"
+      ],
+      "remaining": [],
+      "scope_note": "使用本地线程 Worker、JSON任务记录和两层Graph Checkpoint；不伪造节点进度，不引入分布式队列，不改变金融计算和真实交易关闭边界；阻塞中的第三方线程不能被Python安全强杀，但超时后迟到结果会被丢弃"
+    },
+    {
       "id": "DYNAMIC_LLM_DEBATE",
       "status": "in_progress",
-      "result": "受约束的动态Bull/Bear候选生成、证据复核、有限重试、固定模板降级和客户页面入口已经完成",
+      "result": "受约束动态Bull/Bear、证据复核、有限重试、安全降级、固定重复评测、量化统计、统一CLI和后台入口已经完成",
       "evidence": [
         "src/agent_platform/finance/dynamic_debate.py",
+        "src/agent_platform/finance/dynamic_debate_evaluation.py",
+        "src/agent_platform/resources/dynamic_debate_evaluation.json",
         "src/agent_platform/dashboard_startup.py",
         "src/agent_platform/dashboard.py",
         "Scripts/run_dashboard.py",
+        "Scripts/demo_dynamic_debate_evaluation.py",
         "src/agent_platform/web/client.html",
         "src/agent_platform/web/client.js",
         "tests/test_dynamic_debate.py",
+        "tests/test_dynamic_debate_evaluation.py",
+        "tests/test_demo_dynamic_debate_evaluation.py",
         "tests/test_dashboard_startup.py",
         "tests/test_dashboard.py",
-        "docs/client-app.md"
+        "docs/client-app.md",
+        "docs/dynamic-debate-evaluation.md"
       ],
       "remaining": [
-        "使用真实DeepSeek完成受控集成验证",
-        "建立固定线上评测集并统计证据有效率、观点多样性、正反平衡、重试率、耗时、Token成本和稳定性"
+        "使用用户自己的有效DeepSeek Key运行固定评测集，并通过可选--output留存本次真实原始结果"
       ],
       "scope_note": "仅改写Claim和Reasoning候选；Synthesis、价格区间、仓位、风控和真实交易边界不变"
+    }
+  ],
+  "planned_product_enhancements": [
+    {
+      "id": "P4_DUAL_VIEW_REPORT",
+      "status": "planned",
+      "result": "默认普通版与按需专业版共用同一冻结报告；普通版降低信息负担，专业版提供完整指标、节点和证据",
+      "acceptance": [
+        "首次访问默认普通版并记住用户选择",
+        "普通版只显示四段通俗进度、结论、主要理由、支持因素、风险因素、研究区间、数据时间和免责声明",
+        "专业版显示四Agent、17个真实节点、技术指标、来源时间、评分规则和风控计算",
+        "两种模式使用同一report_id与snapshot_id，切换不重新取数、不创建分析任务、不调用LLM且不产生Token",
+        "两种模式的确定性结论、分数、区间、仓位与风控完全一致",
+        "专业版不暴露Harness配置、Checkpoint文件、原始日志和后台工程入口",
+        "桌面端、移动端、键盘操作和非颜色状态提示均通过浏览器验收"
+      ],
+      "dependencies": ["P2 统一分析快照", "P3 SQLite持久化与历史报告"],
+      "evidence": ["ROADMAP.md"],
+      "scope_note": "这是同一分析结果的两种展示投影，不是两套Agent流程；正式实现归入P4，P6历史比较与导出复用该投影"
     }
   ],
   "enhancements_to_preserve": [

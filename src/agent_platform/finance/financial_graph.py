@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from agent_platform.core import CrossValidationResult, JsonCheckpointStore
 from agent_platform.core.graph import GraphDefinition, GraphEdge, GraphResult, GraphRunner
@@ -231,6 +231,7 @@ class FinancialGraphRuntime:
         trader_runtime: TraderRuntime,
         risk_manager_runtime: RiskManagerRuntime,
         checkpoint_store: JsonCheckpointStore | None = None,
+        event_sink: Callable[[Any], None] | None = None,
     ) -> None:
         self._c1_runtime = c1_runtime
         self._trader_runtime = trader_runtime
@@ -239,6 +240,7 @@ class FinancialGraphRuntime:
         self._runner = GraphRunner(
             self._graph,
             checkpoint_store=checkpoint_store,
+            event_sink=event_sink,
         )
 
     def _build_graph(self) -> GraphDefinition:
@@ -375,11 +377,20 @@ def build_default_financial_graph_runtime(
     project_root: str | Path | None = None,
     policy: FinancialDataPolicy | None = None,
     checkpoint_path: str | Path | None = None,
+    specialist_checkpoint_path: str | Path | None = None,
+    event_sink: Callable[[Any], None] | None = None,
+    specialist_event_sink: Callable[[Any], None] | None = None,
+    progress: Callable[[str, str, int, str], None] | None = None,
+    resume_specialists: bool = False,
 ) -> FinancialGraphRuntime:
     return FinancialGraphRuntime(
         c1_runtime=build_default_c1_decision_runtime(
             project_root=project_root,
             policy=policy,
+            specialist_checkpoint_path=specialist_checkpoint_path,
+            graph_event_sink=specialist_event_sink,
+            progress=progress,
+            resume_specialists=resume_specialists,
         ),
         trader_runtime=build_default_trader_runtime(),
         risk_manager_runtime=build_default_risk_manager_runtime(),
@@ -388,6 +399,7 @@ def build_default_financial_graph_runtime(
             if checkpoint_path is not None
             else None
         ),
+        event_sink=event_sink,
     )
 
 

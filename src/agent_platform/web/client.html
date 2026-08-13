@@ -51,8 +51,17 @@
 
     <section class="loading-state" id="loading-state" aria-live="polite">
       <div class="loading-orbit"><i></i><i></i><i></i><i></i><span>研</span></div>
-      <h2>正在汇集四个维度</h2>
+      <div class="job-heading">
+        <div><span>ANALYSIS JOB</span><h2>正在形成研究报告</h2></div>
+        <small id="job-reference">等待任务编号</small>
+      </div>
       <p id="loading-message">读取行情与研究证据，形成统一结论…</p>
+      <ol class="job-progress" id="job-progress" aria-label="分析任务真实进度"></ol>
+      <div class="job-actions">
+        <span id="job-progress-note">这里显示程序已经确认的阶段，不使用虚假的预计百分比。</span>
+        <button type="button" id="retry-job-button" hidden>只重试失败步骤</button>
+        <button type="button" id="cancel-analysis-button">停止本次分析</button>
+      </div>
     </section>
 
     <section class="analysis" id="analysis" hidden>

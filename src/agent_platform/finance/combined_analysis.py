@@ -15,6 +15,7 @@ from agent_platform.core import (
     GraphResult,
     GraphRunner,
     GraphState,
+    JsonCheckpointStore,
 )
 
 from .data_hub import FinancialDataPolicy
@@ -344,6 +345,8 @@ class CombinedAnalysisRuntime:
         fundamental: FundamentalAnalysisRuntime,
         industry: IndustryAnalysisRuntime,
         macro: MacroAnalysisRuntime,
+        checkpoint_store: JsonCheckpointStore | None = None,
+        event_sink: Callable[[Any], None] | None = None,
     ) -> None:
         self._runtimes = {
             "technical": technical,
@@ -351,6 +354,8 @@ class CombinedAnalysisRuntime:
             "industry": industry,
             "macro": macro,
         }
+        self._checkpoint_store = checkpoint_store
+        self._event_sink = event_sink
 
     def _build_graph(self) -> GraphDefinition:
         nodes: dict[str, Callable[[GraphState], Mapping[str, Any]]] = {
@@ -388,11 +393,26 @@ class CombinedAnalysisRuntime:
             execution=GraphExecutionPolicy(strategy="parallel", max_workers=4),
         )
 
-    def run(self, query: CombinedAnalysisQuery) -> CombinedAnalysisWorkflowResult:
-        if not isinstance(query, CombinedAnalysisQuery):
+    def run(
+        self,
+        query: CombinedAnalysisQuery | None = None,
+        *,
+        resume: bool = False,
+    ) -> CombinedAnalysisWorkflowResult:
+        if resume:
+            if query is not None:
+                raise CombinedAnalysisError("resume must not include a new query")
+        elif not isinstance(query, CombinedAnalysisQuery):
             raise CombinedAnalysisError("query must be a CombinedAnalysisQuery")
-        graph_result = GraphRunner(self._build_graph()).run(
-            {"combined_query": query.to_mapping()}
+        runner = GraphRunner(
+            self._build_graph(),
+            checkpoint_store=self._checkpoint_store,
+            event_sink=self._event_sink,
+        )
+        graph_result = (
+            runner.run(resume=True)
+            if resume
+            else runner.run({"combined_query": query.to_mapping()})
         )
         report = graph_result.state.get("combined_analysis")
         if not isinstance(report, Mapping):
@@ -408,6 +428,8 @@ def build_default_combined_analysis_runtime(
     *,
     project_root: str | Path | None = None,
     policy: FinancialDataPolicy | None = None,
+    checkpoint_path: str | Path | None = None,
+    event_sink: Callable[[Any], None] | None = None,
 ) -> CombinedAnalysisRuntime:
     return CombinedAnalysisRuntime(
         technical=build_default_technical_analysis_runtime(
@@ -422,6 +444,12 @@ def build_default_combined_analysis_runtime(
         macro=build_default_macro_analysis_runtime(
             project_root=project_root, policy=policy
         ),
+        checkpoint_store=(
+            JsonCheckpointStore(Path(checkpoint_path))
+            if checkpoint_path is not None
+            else None
+        ),
+        event_sink=event_sink,
     )
 
 

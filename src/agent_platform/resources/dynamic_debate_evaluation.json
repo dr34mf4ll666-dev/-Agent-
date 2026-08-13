@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "name": "dynamic-debate-fixed-v1",
+  "description": "固定四Agent离线底稿上的动态多空辩论重复评测",
+  "model_config": {
+    "provider": "deepseek_or_scripted_mock",
+    "max_semantic_attempts": 2,
+    "max_output_tokens": 1400
+  },
+  "acceptance_thresholds": {
+    "minimum_candidate_evidence_validity_rate_percent": 75,
+    "minimum_final_evidence_validity_rate_percent": 100,
+    "minimum_bull_bear_balance_rate_percent": 100,
+    "maximum_retry_rate_percent": 50,
+    "maximum_fallback_rate_percent": 25,
+    "minimum_result_stability_rate_percent": 100,
+    "dynamic_diversity_must_exceed_baseline": true
+  },
+  "cases": [
+    {
+      "id": "two-round-repeatability",
+      "rounds": 2,
+      "repetitions": 2
+    },
+    {
+      "id": "three-round-countering",
+      "rounds": 3,
+      "repetitions": 2
+    }
+  ]
+}

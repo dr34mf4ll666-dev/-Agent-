@@ -17,6 +17,7 @@ from threading import Lock, Timer
 from typing import Any, Mapping, Protocol, Sequence
 from urllib.parse import urlparse
 
+from .analysis_jobs import AnalysisJobError, AnalysisJobRuntime
 from .client_app import (
     ClientAnalysisError,
     ClientAnalysisRequest,
@@ -253,6 +254,18 @@ ACTIONS = (
         tags=("多 Agent", "Debate"),
     ),
     ActionSpec(
+        "c1_debate_eval", "C", "C1+ · 动态辩论量化评测",
+        "固定四 Agent 研究底稿，重复比较模板辩论与受约束动态辩论的证据、平衡、稳定性和成本。",
+        "demo_dynamic_debate_evaluation.py",
+        live_arguments=("--live", "--no-key-prompt"),
+        summary_prefixes=(
+            "模式:", "评测集:", "- 候选证据有效率:", "- 最终证据有效率:",
+            "- 观点多样性:", "- 正反平衡率:", "- 重试率:", "- 降级率:",
+            "- 平均耗时:", "- Token:", "- 结果稳定性:", "结论:",
+        ),
+        tags=("DeepSeek", "固定评测"),
+    ),
+    ActionSpec(
         "c2_risk", "C", "C2 · Trader 与 Risk Manager",
         "把研究结论转为候选动作，再计算仓位、止损和预计单笔亏损。",
         "demo_c2_trading.py", ("--confirm",), ("--confirm", "--live"),
@@ -453,6 +466,7 @@ class DashboardRuntime:
         client_runtime: ClientAnalysisRuntime | None = None,
         market_assistant: MarketAssistant | None = None,
         dynamic_debate_runtime: DynamicDebateRuntime | None = None,
+        analysis_jobs: AnalysisJobRuntime | None = None,
         timeout_seconds: float = 180.0,
     ) -> None:
         self.project_root = project_root.resolve()
@@ -464,6 +478,12 @@ class DashboardRuntime:
         self.market_assistant = market_assistant or build_default_market_assistant()
         self.dynamic_debate_runtime = (
             dynamic_debate_runtime or build_default_dynamic_debate_runtime()
+        )
+        self.analysis_jobs = analysis_jobs or AnalysisJobRuntime.from_client_runtime(
+            self.client_runtime,
+            storage_path=self.project_root / ".runtime" / "analysis_jobs" / "jobs.json",
+            checkpoint_root=self.project_root / ".runtime" / "analysis_jobs" / "checkpoints",
+            timeout_seconds=180.0,
         )
         self._debate_contexts: OrderedDict[str, Mapping[str, Any]] = OrderedDict()
         self._debate_context_lock = Lock()
@@ -541,17 +561,54 @@ class DashboardRuntime:
         try:
             request = ClientAnalysisRequest.from_mapping(value)
             result = self.client_runtime.analyze(request)
-            response = result.to_mapping()
-            if result.debate_context is not None:
-                analysis_id = uuid4().hex
-                with self._debate_context_lock:
-                    self._debate_contexts[analysis_id] = result.debate_context
-                    while len(self._debate_contexts) > 32:
-                        self._debate_contexts.popitem(last=False)
-                response["analysis_id"] = analysis_id
-            return response
+            return self._register_client_result(result)
         except ClientAnalysisError as error:
             raise DashboardError(str(error)) from error
+
+    def submit_client_analysis(self, value: Mapping[str, Any]) -> dict[str, Any]:
+        try:
+            request = ClientAnalysisRequest.from_mapping(value)
+            return self.analysis_jobs.submit(request)
+        except (ClientAnalysisError, AnalysisJobError) as error:
+            raise DashboardError(str(error)) from error
+
+    def get_client_analysis_job(self, job_id: str) -> dict[str, Any]:
+        try:
+            return self.analysis_jobs.get(job_id)
+        except AnalysisJobError as error:
+            raise DashboardError(str(error)) from error
+
+    def cancel_client_analysis_job(self, job_id: str) -> dict[str, Any]:
+        try:
+            return self.analysis_jobs.cancel(job_id)
+        except AnalysisJobError as error:
+            raise DashboardError(str(error)) from error
+
+    def retry_client_analysis_job(self, job_id: str) -> dict[str, Any]:
+        try:
+            return self.analysis_jobs.retry(job_id)
+        except AnalysisJobError as error:
+            raise DashboardError(str(error)) from error
+
+    def get_client_analysis_result(self, job_id: str) -> dict[str, Any]:
+        try:
+            return self._register_client_result(self.analysis_jobs.result(job_id))
+        except AnalysisJobError as error:
+            raise DashboardError(str(error)) from error
+
+    def close(self) -> None:
+        self.analysis_jobs.close(wait=False)
+
+    def _register_client_result(self, result: Any) -> dict[str, Any]:
+        response = result.to_mapping()
+        if result.debate_context is not None:
+            analysis_id = uuid4().hex
+            with self._debate_context_lock:
+                self._debate_contexts[analysis_id] = result.debate_context
+                while len(self._debate_contexts) > 32:
+                    self._debate_contexts.popitem(last=False)
+            response["analysis_id"] = analysis_id
+        return response
 
     def debate_client(self, analysis_id: str) -> dict[str, Any]:
         if not isinstance(analysis_id, str) or not analysis_id.strip():
@@ -653,6 +710,10 @@ def build_default_assistant() -> ProjectAssistant:
 class DashboardHTTPServer(ThreadingHTTPServer):
     runtime: DashboardRuntime
 
+    def server_close(self) -> None:
+        self.runtime.close()
+        super().server_close()
+
 
 class DashboardRequestHandler(BaseHTTPRequestHandler):
     server: DashboardHTTPServer
@@ -669,6 +730,19 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/client/overview":
             self._send_json(HTTPStatus.OK, self.server.runtime.client_overview())
+            return
+        client_job = _match_client_job_path(path)
+        if client_job is not None:
+            job_id, operation = client_job
+            try:
+                result = (
+                    self.server.runtime.get_client_analysis_result(job_id)
+                    if operation == "result"
+                    else self.server.runtime.get_client_analysis_job(job_id)
+                )
+                self._send_json(HTTPStatus.OK, result)
+            except DashboardError as error:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
             return
         static_files = {
             "/": ("client.html", "text/html; charset=utf-8"),
@@ -714,6 +788,19 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/client/analyze":
                 result = self.server.runtime.analyze_client(body)
                 self._send_json(HTTPStatus.OK, result)
+                return
+            if path == "/api/client/jobs":
+                result = self.server.runtime.submit_client_analysis(body)
+                self._send_json(HTTPStatus.ACCEPTED, result)
+                return
+            client_job = _match_client_job_path(path)
+            if client_job is not None and client_job[1] == "cancel":
+                result = self.server.runtime.cancel_client_analysis_job(client_job[0])
+                self._send_json(HTTPStatus.OK, result)
+                return
+            if client_job is not None and client_job[1] == "retry":
+                result = self.server.runtime.retry_client_analysis_job(client_job[0])
+                self._send_json(HTTPStatus.ACCEPTED, result)
                 return
             if path == "/api/client/explain":
                 result = self.server.runtime.explain_client(body.get("analysis", {}))
@@ -801,3 +888,16 @@ def serve_dashboard(*, port: int = 8765, open_browser: bool = True) -> None:
         print("\n控制台已停止。")
     finally:
         server.server_close()
+
+
+def _match_client_job_path(path: str) -> tuple[str, str] | None:
+    prefix = "/api/client/jobs/"
+    if not path.startswith(prefix):
+        return None
+    remainder = path[len(prefix):].strip("/")
+    parts = remainder.split("/") if remainder else []
+    if len(parts) == 1 and parts[0]:
+        return parts[0], "status"
+    if len(parts) == 2 and parts[0] and parts[1] in {"result", "cancel", "retry"}:
+        return parts[0], parts[1]
+    return None

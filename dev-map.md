@@ -34,6 +34,7 @@
 | Macro Specialist | `MacroAnalysisRuntime.run(query)`、`run_graph_node(state)` | B1 指数/资金/宏观/研报 dataset、确定性 Regime 与风险偏好引擎、认知 Loop、三层 Harness | `demo_macro_analysis.py`、`test_macro_analysis_runtime.py` |
 | Combined Analysis | `CombinedAnalysisRuntime.run(query)`、`run_graph_node(state)` | Planner、四 Specialist 并行 Graph 波次、报告/证据/来源/Loop 汇总和联合层 Schema 校验 | `demo_combined_analysis.py`、`test_combined_analysis.py`、`docs/combined-analysis.md` |
 | Structured Debate | `StructuredDebateRuntime.run(query)`、`run_graph_node(state)` | 2–3 轮 Claim → Evidence → Reasoning、证据路径/来源/as_of 校验和双方证据平衡检查 | `demo_combined_analysis.py`、`test_structured_debate.py`、`docs/combined-analysis.md` |
+| Dynamic Debate Evaluation | `DynamicDebateEvaluationRuntime.run(dataset)` | 固定底稿重复运行、模板/动态对照、八类统计、逐次原始结果和真实模型边界 | `demo_dynamic_debate_evaluation.py`、`test_dynamic_debate_evaluation.py`、`docs/dynamic-debate-evaluation.md` |
 | C1 Decision | `C1DecisionRuntime.run(query)`、`run_graph_node(state)` | 四路加权 Synthesis、Bull/Bear 研究边界、目标区间、置信度、Consistency/Bias 和 Market Regime 门控 | `demo_combined_analysis.py`、`test_c1_decision.py`、`docs/combined-analysis.md` |
 | Trader | `TraderRuntime.run(query)`、`run_graph_node(state)` | C1 输入校验、buy/sell/hold 模拟候选、目标区间/来源传递、Harness 重算和禁止创建订单 | `demo_trader.py`、`test_trader_runtime.py`、`docs/trader.md` |
 | Risk Manager | `RiskManagerRuntime.run(query)`、`run_graph_node(state)` | 2% 单笔风险、30% 行业上限、15% 回撤、时段、Regime、流动性、止损止盈和人工确认 | `demo_c2_trading.py`、`test_risk_manager.py`、`docs/risk-manager.md` |

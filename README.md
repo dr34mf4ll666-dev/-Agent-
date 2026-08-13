@@ -20,6 +20,8 @@ D:\Anaconda\python.exe Scripts\run_dashboard.py
 
 运行后浏览器会打开 `http://127.0.0.1:8765/`，这里是面向客户的证券分析应用。股票池提供 20 只已经通过真实批量链路验证的沪深银行股；选择股票和数据版本后，页面直接展示 K 线、综合观点、四维“研究天平”、技术/基本面/行业/宏观解释、支持与风险因素、研究价格区间及智能解读，不要求客户理解 Graph、Harness 或命令行。平安银行同时支持可复现快照和最新数据，其余 19 只股票只使用最新只读数据，页面会自动切换并禁用不适用的快照选项。
 
+分析请求现在由已完成的 P1 任务中心在后台执行。页面先得到任务编号，再显示四个 Specialist、C1 辩论与综合、Trader、条件路由、Risk Manager、Finalize、图表和报告共 17 个真实节点；可以安全停止，失败后只重试未完成节点。任务和成功报告使用 JSON 原子保存，Specialist/C3 使用两层 Checkpoint，普通刷新和服务重启后均可继续；单任务总时限为 180 秒，迟到结果不会覆盖超时结论。完整说明见 [`docs/analysis-jobs.md`](docs/analysis-jobs.md)。
+
 #### 第一次使用怎么选
 
 1. 想快速看成果：选择“平安银行 → 已验证快照”，无需联网，结果稳定。
@@ -31,7 +33,7 @@ D:\Anaconda\python.exe Scripts\run_dashboard.py
 
 #### 最新数据的验证结果与降级边界
 
-2026-08-13 使用客户网页相同的完整真实链路逐只复验股票池，结果为 **20 只通过、0 只失败**。每只股票均返回 60 根 K 线、技术/基本面/行业/宏观四个维度、12 类来源、综合结论和关闭真实交易的安全字段。完整自动化回归为 307 项通过。
+2026-08-13 使用客户网页相同的完整真实链路逐只复验股票池，结果为 **20 只通过、0 只失败**。每只股票均返回 60 根 K 线、技术/基本面/行业/宏观四个维度、12 类来源、综合结论和关闭真实交易的安全字段。包含完整 P1 节点进度、Checkpoint 重试、总超时和重启恢复在内的自动化回归为 324 项通过。
 
 外部接口仍可能受网络、限流和数据源维护影响。项目对已知波动采用明确的安全处理：
 
@@ -40,11 +42,28 @@ D:\Anaconda\python.exe Scripts\run_dashboard.py
 - 其他关键数据缺失、来源不完整或确定性复算不一致时仍会拒绝报告，不用一份看似完整但不可验证的结果掩盖错误。
 - 真实数据冷启动实测单只约 16–63 秒；同日缓存命中后通常更快。这里是外部数据链耗时，不是 DeepSeek 推理时间。
 
-团队演示和工程验收页面保留在 `http://127.0.0.1:8765/admin`。它把 A 平台底座、B 金融数据与四类 Agent、C 联合决策与风控、D 回测与工程验收放在同一条执行轨道中，提供 18 个可操作入口、结果摘要和完整 trace。
+团队演示和工程验收页面保留在 `http://127.0.0.1:8765/admin`。它把 A 平台底座、B 金融数据与四类 Agent、C 联合决策与风控、D 回测与工程验收放在同一条执行轨道中，提供 19 个可操作入口、结果摘要和完整 trace。其中“C1+ · 动态辩论量化评测”可以直观看到固定模板与动态辩论的八类指标和逐次原始结果。
 
 如果启动时输入 Key，或当前 PowerShell 已能读取 `DEEPSEEK_API_KEY`，客户前台会使用 DeepSeek 把确定性结果解释成通俗中文，后台助手也会基于当前结果推荐下一项功能；没有 Key 时两处都会使用本地安全解释。模型不能修改指标、仓位和风控，不能自动执行动作，也不能创建真实订单。客户前台说明见 [`docs/client-app.md`](docs/client-app.md)，团队后台说明见 [`docs/control-desk.md`](docs/control-desk.md)。
 
 客户前台还提供手动“生成动态多空解读”：DeepSeek 只能从四个 Agent 的编号化证据目录选择引用并改写论证语言，后端会重新核对证据路径、数值、来源、时间、双方覆盖和违规表达；不合规或未配置 Key 时自动退回固定辩论。该功能不会修改综合分数、价格区间、仓位或风控。
+
+### 动态辩论补强评测
+
+先离线验证评测链路和统计方法，不联网也不生成文件：
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py
+```
+
+再用真实 DeepSeek 运行相同固定评测集。命令会隐藏询问 Key；只有显式添加 `--output` 才保存包含逐次结果的 JSON：
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py --live
+D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py --live --output .runtime\evaluations\dynamic-debate-live.json
+```
+
+安装项目后等价入口为 `agent-platform debate-eval`。评测固定重复运行 2 轮和 3 轮辩论，输出证据有效率、观点多样性、正反平衡率、重试率、降级率、平均耗时、Token 成本和结果稳定性。离线 Mock 只验证链路，不能替代真实模型质量结论。完整口径见 [`docs/dynamic-debate-evaluation.md`](docs/dynamic-debate-evaluation.md)。
 
 安装项目后也可以运行：
 

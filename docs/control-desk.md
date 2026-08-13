@@ -22,12 +22,14 @@ D:\Anaconda\python.exe Scripts\run_dashboard.py
 
 - A：Harness、Graph、Loop/记忆、Model Gateway 和非金融研究；
 - B：金融 Data Hub，以及技术、基本面、行业和宏观四类 Agent；
-- C：四 Agent 联合研究、Trader、Risk Manager 和完整金融 Graph；
+- C：四 Agent 联合研究、动态辩论量化评测、Trader、Risk Manager 和完整金融 Graph；
 - D：回测、工业 Harness、量化对照实验、本地模拟交易和最终交付验收。
 
 中间区域显示当前阶段的功能卡。选择“离线复现”时使用项目固定样本，结果稳定，适合答辩；选择“真实数据 / 模型”时，只有标明支持的功能可以运行，可能需要网络、Tushare Token 或 DeepSeek Key。
 
 运行完成后，页面底部先展示核心摘要，再通过“展开完整运行记录”保留原始输出和 trace。客户不需要进入这里；它专门保留工程验收证据。
+
+“C1+ · 动态辩论量化评测”默认运行固定 Mock，因此可以立即看到证据有效率、观点多样性、正反平衡、重试、降级、耗时、Token 和稳定性。选择“真实数据 / 模型”后，它会在当前服务已经配置 Key 时调用 DeepSeek；后台不会再次弹出 Key 输入，也不会默认生成结果文件。
 
 ## 4. DeepSeek 如何接入
 

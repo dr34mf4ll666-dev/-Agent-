@@ -1,6 +1,7 @@
 import json
 import sys
 import threading
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -73,7 +74,8 @@ class DashboardRuntimeTests(unittest.TestCase):
         overview = self.runtime.overview()
 
         self.assertEqual([stage["id"] for stage in overview["stages"]], ["A", "B", "C", "D"])
-        self.assertGreaterEqual(len(overview["actions"]), 18)
+        self.assertGreaterEqual(len(overview["actions"]), 19)
+        self.assertIn("c1_debate_eval", {item["id"] for item in overview["actions"]})
         self.assertEqual({item["stage"] for item in overview["actions"]}, {"A", "B", "C", "D"})
         self.assertFalse(overview["safety"]["real_trading_allowed"])
         self.assertFalse(overview["safety"]["order_created"])
@@ -108,6 +110,11 @@ class DashboardRuntimeTests(unittest.TestCase):
 
         command = self.runner.calls[0][0]
         self.assertEqual(command[2:], ("--live", "--provider", "deepseek"))
+
+        self.runner.calls.clear()
+        self.runtime.run_action("c1_debate_eval", mode="live")
+        command = self.runner.calls[0][0]
+        self.assertEqual(command[2:], ("--live", "--no-key-prompt"))
 
     def test_unknown_action_and_unsupported_live_mode_are_rejected(self):
         with self.assertRaises(DashboardError):
@@ -184,12 +191,33 @@ class DashboardHTTPTests(unittest.TestCase):
 
     def test_customer_analysis_and_explanation_are_visible_through_http(self):
         analyze = Request(
-            f"{self.base_url}/api/client/analyze",
+            f"{self.base_url}/api/client/jobs",
             method="POST",
             headers={"Content-Type": "application/json"},
             data=json.dumps({"symbol": "sz000001", "mode": "offline"}).encode("utf-8"),
         )
-        with urlopen(analyze, timeout=20) as response:
+        with urlopen(analyze, timeout=5) as response:
+            job = json.loads(response.read().decode("utf-8"))
+            self.assertEqual(response.status, 202)
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            with urlopen(f"{self.base_url}/api/client/jobs/{job['job_id']}", timeout=5) as response:
+                status = json.loads(response.read().decode("utf-8"))
+            if status["status"] in {"succeeded", "failed", "cancelled"}:
+                break
+            time.sleep(0.05)
+        self.assertEqual(status["status"], "succeeded", status)
+        self.assertEqual(status["progress"]["percent"], 100)
+        self.assertEqual(status["progress"]["total"], 17)
+        self.assertEqual(
+            {stage["id"] for stage in status["progress"]["stages"] if stage["status"] == "completed"},
+            {"c1_research", "planner", "technical", "fundamental", "industry", "macro", "aggregate", "c1_debate", "c1_quality", "c1_synthesis", "trader", "market_route", "risk_manager", "finalize", "chart", "report"},
+        )
+        self.assertEqual(
+            next(stage for stage in status["progress"]["stages"] if stage["id"] == "market_bearish_skip")["status"],
+            "skipped",
+        )
+        with urlopen(f"{self.base_url}/api/client/jobs/{job['job_id']}/result", timeout=5) as response:
             analysis = json.loads(response.read().decode("utf-8"))
         explain = Request(
             f"{self.base_url}/api/client/explain",
@@ -265,6 +293,9 @@ class DashboardAssetTests(unittest.TestCase):
         self.assertIn('id="balance-chart"', client_html)
         self.assertIn('id="dynamic-debate-button"', client_html)
         self.assertIn('id="dynamic-debate-rounds"', client_html)
+        self.assertIn('id="job-progress"', client_html)
+        self.assertIn('id="cancel-analysis-button"', client_html)
+        self.assertIn('id="retry-job-button"', client_html)
         self.assertIn(".balance-zero-line", client_css)
         self.assertIn('api("/api/overview")', javascript)
         self.assertIn('clientApi("/api/client/overview")', client_javascript)
@@ -272,6 +303,11 @@ class DashboardAssetTests(unittest.TestCase):
         self.assertIn("renderResearchBalance", client_javascript)
         self.assertIn("localizeDebateText", client_javascript)
         self.assertIn('clientApi("/api/client/debate"', client_javascript)
+        self.assertIn('clientApi("/api/client/jobs"', client_javascript)
+        self.assertIn("followAnalysisJob", client_javascript)
+        self.assertIn("retryAnalysisJob", client_javascript)
+        self.assertIn("只重试失败步骤", client_html)
+        self.assertIn(".job-stage", client_css)
 
 
 if __name__ == "__main__":

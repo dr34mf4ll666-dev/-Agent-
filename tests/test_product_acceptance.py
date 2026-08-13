@@ -58,7 +58,14 @@ class ProductAcceptanceTests(unittest.TestCase):
         self.assertTrue(value["client_app"]["checks"]["客户股票池覆盖沪深两市"])
         self.assertTrue(value["client_app"]["checks"]["四维观点已有直观图形"])
         self.assertTrue(value["client_app"]["checks"]["受约束动态多空辩论入口存在"])
+        self.assertTrue(
+            value["client_app"]["checks"]["异步分析任务和客户进度入口存在"]
+        )
         self.assertTrue(value["admin_console"]["passed"])
+        self.assertTrue(
+            value["admin_console"]["checks"]["动态辩论固定评测入口存在"]
+        )
+        self.assertGreaterEqual(value["admin_console"]["action_count"], 19)
         self.assertTrue(value["model_assistance"]["passed"])
         self.assertTrue(
             value["model_assistance"]["checks"]["启动命令支持隐藏输入DeepSeek Key"]
