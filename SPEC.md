@@ -9,13 +9,15 @@
 - 输出结构化、数据可追溯、行为可约束、过程可审计；
 - 在不接入真实下单的前提下完成分析、风控、模拟执行和回测。
 
-## 2. 当前小功能：P2 统一分析快照与数据源健康（已完成）
+## 2. 当前小功能：P3 SQLite 持久化与历史报告（已完成）
 
 客户股票分析不再要求一个 HTTP 请求同步等待完整 C3。`AnalysisJobRuntime` 通过 `submit/get/retry/cancel/result` 五个稳定 interface 隐藏本地 Worker、状态、容量、180 秒总超时、JSON 原子存储、错误归一化和协作取消；Web 使用任务编号轮询真实进度，成功后再读取报告。任务未成功时禁止读取结果，运行中取消只在安全进度点生效，不返回半份报告。
 
-P2 新增不可变 `AnalysisSnapshot` 与 `AnalysisSnapshotRuntime.acquire(query)`。一次客户分析先去重并冻结 14 类数据请求，四个 Specialist、C3、K 线和最终报告通过只读快照工具消费同一份数据并引用同一 `snapshot_id`。数据源策略统一记录主源、备用源、Data Hub 新鲜缓存、最近可追溯缓存和 `not_available`；关键数据所有来源失败时拒绝报告，非关键数据允许现有确定性降级。P1 重试和服务重启恢复会加载原 Checkpoint 快照，不重新抓一批数据。完整说明见 `docs/analysis-snapshot.md`。
+P2 新增不可变 `AnalysisSnapshot` 与 `AnalysisSnapshotRuntime.acquire(query)`。一次客户分析先去重并冻结 14 类数据请求，四个 Specialist、C3、K 线和最终报告通过只读快照工具消费同一份数据并引用同一 `snapshot_id`。P1 重试和服务重启恢复会加载原 Checkpoint 快照，不重新抓一批数据。
 
-明确不做：不在 P2 实现 SQLite 历史、报告搜索和迁移（属于 P3）；不实现普通版/专业版（属于 P4）；不把浏览器变成数据拼接者；不让 LLM 修改快照、指标或风控。
+P3 在此基础上定义 `AnalysisRepository`，正式环境使用显式 `user_version` 迁移的 SQLite adapter，测试使用内存 adapter。成功任务会在公开 `succeeded` 状态前，用同一事务保存任务、完整快照、四 Agent 结果、Specialist/C3 Graph、冻结客户报告和报告版本；DeepSeek/本地解读及动态辩论只保存模型、Token、耗时和状态，不保存 Prompt 或 Key。客户页新增“最近分析”，重开历史报告不会重新取数或运行 Graph。完整说明见 `docs/analysis-history.md`。
+
+明确不做：P3 不实现普通版/专业版和互动图表（属于 P4），不做历史对比/收藏/导出（属于 P6），不让浏览器拼接业务事实，不让 LLM 修改冻结报告。P1 JSON 继续负责执行中任务恢复，SQLite 不承担队列职责。
 
 ### 并行保留的增强：受约束动态大模型辩论
 
@@ -245,4 +247,4 @@ python -m unittest discover -s tests -v
 
 ## 12. 下一步
 
-当前 A–D 正式任务、P1 异步任务和 P2 统一快照均已完成。下一项产品化主线是 P3 SQLite 持久化与历史报告；它在 P1 执行恢复和 P2 数据一致性之上补长期保存、迁移、检索和报告比较，不回改正式任务完成状态。
+当前 A–D 正式任务与 P1–P3 均已完成。下一项产品化主线是 P4 普通版/专业版、专业图表和证据下钻；两种视图必须读取 P3 的同一冻结报告，不重新取数、不重新运行 Graph，也不产生额外 Token。

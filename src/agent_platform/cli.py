@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from .d2_engineering import D2EngineeringRuntime
-from .dashboard import serve_dashboard
+from .dashboard import DashboardError, serve_dashboard
 from .dashboard_startup import configure_deepseek_for_dashboard
 from .final_delivery import FinalDeliveryRuntime
 from .finance import DynamicDebateEvaluationRuntime, print_dynamic_debate_evaluation
@@ -74,7 +74,11 @@ def main(argv: list[str] | None = None) -> int:
             interactive=sys.stdin.isatty(),
         )
         print(selection.message)
-        serve_dashboard(port=args.port, open_browser=not args.no_browser)
+        try:
+            serve_dashboard(port=args.port, open_browser=not args.no_browser)
+        except DashboardError as error:
+            print(f"启动失败: {error}", file=sys.stderr)
+            return 2
         return 0
     if args.command == "verify-all":
         try:

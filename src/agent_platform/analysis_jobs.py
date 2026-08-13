@@ -13,10 +13,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Lock, Timer
 from typing import Any, Protocol
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 from zoneinfo import ZoneInfo
 
 from .client_app import ClientAnalysisRequest, ClientAnalysisResult, ClientAnalysisRuntime
+from .analysis_repository import AnalysisArchive, AnalysisRepository, AnalysisRepositoryError
 
 
 class AnalysisJobError(ValueError):
@@ -122,6 +123,7 @@ class AnalysisJobRuntime:
         timeout_seconds: float = 180.0,
         storage_path: str | Path | None = None,
         checkpoint_root: str | Path | None = None,
+        repository: AnalysisRepository | None = None,
         now: Callable[[], datetime] | None = None,
     ) -> None:
         if isinstance(max_workers, bool) or not isinstance(max_workers, int) or max_workers < 1:
@@ -136,6 +138,7 @@ class AnalysisJobRuntime:
         self._timeout_seconds = float(timeout_seconds)
         self._storage_path = Path(storage_path).resolve() if storage_path is not None else None
         self._checkpoint_root = Path(checkpoint_root).resolve() if checkpoint_root is not None else None
+        self._repository = repository
         self._now = now or (lambda: datetime.now(ZoneInfo("Asia/Shanghai")))
         self._jobs: OrderedDict[str, _JobRecord] = OrderedDict()
         self._lock = Lock()
@@ -215,6 +218,30 @@ class AnalysisJobRuntime:
                 raise AnalysisJobError(f"分析任务尚无可用结果，当前状态为 {record.status}。")
             return record.result
 
+    def delete_completed(self, job_id: str) -> bool:
+        """Remove one completed job and its exact checkpoint directory."""
+        with self._lock:
+            record = self._jobs.get(job_id)
+            if record is None:
+                return False
+            if record.status not in _TERMINAL:
+                raise AnalysisJobError("运行中的分析任务不能删除。")
+            del self._jobs[job_id]
+            self._persist_locked()
+        checkpoint_dir = (
+            None if self._checkpoint_root is None else self._checkpoint_root / job_id
+        )
+        if checkpoint_dir is not None and checkpoint_dir.exists():
+            try:
+                resolved = checkpoint_dir.resolve()
+                root = self._checkpoint_root.resolve()
+                if resolved.parent != root:
+                    raise AnalysisJobError("拒绝删除检查点目录之外的路径。")
+                shutil.rmtree(resolved)
+            except OSError as error:
+                raise AnalysisJobError(f"历史报告已删除，但无法清理任务检查点: {error}") from error
+        return True
+
     def close(self, *, wait: bool = True) -> None:
         with self._lock:
             self._persist_locked()
@@ -263,14 +290,24 @@ class AnalysisJobRuntime:
                 if record.cancel_requested:
                     self._finish_cancelled(record)
                 else:
+                    finished_at = self._timestamp()
+                    final_stages = deepcopy(record.stages)
+                    for stage in final_stages:
+                        if stage["status"] == "pending":
+                            stage["status"] = "skipped"
+                            stage["finished_at"] = finished_at
+                    result = self._archive_result(
+                        record,
+                        result,
+                        checkpoint_dir=checkpoint_dir,
+                        stages=final_stages,
+                        archived_at=finished_at,
+                    )
                     record.result = result
                     record.status = "succeeded"
                     record.resume = False
-                    record.updated_at = self._timestamp()
-                    for stage in record.stages:
-                        if stage["status"] == "pending":
-                            stage["status"] = "skipped"
-                            stage["finished_at"] = record.updated_at
+                    record.updated_at = finished_at
+                    record.stages = final_stages
                 self._persist_locked()
         except _AnalysisCancelled:
             with self._lock:
@@ -300,6 +337,81 @@ class AnalysisJobRuntime:
         finally:
             if timer is not None:
                 timer.cancel()
+
+    def _archive_result(
+        self,
+        record: _JobRecord,
+        result: ClientAnalysisResult,
+        *,
+        checkpoint_dir: Path | None,
+        stages: list[dict[str, Any]],
+        archived_at: str,
+    ) -> ClientAnalysisResult:
+        if self._repository is None:
+            return result
+        report_id = uuid5(NAMESPACE_URL, f"agent-platform:analysis:{record.job_id}").hex
+        value = result.to_mapping()
+        value["report_id"] = report_id
+        value["report_version"] = 1
+        snapshot = self._checkpoint_json(checkpoint_dir, "analysis-snapshot.json")
+        if snapshot is None:
+            candidate = value.get("data", {}).get("snapshot")
+            snapshot = dict(candidate) if isinstance(candidate, Mapping) else None
+        graphs: dict[str, Any] = {"task_progress": {"stages": deepcopy(stages)}}
+        for name, filename in (
+            ("specialist", "specialist-graph.json"),
+            ("financial", "c3-graph.json"),
+        ):
+            graph = self._checkpoint_json(checkpoint_dir, filename)
+            if graph is not None:
+                graphs[name] = graph
+        context = result.debate_context
+        reports = context.get("reports", {}) if isinstance(context, Mapping) else {}
+        agents = dict(reports) if isinstance(reports, Mapping) else {}
+        task = {
+            "job_id": record.job_id,
+            "status": "succeeded",
+            "request": {"symbol": record.request.symbol, "mode": record.request.mode},
+            "created_at": record.created_at,
+            "updated_at": archived_at,
+            "retry_count": record.retry_count,
+            "recovered": record.recovered,
+            "generation": record.generation,
+            "stages": deepcopy(stages),
+        }
+        self._repository.archive(
+            AnalysisArchive(
+                report_id=report_id,
+                report_version=1,
+                job_id=record.job_id,
+                symbol=record.request.symbol,
+                mode=record.request.mode,
+                created_at=record.created_at,
+                archived_at=archived_at,
+                task=task,
+                result=value,
+                debate_context=context,
+                snapshot=snapshot,
+                agents=agents,
+                graphs=graphs,
+            )
+        )
+        return ClientAnalysisResult(value, debate_context=context)
+
+    @staticmethod
+    def _checkpoint_json(checkpoint_dir: Path | None, filename: str) -> dict[str, Any] | None:
+        if checkpoint_dir is None:
+            return None
+        path = checkpoint_dir / filename
+        if not path.exists():
+            return None
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise AnalysisRepositoryError(f"无法归档 {filename}: {error}") from error
+        if not isinstance(value, dict):
+            raise AnalysisRepositoryError(f"无法归档 {filename}: 顶层必须是对象")
+        return value
 
     def _update_stage(self, job_id: str, generation: int, stage_id: str, status: str, attempt: int, detail: str) -> None:
         allowed = {"running", "completed", "failed", "skipped", "retrying"}

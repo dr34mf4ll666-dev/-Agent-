@@ -23,6 +23,7 @@ from agent_platform.dashboard import (  # noqa: E402
     create_server,
 )
 from agent_platform.client_app import LocalMarketAssistant  # noqa: E402
+from agent_platform.analysis_repository import InMemoryAnalysisRepository  # noqa: E402
 
 
 class _FakeRunner:
@@ -68,6 +69,7 @@ class DashboardRuntimeTests(unittest.TestCase):
             command_runner=self.runner,
             assistant=LocalProjectAssistant(),
             market_assistant=LocalMarketAssistant(),
+            analysis_repository=InMemoryAnalysisRepository(),
         )
 
     def test_overview_unifies_every_stage_and_keeps_trading_disabled(self):
@@ -92,6 +94,27 @@ class DashboardRuntimeTests(unittest.TestCase):
             next(item for item in overview["securities"] if item["symbol"] == "sh600000")["modes"],
             ["live"],
         )
+
+    def test_history_interface_reopens_the_same_frozen_report(self):
+        job = self.runtime.submit_client_analysis({"symbol": "sz000001", "mode": "offline"})
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            status = self.runtime.get_client_analysis_job(job["job_id"])
+            if status["status"] in {"succeeded", "failed"}:
+                break
+            time.sleep(0.02)
+        self.assertEqual(status["status"], "succeeded", status)
+        current = self.runtime.get_client_analysis_result(job["job_id"])
+        self.runtime.explain_client(current)
+
+        history = self.runtime.list_client_analysis_history()
+        reopened = self.runtime.get_client_historical_report(current["report_id"])
+
+        self.assertEqual(history["reports"][0]["report_id"], current["report_id"])
+        self.assertEqual(reopened["data"]["snapshot_id"], current["data"]["snapshot_id"])
+        self.assertEqual(reopened["verdict"], current["verdict"])
+        self.assertEqual(reopened["history"]["task_status"], "succeeded")
+        self.assertEqual(reopened["history"]["explanation"]["provider"], "local")
 
     def test_run_action_uses_only_allowlisted_script_and_extracts_summary(self):
         result = self.runtime.run_action("a4_model")
@@ -160,6 +183,7 @@ class DashboardHTTPTests(unittest.TestCase):
             command_runner=_FakeRunner(),
             assistant=LocalProjectAssistant(),
             market_assistant=LocalMarketAssistant(),
+            analysis_repository=InMemoryAnalysisRepository(),
         )
         cls.server = create_server(port=0, runtime=runtime)
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
@@ -271,6 +295,62 @@ class DashboardHTTPTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.code, 400)
 
+    def test_history_delete_requires_confirmation_and_removes_report(self):
+        analyze = Request(
+            f"{self.base_url}/api/client/jobs", method="POST",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps({"symbol": "sz000001", "mode": "offline"}).encode("utf-8"),
+        )
+        with urlopen(analyze, timeout=5) as response:
+            job = json.loads(response.read().decode("utf-8"))
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            with urlopen(f"{self.base_url}/api/client/jobs/{job['job_id']}", timeout=5) as response:
+                status = json.loads(response.read().decode("utf-8"))
+            if status["status"] == "succeeded":
+                break
+            time.sleep(0.05)
+        with urlopen(f"{self.base_url}/api/client/jobs/{job['job_id']}/result", timeout=5) as response:
+            report = json.loads(response.read().decode("utf-8"))
+
+        unconfirmed = Request(
+            f"{self.base_url}/api/client/reports/{report['report_id']}", method="DELETE"
+        )
+        with self.assertRaises(HTTPError) as raised:
+            urlopen(unconfirmed, timeout=2)
+        self.assertEqual(raised.exception.code, 400)
+
+        confirmed = Request(
+            f"{self.base_url}/api/client/reports/{report['report_id']}", method="DELETE",
+            headers={"X-Confirm-Delete": "delete-one"},
+        )
+        with urlopen(confirmed, timeout=2) as response:
+            deleted = json.loads(response.read().decode("utf-8"))
+        with urlopen(f"{self.base_url}/api/client/history", timeout=2) as response:
+            history = json.loads(response.read().decode("utf-8"))
+
+        self.assertEqual(deleted["status"], "deleted")
+        self.assertNotIn(report["report_id"], {item["report_id"] for item in history["reports"]})
+
+    def test_clear_history_requires_distinct_confirmation(self):
+        unconfirmed = Request(f"{self.base_url}/api/client/history", method="DELETE")
+        with self.assertRaises(HTTPError) as raised:
+            urlopen(unconfirmed, timeout=2)
+        self.assertEqual(raised.exception.code, 400)
+
+        confirmed = Request(
+            f"{self.base_url}/api/client/history", method="DELETE",
+            headers={"X-Confirm-Delete": "clear-all"},
+        )
+        with urlopen(confirmed, timeout=2) as response:
+            result = json.loads(response.read().decode("utf-8"))
+
+        self.assertEqual(result["status"], "cleared")
+
+    def test_second_dashboard_on_same_port_is_rejected_clearly(self):
+        with self.assertRaisesRegex(DashboardError, "已有后台在运行"):
+            create_server(port=self.server.server_port, runtime=self.server.runtime)
+
 
 class DashboardAssetTests(unittest.TestCase):
     def test_frontend_assets_are_present_and_do_not_use_external_dependencies(self):
@@ -294,6 +374,13 @@ class DashboardAssetTests(unittest.TestCase):
         self.assertIn('id="dynamic-debate-button"', client_html)
         self.assertIn('id="dynamic-debate-rounds"', client_html)
         self.assertIn('id="job-progress"', client_html)
+        self.assertIn('id="clear-history-button"', client_html)
+        self.assertIn('id="history-confirm"', client_html)
+        self.assertIn("X-Confirm-Delete", client_javascript)
+        self.assertIn("当前运行的是旧版后台", client_javascript)
+        self.assertNotIn("服务返回了无法识别的内容", client_javascript)
+        self.assertNotIn("if (!existing) return runClientAnalysis()", client_javascript)
+        self.assertIn('if (!existing) {', client_javascript)
         self.assertIn('id="cancel-analysis-button"', client_html)
         self.assertIn('id="retry-job-button"', client_html)
         self.assertIn('id="snapshot-health"', client_html)

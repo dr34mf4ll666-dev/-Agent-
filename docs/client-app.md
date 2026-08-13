@@ -24,10 +24,13 @@ http://127.0.0.1:8765/
 - 研究价格区间、预计单笔风险、收益风险比和风控状态；
 - DeepSeek 或本地安全解释生成的通俗说明。
 - 本次分析统一使用的 `snapshot_id`、统一数据时点，以及每类数据的主源、备用源、缓存或缺失状态。
+- “最近分析”历史卡片，以及当时任务状态、数据版本和报告版本；点击可重新打开冻结报告，也可经二次确认删除单条或清空全部历史。
 
 页面只展示 C3 完整金融 Graph 已经产出的结构化结果。它不是另一套独立分析逻辑，因此客户看到的分数、价格区间和风险边界与后台验收使用同一数据来源。
 
 P2 会先冻结 14 类唯一数据请求，再让四个 Agent、C3 Graph、K 线和最终报告消费同一快照。页面的“统一数据快照”区域让客户直接看到本次来源健康；Graph 完成后不再为图表重复抓日线。失败重试和服务重启恢复会继续使用原快照，不把新旧两批数据拼进同一报告。
+
+P3 在任务成功前把这份冻结结果原子写入 SQLite。页面重新打开历史卡片时只读取数据库里的同一份报告、同一个 `report_id` 和 `snapshot_id`，不会重新访问外部数据源、重新执行 Graph 或改变结论。DeepSeek 解读只追加模型、Token 和耗时元数据，不保存 Key 或 Prompt。
 
 ## 3. 两种数据版本
 
@@ -67,6 +70,7 @@ real_trading_allowed=false
 
 ```powershell
 D:\Anaconda\python.exe -m unittest tests.test_client_app tests.test_dashboard -v
+D:\Anaconda\python.exe Scripts\demo_analysis_history.py
 ```
 
 完整产品验收：

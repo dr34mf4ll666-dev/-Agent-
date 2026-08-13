@@ -24,8 +24,11 @@ D:\Anaconda\python.exe Scripts\run_dashboard.py
 
 P2 统一分析快照也已完成。一次分析会先冻结 14 类唯一数据请求，并生成 `snapshot_id`；四个 Agent、C3 Graph、K 线和最终报告都只消费这份快照，图表不再重复抓取日线。客户页面直接显示统一数据时点和每类数据的真实主源、备用源、新鲜/历史缓存、验证快照或暂不可用状态。失败重试和服务重启恢复继续使用原快照。完整说明与验收见 [`docs/analysis-snapshot.md`](docs/analysis-snapshot.md)。
 
+P3 SQLite 历史也已完成。每次成功分析都会原子保存任务、冻结快照、四个 Agent、两层 Graph、模型调用元数据和报告版本；首页“最近分析”可以重新打开当时报告，不重新取数或运行 Agent，也支持二次确认后的单条删除和清空历史。普通打开页面不会自动创建分析，只有点击“开始分析”才新增报告；未完成任务仍会自动续跑。删除会级联清理关联数据库记录、已完成任务和 Checkpoint。P1 JSON 继续负责正在执行的任务恢复，P3 SQLite 负责长期历史，两者职责分开。数据库损坏、写入中断、并发写入、版本迁移和敏感 Key 均有专项门禁。完整说明见 [`docs/analysis-history.md`](docs/analysis-history.md)。
+
 ```powershell
 D:\Anaconda\python.exe Scripts\demo_analysis_snapshot.py
+D:\Anaconda\python.exe Scripts\demo_analysis_history.py
 ```
 
 #### 第一次使用怎么选

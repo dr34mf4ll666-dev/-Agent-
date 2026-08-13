@@ -12,6 +12,10 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from agent_platform.analysis_jobs import AnalysisJobError, AnalysisJobRuntime  # noqa: E402
 from agent_platform.client_app import ClientAnalysisRequest, ClientAnalysisResult  # noqa: E402
+from agent_platform.analysis_repository import (  # noqa: E402
+    AnalysisRepositoryError,
+    InMemoryAnalysisRepository,
+)
 
 
 class _ControlledWorker:
@@ -50,6 +54,68 @@ def _wait_for(runtime, job_id, expected, timeout=2):
 
 
 class AnalysisJobRuntimeTests(unittest.TestCase):
+    def test_success_is_archived_before_job_becomes_visible(self):
+        repository = InMemoryAnalysisRepository()
+        runtime = AnalysisJobRuntime(_ControlledWorker(), max_workers=1, repository=repository)
+        self.addCleanup(runtime.close)
+
+        submitted = runtime.submit(ClientAnalysisRequest())
+        completed = _wait_for(runtime, submitted["job_id"], {"succeeded"})
+        result = runtime.result(submitted["job_id"]).to_mapping()
+
+        self.assertEqual(result["report_version"], 1)
+        self.assertEqual(len(result["report_id"]), 32)
+        self.assertEqual(repository.list_reports()[0]["job_id"], completed["job_id"])
+
+    def test_repository_failure_keeps_job_failed_and_exposes_no_result(self):
+        class _FailingRepository(InMemoryAnalysisRepository):
+            def archive(self, value):
+                raise AnalysisRepositoryError("injected database failure")
+
+        runtime = AnalysisJobRuntime(_ControlledWorker(), max_workers=1, repository=_FailingRepository())
+        self.addCleanup(runtime.close)
+        submitted = runtime.submit(ClientAnalysisRequest())
+
+        failed = _wait_for(runtime, submitted["job_id"], {"failed"})
+
+        self.assertIn("database failure", failed["error"]["message"])
+        with self.assertRaisesRegex(AnalysisJobError, "尚无可用结果"):
+            runtime.result(submitted["job_id"])
+
+    def test_delete_completed_removes_job_json_and_checkpoint(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            runtime = AnalysisJobRuntime(
+                _ControlledWorker(), max_workers=1,
+                storage_path=root / "jobs.json", checkpoint_root=root / "checkpoints",
+            )
+            self.addCleanup(runtime.close)
+            submitted = runtime.submit(ClientAnalysisRequest())
+            _wait_for(runtime, submitted["job_id"], {"succeeded"})
+            checkpoint = root / "checkpoints" / submitted["job_id"] / "0"
+            checkpoint.mkdir(parents=True, exist_ok=True)
+            (checkpoint / "evidence.json").write_text("{}", encoding="utf-8")
+
+            removed = runtime.delete_completed(submitted["job_id"])
+
+            self.assertTrue(removed)
+            self.assertFalse(checkpoint.parent.exists())
+            payload = json.loads((root / "jobs.json").read_text(encoding="utf-8"))
+            self.assertEqual(payload["jobs"], [])
+            with self.assertRaisesRegex(AnalysisJobError, "不存在"):
+                runtime.get(submitted["job_id"])
+
+    def test_running_job_cannot_be_deleted(self):
+        worker = _ControlledWorker(wait=True)
+        runtime = AnalysisJobRuntime(worker, max_workers=1)
+        self.addCleanup(runtime.close)
+        submitted = runtime.submit(ClientAnalysisRequest())
+        self.assertTrue(worker.started.wait(timeout=1))
+
+        with self.assertRaisesRegex(AnalysisJobError, "运行中"):
+            runtime.delete_completed(submitted["job_id"])
+        worker.release.set()
+
     def test_submit_returns_job_and_success_exposes_result(self):
         runtime = AnalysisJobRuntime(_ControlledWorker(), max_workers=1)
         self.addCleanup(runtime.close)

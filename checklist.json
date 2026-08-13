@@ -2,7 +2,7 @@
   "project": "通用 Agent 平台及证券金融分析应用",
   "version": "3.0.0",
   "updated_at": "2026-08-13",
-  "current_focus": "正式任务、P1 异步任务和 P2 统一分析快照已完成；下一项为 P3 SQLite 持久化与历史报告",
+  "current_focus": "正式任务和 P1-P3 已完成；下一项为 P4 普通版/专业版、专业图表和证据下钻",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "done",
   "items": [
@@ -655,6 +655,27 @@
       ],
       "remaining": [],
       "scope_note": "日线配置Tushare真实备用源；其他数据主源失败后可使用最近可追溯缓存或明确not_available；P1恢复复用原快照，P3仍负责SQLite长期历史和迁移；真实交易保持关闭"
+    },
+    {
+      "id": "P3_ANALYSIS_HISTORY",
+      "status": "done",
+      "result": "已完成AnalysisRepository接口、SQLite与内存adapter、显式迁移、原子归档、最近分析、历史重开、单条删除/清空历史、模型调用元数据和完整性/敏感信息门禁",
+      "evidence": [
+        "src/agent_platform/analysis_repository.py",
+        "src/agent_platform/analysis_jobs.py",
+        "src/agent_platform/dashboard.py",
+        "src/agent_platform/web/client.html",
+        "src/agent_platform/web/client.css",
+        "src/agent_platform/web/client.js",
+        "Scripts/demo_analysis_history.py",
+        "tests/test_analysis_repository.py",
+        "tests/test_analysis_jobs.py",
+        "tests/test_dashboard.py",
+        "docs/analysis-history.md",
+        "docs/client-app.md"
+      ],
+      "remaining": [],
+      "scope_note": "P1 JSON/Checkpoint继续负责执行恢复；P3 SQLite只归档成功历史；重开不重新取数或运行Graph；删除需二次确认并级联清理关联归档和已完成Checkpoint；不保存Prompt、API Key、Token凭据或授权头；真实交易保持关闭"
     },
     {
       "id": "DYNAMIC_LLM_DEBATE",

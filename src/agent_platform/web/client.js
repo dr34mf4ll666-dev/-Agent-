@@ -1,12 +1,25 @@
 "use strict";
 
-const clientState = { mode: "offline", analysis: null, overview: null, running: false, jobId: null, pollTimer: null };
+const clientState = { mode: "offline", analysis: null, overview: null, running: false, jobId: null, pollTimer: null, deleteIntent: null };
 const $ = (selector) => document.querySelector(selector);
 
 async function clientApi(path, options = {}) {
-  const response = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options });
+  const response = await fetch(path, {
+    ...options,
+    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+  });
   let body;
-  try { body = await response.json(); } catch { body = { error: "服务返回了无法识别的内容。" }; }
+  const contentType = response.headers.get("Content-Type") || "";
+  if (contentType.includes("application/json")) {
+    try { body = await response.json(); } catch { body = { error: "后台返回了不完整的数据，请重试。" }; }
+  } else {
+    await response.text();
+    body = {
+      error: response.status === 501
+        ? "当前运行的是旧版后台，暂不支持删除。请关闭旧的运行窗口，重新启动项目后刷新页面。"
+        : `后台返回了非 JSON 内容 (${response.status})，请重启项目后再试。`,
+    };
+  }
   if (!response.ok) throw new Error(body.error || `请求失败 (${response.status})`);
   return body;
 }
@@ -86,7 +99,7 @@ async function followAnalysisJob(initialJob = null) {
         window.sessionStorage.removeItem("active_analysis_job"); renderAnalysis(analysis);
         $("#loading-state").hidden = true; $("#analysis").hidden = false;
         window.requestAnimationFrame(() => drawKline(analysis.data.bars)); explainAnalysis(analysis);
-        finishJobControls(); return;
+        finishJobControls(); loadRecentAnalyses(); return;
       }
       if (job.status === "failed") { finishFailedJob(job); return; }
       if (job.status === "cancelled") throw new Error("本次分析已停止，你可以重新开始。");
@@ -162,7 +175,11 @@ function finishJobWithError(message) {
 }
 async function resumeOrStartAnalysis() {
   const existing = window.sessionStorage.getItem("active_analysis_job");
-  if (!existing) return runClientAnalysis();
+  if (!existing) {
+    $("#loading-state").hidden = true;
+    $("#error-state").hidden = true;
+    return;
+  }
   clientState.jobId = existing; clientState.running = true; $("#analyze-button").disabled = true;
   syncModeAvailability();
   $("#analysis").hidden = true; $("#error-state").hidden = true; $("#loading-state").hidden = false;
@@ -170,6 +187,12 @@ async function resumeOrStartAnalysis() {
 }
 
 function renderAnalysis(data) {
+  const meta = $("#report-meta"); meta.hidden = !data.report_id;
+  if (data.report_id) {
+    setText("#report-version", `报告 v${data.report_version || 1}`);
+    setText("#report-history-state", data.history ? "已从历史记录重新打开" : "已保存到历史记录");
+    setText("#report-reference", `报告 ${data.report_id.slice(0, 8)} · 快照 ${(data.data.snapshot_id || data.data.snapshot?.snapshot_id || "未知").slice(0, 8)}`);
+  }
   setText("#security-exchange", data.security.exchange);
   setText("#security-name", data.security.name);
   setText("#security-code", data.security.code);
@@ -203,6 +226,94 @@ function renderAnalysis(data) {
   data.data.sources.forEach((source) => { const item = document.createElement("li"); item.textContent = source; sourceList.append(item); });
   const industry = data.dimensions.find((item) => item.id === "industry");
   setText("#scope-note", `${data.safety.notice} 当前演示的行业观察范围为“${industry.sample_scope}”；研究区间与置信度均不是收益预测。`);
+}
+
+async function loadRecentAnalyses() {
+  const list = $("#recent-list");
+  try {
+    const history = await clientApi("/api/client/history");
+    list.replaceChildren();
+    $("#clear-history-button").hidden = !history.reports.length;
+    if (!history.reports.length) {
+      const empty = document.createElement("p"); empty.className = "recent-empty";
+      empty.textContent = "完成一次分析后，报告会出现在这里。"; list.append(empty); return;
+    }
+    history.reports.slice(0, 8).forEach((report) => {
+      const card = document.createElement("article"); card.className = "recent-card";
+      const open = document.createElement("button"); open.type = "button"; open.className = "recent-open";
+      open.dataset.reportId = report.report_id;
+      const top = document.createElement("span");
+      const time = document.createElement("b"); time.textContent = formatDateTime(report.archived_at);
+      const status = document.createElement("i"); status.textContent = report.task_status === "succeeded" ? "已完成" : report.task_status;
+      top.append(time, status);
+      const name = document.createElement("strong"); name.textContent = `${report.name || report.symbol} · ${report.verdict || "研究报告"}`;
+      const detail = document.createElement("small");
+      detail.textContent = `${report.data_label || report.mode} · 数据 ${formatDateTime(report.as_of)} · v${report.report_version}`;
+      open.append(top, name, detail);
+      const remove = document.createElement("button"); remove.type = "button"; remove.className = "recent-delete";
+      remove.dataset.deleteReportId = report.report_id; remove.dataset.deleteReportName = report.name || report.symbol;
+      remove.setAttribute("aria-label", `删除${report.name || report.symbol}的这份历史报告`); remove.textContent = "×";
+      card.append(open, remove); list.append(card);
+    });
+  } catch (error) {
+    list.replaceChildren(); const empty = document.createElement("p"); empty.className = "recent-empty";
+    empty.textContent = `历史报告暂时不可用：${error.message}`; list.append(empty);
+  }
+}
+
+function requestHistoryDeletion(intent) {
+  clientState.deleteIntent = intent;
+  const all = intent.type === "all";
+  setText("#confirm-title", all ? "确认清空全部历史？" : "确认删除这份报告？");
+  setText(
+    "#confirm-message",
+    all
+      ? "全部历史报告、快照、Agent 结果、Graph、模型记录和已完成任务检查点都会删除，且无法恢复。"
+      : `${intent.name}的这份报告及关联数据会被永久删除，且无法恢复。`,
+  );
+  setText("#confirm-delete", all ? "确认清空" : "确认删除");
+  $("#history-confirm").hidden = false; $("#confirm-cancel").focus();
+}
+
+function closeHistoryConfirmation() {
+  clientState.deleteIntent = null; $("#history-confirm").hidden = true;
+}
+
+async function confirmHistoryDeletion() {
+  const intent = clientState.deleteIntent; if (!intent) return;
+  const button = $("#confirm-delete"); button.disabled = true;
+  try {
+    const result = await clientApi(
+      intent.type === "all" ? "/api/client/history" : `/api/client/reports/${intent.reportId}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", "X-Confirm-Delete": intent.type === "all" ? "clear-all" : "delete-one" },
+      },
+    );
+    if (intent.type === "all" || clientState.analysis?.report_id === intent.reportId) {
+      clientState.analysis = null; $("#analysis").hidden = true;
+    }
+    closeHistoryConfirmation(); await loadRecentAnalyses(); showClientToast(result.message);
+  } catch (error) { showClientToast(error.message); }
+  finally { button.disabled = false; }
+}
+
+async function openHistoricalReport(reportId) {
+  if (clientState.running) { showClientToast("当前分析仍在进行，请完成或停止后再打开历史报告。"); return; }
+  try {
+    const analysis = await clientApi(`/api/client/reports/${reportId}`);
+    clientState.analysis = analysis; renderAnalysis(analysis);
+    $("#loading-state").hidden = true; $("#error-state").hidden = true; $("#analysis").hidden = false;
+    window.requestAnimationFrame(() => drawKline(analysis.data.bars));
+    if (analysis.history?.explanation) renderExplanation(analysis.history.explanation);
+    else {
+      setText("#ai-headline", "历史报告已恢复");
+      setText("#ai-explanation", "当时的确定性分析、四维证据和风险结果均已完整恢复；这份旧报告没有保存智能解读正文。");
+      setText("#ai-risk", "为避免产生新的 Token，本次重开不会重新调用模型。");
+      setText("#ai-provider", "历史冻结报告 · 未新增模型调用");
+    }
+    $("#analysis").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) { showClientToast(error.message); }
 }
 
 function renderSnapshotHealth(snapshot) {
@@ -351,11 +462,15 @@ async function explainAnalysis(analysis) {
   setText("#ai-headline", "正在整理研究结论…"); setText("#ai-explanation", "确定性分析已经完成，正在转换成更容易理解的说明。");
   try {
     const result = await clientApi("/api/client/explain", { method: "POST", body: JSON.stringify({ analysis }) });
-    setText("#ai-headline", result.headline); setText("#ai-explanation", result.explanation); setText("#ai-risk", result.risk_note);
-    setText("#ai-provider", result.provider === "deepseek" ? `DeepSeek · ${result.model} · ${result.usage.total_tokens} tokens` : "本地安全解读 · 未调用外部模型");
+    renderExplanation(result);
   } catch (error) {
     setText("#ai-headline", "智能解读暂时不可用"); setText("#ai-explanation", "原始四维分析与风险结果仍然有效。"); setText("#ai-risk", error.message);
   }
+}
+
+function renderExplanation(result) {
+  setText("#ai-headline", result.headline); setText("#ai-explanation", result.explanation); setText("#ai-risk", result.risk_note);
+  setText("#ai-provider", result.provider === "deepseek" ? `DeepSeek · ${result.model} · ${result.usage.total_tokens} tokens` : "本地安全解读 · 未调用外部模型");
 }
 
 function drawKline(bars) {
@@ -381,8 +496,17 @@ $("#retry-button").addEventListener("click", runClientAnalysis);
 $("#cancel-analysis-button").addEventListener("click", cancelAnalysisJob);
 $("#retry-job-button").addEventListener("click", retryAnalysisJob);
 $("#dynamic-debate-button").addEventListener("click", runDynamicDebate);
+$("#clear-history-button").addEventListener("click", () => requestHistoryDeletion({ type: "all" }));
+$("#confirm-cancel").addEventListener("click", closeHistoryConfirmation);
+$("#confirm-delete").addEventListener("click", confirmHistoryDeletion);
 $("#stock-select").addEventListener("change", syncModeAvailability);
 document.addEventListener("click", (event) => {
+  const deleteButton = event.target.closest("[data-delete-report-id]");
+  if (deleteButton) {
+    requestHistoryDeletion({ type: "one", reportId: deleteButton.dataset.deleteReportId, name: deleteButton.dataset.deleteReportName }); return;
+  }
+  const historyCard = event.target.closest("[data-report-id]");
+  if (historyCard) { openHistoricalReport(historyCard.dataset.reportId); return; }
   const button = event.target.closest("[data-client-mode]"); if (!button) return;
   if (button.disabled) return;
   clientState.mode = button.dataset.clientMode;
@@ -391,5 +515,5 @@ document.addEventListener("click", (event) => {
 window.addEventListener("resize", () => { if (clientState.analysis) drawKline(clientState.analysis.data.bars); });
 
 clientApi("/api/client/overview")
-  .then((overview) => { populateOverview(overview); return resumeOrStartAnalysis(); })
+  .then((overview) => { populateOverview(overview); loadRecentAnalyses(); return resumeOrStartAnalysis(); })
   .catch((error) => { $("#loading-state").hidden = true; $("#error-state").hidden = false; setText("#error-message", error.message); });

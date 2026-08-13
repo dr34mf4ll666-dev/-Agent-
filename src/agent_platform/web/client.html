@@ -49,6 +49,16 @@
 
     <section class="capability-strip" aria-label="产品能力" id="capability-strip"></section>
 
+    <section class="recent-analysis" id="recent-analysis" aria-labelledby="recent-title">
+      <div class="recent-heading">
+        <div><p class="panel-kicker">最近分析</p><h2 id="recent-title">重新打开当时的研究报告</h2></div>
+        <div class="recent-heading-actions"><span>报告使用当时冻结的数据，不会重新取数</span><button type="button" id="clear-history-button" hidden>清空历史</button></div>
+      </div>
+      <div class="recent-list" id="recent-list" aria-live="polite">
+        <p class="recent-empty">正在读取历史报告…</p>
+      </div>
+    </section>
+
     <section class="loading-state" id="loading-state" aria-live="polite">
       <div class="loading-orbit"><i></i><i></i><i></i><i></i><span>研</span></div>
       <div class="job-heading">
@@ -65,6 +75,11 @@
     </section>
 
     <section class="analysis" id="analysis" hidden>
+      <div class="report-meta" id="report-meta" hidden>
+        <span id="report-version">—</span>
+        <strong id="report-history-state">—</strong>
+        <small id="report-reference">—</small>
+      </div>
       <div class="security-ribbon">
         <div class="security-name">
           <span id="security-exchange">—</span>
@@ -220,6 +235,15 @@
       <button type="button" id="retry-button">重新分析</button>
     </section>
   </main>
+
+  <div class="confirm-overlay" id="history-confirm" hidden role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <div class="confirm-dialog">
+      <span aria-hidden="true">!</span>
+      <h2 id="confirm-title">确认删除历史报告？</h2>
+      <p id="confirm-message">删除后无法恢复。</p>
+      <div><button type="button" id="confirm-cancel">取消</button><button type="button" id="confirm-delete">确认删除</button></div>
+    </div>
+  </div>
 
   <footer>
     <div><strong>研判</strong><span>多维证券研究助手</span></div>

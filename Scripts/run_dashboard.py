@@ -10,7 +10,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from agent_platform.dashboard import serve_dashboard  # noqa: E402
+from agent_platform.dashboard import DashboardError, serve_dashboard  # noqa: E402
 from agent_platform.dashboard_startup import configure_deepseek_for_dashboard  # noqa: E402
 
 
@@ -33,7 +33,11 @@ def main() -> int:
         interactive=sys.stdin.isatty(),
     )
     print(selection.message)
-    serve_dashboard(port=args.port, open_browser=not args.no_browser)
+    try:
+        serve_dashboard(port=args.port, open_browser=not args.no_browser)
+    except DashboardError as error:
+        print(f"启动失败: {error}", file=sys.stderr)
+        return 2
     return 0
 
 

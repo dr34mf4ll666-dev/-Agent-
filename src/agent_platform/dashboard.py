@@ -4,23 +4,32 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
 import webbrowser
 from collections import OrderedDict
 from dataclasses import dataclass
+from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Lock, Timer
 from typing import Any, Mapping, Protocol, Sequence
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo
 
 from .analysis_jobs import AnalysisJobError, AnalysisJobRuntime
+from .analysis_repository import (
+    AnalysisRepository,
+    AnalysisRepositoryError,
+    SQLiteAnalysisRepository,
+)
 from .client_app import (
     ClientAnalysisError,
     ClientAnalysisRequest,
+    ClientAnalysisResult,
     ClientAnalysisRuntime,
     MarketAssistant,
     SECURITIES,
@@ -467,6 +476,7 @@ class DashboardRuntime:
         market_assistant: MarketAssistant | None = None,
         dynamic_debate_runtime: DynamicDebateRuntime | None = None,
         analysis_jobs: AnalysisJobRuntime | None = None,
+        analysis_repository: AnalysisRepository | None = None,
         timeout_seconds: float = 180.0,
     ) -> None:
         self.project_root = project_root.resolve()
@@ -479,13 +489,19 @@ class DashboardRuntime:
         self.dynamic_debate_runtime = (
             dynamic_debate_runtime or build_default_dynamic_debate_runtime()
         )
+        self.analysis_repository = analysis_repository or SQLiteAnalysisRepository(
+            self.project_root / ".runtime" / "analysis_history.sqlite3"
+        )
         self.analysis_jobs = analysis_jobs or AnalysisJobRuntime.from_client_runtime(
             self.client_runtime,
             storage_path=self.project_root / ".runtime" / "analysis_jobs" / "jobs.json",
             checkpoint_root=self.project_root / ".runtime" / "analysis_jobs" / "checkpoints",
+            repository=self.analysis_repository,
             timeout_seconds=180.0,
         )
-        self._debate_contexts: OrderedDict[str, Mapping[str, Any]] = OrderedDict()
+        self._debate_contexts: OrderedDict[
+            str, tuple[Mapping[str, Any], str | None]
+        ] = OrderedDict()
         self._debate_context_lock = Lock()
         self.timeout_seconds = timeout_seconds
 
@@ -596,6 +612,89 @@ class DashboardRuntime:
         except AnalysisJobError as error:
             raise DashboardError(str(error)) from error
 
+    def list_client_analysis_history(self, *, limit: int = 12) -> dict[str, Any]:
+        try:
+            reports = self.analysis_repository.list_reports(limit=limit)
+            return {"reports": reports, "count": len(reports), "storage": "sqlite"}
+        except AnalysisRepositoryError as error:
+            raise DashboardError(str(error)) from error
+
+    def get_client_historical_report(self, report_id: str) -> dict[str, Any]:
+        try:
+            archived = self.analysis_repository.get_report(report_id)
+            result = ClientAnalysisResult(
+                archived["result"], debate_context=archived.get("debate_context")
+            )
+            response = self._register_client_result(result)
+            response["history"] = {
+                "report_id": archived["report_id"],
+                "report_version": archived["report_version"],
+                "job_id": archived["job_id"],
+                "task_status": archived["task"].get("status", "succeeded"),
+                "archived_at": archived["archived_at"],
+                "model_call_count": len(archived.get("model_calls", [])),
+            }
+            explanation = next(
+                (
+                    call.get("output")
+                    for call in reversed(archived.get("model_calls", []))
+                    if call.get("kind") == "client_explanation" and call.get("output")
+                ),
+                None,
+            )
+            if explanation is not None:
+                response["history"]["explanation"] = explanation
+            return response
+        except AnalysisRepositoryError as error:
+            raise DashboardError(str(error)) from error
+
+    def delete_client_historical_report(self, report_id: str) -> dict[str, Any]:
+        try:
+            deleted = self.analysis_repository.delete_report(report_id)
+            cleanup_warning = None
+            try:
+                job_removed = self.analysis_jobs.delete_completed(deleted["job_id"])
+            except AnalysisJobError as error:
+                job_removed = False
+                cleanup_warning = str(error)
+            return {
+                "status": "deleted",
+                **deleted,
+                "job_removed": job_removed,
+                "cleanup_warning": cleanup_warning,
+                "message": (
+                    "历史报告已删除；任务检查点清理失败，请查看后台。"
+                    if cleanup_warning
+                    else "历史报告及关联数据已删除。"
+                ),
+            }
+        except AnalysisRepositoryError as error:
+            raise DashboardError(str(error)) from error
+
+    def clear_client_analysis_history(self) -> dict[str, Any]:
+        try:
+            deleted = self.analysis_repository.clear_reports()
+            removed_jobs = 0
+            cleanup_warnings = []
+            for item in deleted:
+                try:
+                    removed_jobs += int(self.analysis_jobs.delete_completed(item["job_id"]))
+                except AnalysisJobError as error:
+                    cleanup_warnings.append({"job_id": item["job_id"], "message": str(error)})
+            return {
+                "status": "cleared",
+                "deleted_count": len(deleted),
+                "removed_job_count": removed_jobs,
+                "cleanup_warnings": cleanup_warnings,
+                "message": (
+                    f"已清空 {len(deleted)} 份历史报告；部分任务检查点清理失败。"
+                    if cleanup_warnings
+                    else f"已清空 {len(deleted)} 份历史报告。"
+                ),
+            }
+        except AnalysisRepositoryError as error:
+            raise DashboardError(str(error)) from error
+
     def close(self) -> None:
         self.analysis_jobs.close(wait=False)
 
@@ -604,7 +703,11 @@ class DashboardRuntime:
         if result.debate_context is not None:
             analysis_id = uuid4().hex
             with self._debate_context_lock:
-                self._debate_contexts[analysis_id] = result.debate_context
+                report_id = response.get("report_id")
+                self._debate_contexts[analysis_id] = (
+                    result.debate_context,
+                    report_id if isinstance(report_id, str) else None,
+                )
                 while len(self._debate_contexts) > 32:
                     self._debate_contexts.popitem(last=False)
             response["analysis_id"] = analysis_id
@@ -614,12 +717,31 @@ class DashboardRuntime:
         if not isinstance(analysis_id, str) or not analysis_id.strip():
             raise DashboardError("缺少可用于动态辩论的分析编号。")
         with self._debate_context_lock:
-            context = self._debate_contexts.get(analysis_id.strip())
-        if context is None:
+            entry = self._debate_contexts.get(analysis_id.strip())
+        if entry is None:
             raise DashboardError("分析编号已失效，请重新完成一次股票分析。")
-        return self.dynamic_debate_runtime.run(
+        context, report_id = entry
+        output = self.dynamic_debate_runtime.run(
             StructuredDebateQuery(context, rounds=2)
         ).to_mapping()
+        if report_id and output.get("mode") == "dynamic":
+            try:
+                self.analysis_repository.record_model_call(
+                    report_id,
+                    {
+                        "provider": "deepseek",
+                        "model": output.get("model", "unknown"),
+                        "status": "succeeded",
+                        "usage": output.get("usage", {}),
+                        "latency_ms": output.get("latency_ms", 0),
+                        "created_at": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(timespec="milliseconds"),
+                        "kind": "dynamic_debate",
+                        "output": output,
+                    },
+                )
+            except AnalysisRepositoryError as error:
+                raise DashboardError(f"辩论已生成，但调用记录保存失败: {error}") from error
+        return output
 
     def explain_client(self, analysis: Mapping[str, Any]) -> dict[str, Any]:
         if not isinstance(analysis, Mapping):
@@ -631,7 +753,26 @@ class DashboardRuntime:
             or safety.get("real_trading_allowed") is not False
         ):
             raise DashboardError("分析结果没有通过研究安全边界校验。")
-        return self.market_assistant.explain(analysis)
+        output = self.market_assistant.explain(analysis)
+        report_id = analysis.get("report_id")
+        if isinstance(report_id, str) and report_id:
+            try:
+                self.analysis_repository.record_model_call(
+                    report_id,
+                    {
+                        "provider": output.get("provider", "unknown"),
+                        "model": output.get("model", "unknown"),
+                        "status": "succeeded",
+                        "usage": output.get("usage", {}),
+                        "latency_ms": output.get("latency_ms", 0),
+                        "created_at": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(timespec="milliseconds"),
+                        "kind": "client_explanation",
+                        "output": output,
+                    },
+                )
+            except AnalysisRepositoryError as error:
+                raise DashboardError(f"解读已生成，但调用记录保存失败: {error}") from error
+        return output
 
     def run_action(self, action_id: str, *, mode: str = "offline") -> dict[str, Any]:
         spec = ACTION_BY_ID.get(action_id)
@@ -731,6 +872,25 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/client/overview":
             self._send_json(HTTPStatus.OK, self.server.runtime.client_overview())
             return
+        if path == "/api/client/history":
+            try:
+                self._send_json(
+                    HTTPStatus.OK,
+                    self.server.runtime.list_client_analysis_history(limit=12),
+                )
+            except DashboardError as error:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+            return
+        report_id = _match_client_report_path(path)
+        if report_id is not None:
+            try:
+                self._send_json(
+                    HTTPStatus.OK,
+                    self.server.runtime.get_client_historical_report(report_id),
+                )
+            except DashboardError as error:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+            return
         client_job = _match_client_job_path(path)
         if client_job is not None:
             job_id, operation = client_job
@@ -826,6 +986,30 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "服务内部错误，请查看终端日志。"})
             raise
 
+    def do_DELETE(self) -> None:  # noqa: N802
+        path = urlparse(self.path).path
+        try:
+            report_id = _match_client_report_path(path)
+            if report_id is not None:
+                if self.headers.get("X-Confirm-Delete") != "delete-one":
+                    raise DashboardError("删除历史报告需要明确确认。")
+                self._send_json(
+                    HTTPStatus.OK,
+                    self.server.runtime.delete_client_historical_report(report_id),
+                )
+                return
+            if path == "/api/client/history":
+                if self.headers.get("X-Confirm-Delete") != "clear-all":
+                    raise DashboardError("清空全部历史需要明确确认。")
+                self._send_json(
+                    HTTPStatus.OK,
+                    self.server.runtime.clear_client_analysis_history(),
+                )
+                return
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "接口不存在。"})
+        except DashboardError as error:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+
     def _read_json(self) -> dict[str, Any]:
         raw_length = self.headers.get("Content-Length", "0")
         try:
@@ -869,6 +1053,17 @@ def create_server(
 ) -> DashboardHTTPServer:
     if host not in {"127.0.0.1", "localhost"}:
         raise DashboardError("控制台默认只允许绑定本机地址。")
+    if port:
+        try:
+            with socket.create_connection((host, port), timeout=0.25):
+                pass
+        except OSError:
+            pass
+        else:
+            raise DashboardError(
+                f"端口 {port} 已有后台在运行。请先关闭旧的运行窗口，"
+                "避免浏览器混用新旧版本；也可以换一个端口启动。"
+            )
     server = DashboardHTTPServer((host, port), DashboardRequestHandler)
     server.runtime = runtime or DashboardRuntime.from_project()
     return server
@@ -901,3 +1096,11 @@ def _match_client_job_path(path: str) -> tuple[str, str] | None:
     if len(parts) == 2 and parts[0] and parts[1] in {"result", "cancel", "retry"}:
         return parts[0], parts[1]
     return None
+
+
+def _match_client_report_path(path: str) -> str | None:
+    prefix = "/api/client/reports/"
+    if not path.startswith(prefix):
+        return None
+    report_id = path[len(prefix):].strip("/")
+    return report_id if report_id and "/" not in report_id else None
