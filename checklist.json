@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "3.0.0",
-  "updated_at": "2026-08-13",
-  "current_focus": "正式任务和 P1-P3 已完成；下一项为 P4 普通版/专业版、专业图表和证据下钻",
+  "version": "3.1.0",
+  "updated_at": "2026-08-14",
+  "current_focus": "正式任务和 P1-P4 已完成；下一项为 P5 统一可观测性和可靠性面板",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "done",
   "items": [
@@ -708,8 +708,8 @@
   "planned_product_enhancements": [
     {
       "id": "P4_DUAL_VIEW_REPORT",
-      "status": "planned",
-      "result": "默认普通版与按需专业版共用同一冻结报告；普通版降低信息负担，专业版提供完整指标、节点和证据",
+      "status": "done",
+      "result": "已完成默认普通版、按需专业版、只读报告投影、17节点与四Agent证据下钻，以及日/周K线、20/40/60区间、SMA和成交量交互；两种视图共用同一冻结报告且切换不重新分析",
       "acceptance": [
         "首次访问默认普通版并记住用户选择",
         "普通版只显示四段通俗进度、结论、主要理由、支持因素、风险因素、研究区间、数据时间和免责声明",
@@ -720,8 +720,21 @@
         "桌面端、移动端、键盘操作和非颜色状态提示均通过浏览器验收"
       ],
       "dependencies": ["P2 统一分析快照", "P3 SQLite持久化与历史报告"],
-      "evidence": ["ROADMAP.md"],
-      "scope_note": "这是同一分析结果的两种展示投影，不是两套Agent流程；正式实现归入P4，P6历史比较与导出复用该投影"
+      "evidence": [
+        "src/agent_platform/report_views.py",
+        "src/agent_platform/dashboard.py",
+        "src/agent_platform/web/client.html",
+        "src/agent_platform/web/client.css",
+        "src/agent_platform/web/client.js",
+        "tests/test_report_views.py",
+        "tests/test_dashboard.py",
+        "tests/test_product_acceptance.py",
+        "docs/report-views.md",
+        "docs/client-app.md",
+        "README.md",
+        "ROADMAP.md"
+      ],
+      "scope_note": "这是同一分析结果的两种只读展示投影，不是两套Agent流程；P6历史比较与导出继续复用ReportViewRuntime。专业版仍是客户研究界面，不暴露后台配置、Checkpoint文件和原始日志"
     }
   ],
   "enhancements_to_preserve": [

@@ -116,6 +116,14 @@ class DashboardRuntimeTests(unittest.TestCase):
         self.assertEqual(reopened["history"]["task_status"], "succeeded")
         self.assertEqual(reopened["history"]["explanation"]["provider"], "local")
 
+        basic = self.runtime.get_client_report_view(current["report_id"], view="basic")
+        professional = self.runtime.get_client_report_view(
+            current["report_id"], view="professional"
+        )
+        self.assertEqual(basic["shared"], professional["shared"])
+        self.assertNotIn("professional", basic)
+        self.assertEqual(len(professional["professional"]["task_nodes"]), 17)
+
     def test_run_action_uses_only_allowlisted_script_and_extracts_summary(self):
         result = self.runtime.run_action("a4_model")
 
@@ -332,6 +340,40 @@ class DashboardHTTPTests(unittest.TestCase):
         self.assertEqual(deleted["status"], "deleted")
         self.assertNotIn(report["report_id"], {item["report_id"] for item in history["reports"]})
 
+    def test_report_view_http_supports_basic_and_professional_without_new_analysis(self):
+        analyze = Request(
+            f"{self.base_url}/api/client/jobs", method="POST",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps({"symbol": "sz000001", "mode": "offline"}).encode("utf-8"),
+        )
+        with urlopen(analyze, timeout=5) as response:
+            job = json.loads(response.read().decode("utf-8"))
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            with urlopen(f"{self.base_url}/api/client/jobs/{job['job_id']}", timeout=5) as response:
+                status = json.loads(response.read().decode("utf-8"))
+            if status["status"] == "succeeded":
+                break
+            time.sleep(0.05)
+        with urlopen(f"{self.base_url}/api/client/jobs/{job['job_id']}/result", timeout=5) as response:
+            report = json.loads(response.read().decode("utf-8"))
+
+        with urlopen(f"{self.base_url}/api/client/reports/{report['report_id']}/view?view=basic", timeout=2) as response:
+            basic = json.loads(response.read().decode("utf-8"))
+        with urlopen(f"{self.base_url}/api/client/reports/{report['report_id']}/view?view=professional", timeout=2) as response:
+            professional = json.loads(response.read().decode("utf-8"))
+
+        self.assertEqual(basic["projection_fingerprint"], professional["projection_fingerprint"])
+        self.assertNotIn("professional", basic)
+        self.assertEqual(len(professional["professional"]["agent_details"]), 4)
+
+        invalid = Request(
+            f"{self.base_url}/api/client/reports/{report['report_id']}/view?view=admin"
+        )
+        with self.assertRaises(HTTPError) as raised:
+            urlopen(invalid, timeout=2)
+        self.assertEqual(raised.exception.code, 400)
+
     def test_clear_history_requires_distinct_confirmation(self):
         unconfirmed = Request(f"{self.base_url}/api/client/history", method="DELETE")
         with self.assertRaises(HTTPError) as raised:
@@ -385,6 +427,27 @@ class DashboardAssetTests(unittest.TestCase):
         self.assertIn('id="retry-job-button"', client_html)
         self.assertIn('id="snapshot-health"', client_html)
         self.assertIn('id="snapshot-datasets"', client_html)
+        self.assertIn('data-report-view="basic"', client_html)
+        self.assertIn('data-report-view="professional"', client_html)
+        self.assertLess(
+            client_html.index('<section class="view-depth"'),
+            client_html.index('<section class="analysis" id="analysis" hidden>'),
+            "普通版/专业版入口必须在报告结果出现前可见",
+        )
+        self.assertIn('id="professional-nodes"', client_html)
+        self.assertIn('id="basic-guide"', client_html)
+        self.assertIn('id="basic-risk-explanation"', client_html)
+        self.assertIn('普通版 · 结论摘要', client_html)
+        self.assertIn('核心结论与风险提示', client_html)
+        self.assertNotIn('普通版 · 先说人话', client_html)
+        self.assertNotIn('不用懂指标，先看这四句话', client_html)
+        self.assertIn('class="chart-card" data-professional-only hidden', client_html)
+        self.assertIn('class="ai-card" id="ai-card" data-professional-only hidden', client_html)
+        self.assertIn('id="agent-drilldown"', client_html)
+        self.assertIn('data-chart-period="weekly"', client_html)
+        self.assertIn('data-chart-indicator="sma20"', client_html)
+        self.assertIn("switchReportView", client_javascript)
+        self.assertIn("projection_fingerprint", (PROJECT_ROOT / "src" / "agent_platform" / "report_views.py").read_text(encoding="utf-8"))
         self.assertIn(".balance-zero-line", client_css)
         self.assertIn('api("/api/overview")', javascript)
         self.assertIn('clientApi("/api/client/overview")', client_javascript)

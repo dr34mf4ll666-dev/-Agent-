@@ -64,6 +64,9 @@ class ProductAcceptanceTests(unittest.TestCase):
         self.assertTrue(
             value["client_app"]["checks"]["统一数据快照和来源健康可见"]
         )
+        self.assertTrue(
+            value["client_app"]["checks"]["普通版专业版和证据下钻入口存在"]
+        )
         self.assertTrue(value["admin_console"]["passed"])
         self.assertTrue(
             value["admin_console"]["checks"]["动态辩论固定评测入口存在"]

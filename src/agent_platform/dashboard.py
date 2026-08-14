@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Lock, Timer
 from typing import Any, Mapping, Protocol, Sequence
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 from zoneinfo import ZoneInfo
 
 from .analysis_jobs import AnalysisJobError, AnalysisJobRuntime
@@ -48,6 +48,7 @@ from .finance import (
     StructuredDebateQuery,
     build_default_dynamic_debate_runtime,
 )
+from .report_views import ReportViewError, ReportViewRuntime
 from uuid import uuid4
 
 
@@ -477,6 +478,7 @@ class DashboardRuntime:
         dynamic_debate_runtime: DynamicDebateRuntime | None = None,
         analysis_jobs: AnalysisJobRuntime | None = None,
         analysis_repository: AnalysisRepository | None = None,
+        report_view_runtime: ReportViewRuntime | None = None,
         timeout_seconds: float = 180.0,
     ) -> None:
         self.project_root = project_root.resolve()
@@ -491,6 +493,9 @@ class DashboardRuntime:
         )
         self.analysis_repository = analysis_repository or SQLiteAnalysisRepository(
             self.project_root / ".runtime" / "analysis_history.sqlite3"
+        )
+        self.report_view_runtime = report_view_runtime or ReportViewRuntime(
+            self.analysis_repository
         )
         self.analysis_jobs = analysis_jobs or AnalysisJobRuntime.from_client_runtime(
             self.client_runtime,
@@ -646,6 +651,14 @@ class DashboardRuntime:
                 response["history"]["explanation"] = explanation
             return response
         except AnalysisRepositoryError as error:
+            raise DashboardError(str(error)) from error
+
+    def get_client_report_view(
+        self, report_id: str, *, view: str = "basic"
+    ) -> dict[str, Any]:
+        try:
+            return self.report_view_runtime.project(report_id, view)
+        except (AnalysisRepositoryError, ReportViewError) as error:
             raise DashboardError(str(error)) from error
 
     def delete_client_historical_report(self, report_id: str) -> dict[str, Any]:
@@ -862,7 +875,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
     max_body_bytes = 32_768
 
     def do_GET(self) -> None:  # noqa: N802
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
         if path == "/api/health":
             self._send_json(HTTPStatus.OK, {"status": "ok"})
             return
@@ -877,6 +891,19 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(
                     HTTPStatus.OK,
                     self.server.runtime.list_client_analysis_history(limit=12),
+                )
+            except DashboardError as error:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+            return
+        report_view_id = _match_client_report_view_path(path)
+        if report_view_id is not None:
+            try:
+                view = parse_qs(parsed.query).get("view", ["basic"])[0]
+                self._send_json(
+                    HTTPStatus.OK,
+                    self.server.runtime.get_client_report_view(
+                        report_view_id, view=view
+                    ),
                 )
             except DashboardError as error:
                 self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
@@ -1103,4 +1130,12 @@ def _match_client_report_path(path: str) -> str | None:
     if not path.startswith(prefix):
         return None
     report_id = path[len(prefix):].strip("/")
+    return report_id if report_id and "/" not in report_id else None
+
+
+def _match_client_report_view_path(path: str) -> str | None:
+    prefix = "/api/client/reports/"
+    if not path.startswith(prefix) or not path.endswith("/view"):
+        return None
+    report_id = path[len(prefix):-len("/view")].strip("/")
     return report_id if report_id and "/" not in report_id else None

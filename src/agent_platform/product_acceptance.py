@@ -94,6 +94,7 @@ class ProductAcceptanceRuntime:
             "受约束动态多空辩论入口存在": self._dynamic_debate_ready(),
             "异步分析任务和客户进度入口存在": self._analysis_jobs_ready(),
             "统一数据快照和来源健康可见": self._analysis_snapshot_ready(client),
+            "普通版专业版和证据下钻入口存在": self._report_views_ready(),
             "客户股票池不少于20只": len(SECURITIES) >= 20,
             "客户股票池覆盖沪深两市": {item["exchange"] for item in SECURITIES.values()}
             == {"上交所", "深交所"},
@@ -229,6 +230,21 @@ class ProductAcceptanceRuntime:
         )
         return all(path.is_file() for path in required) and any(
             action.id == "c1_debate_eval" for action in ACTIONS
+        )
+
+    def _report_views_ready(self) -> bool:
+        runtime = self._root / "src" / "agent_platform" / "report_views.py"
+        web_root = self._root / "src" / "agent_platform" / "web"
+        html = (web_root / "client.html").read_text(encoding="utf-8")
+        javascript = (web_root / "client.js").read_text(encoding="utf-8")
+        return (
+            runtime.is_file()
+            and 'data-report-view="basic"' in html
+            and 'data-report-view="professional"' in html
+            and 'id="agent-drilldown"' in html
+            and 'data-chart-period="weekly"' in html
+            and "/view?view=" in javascript
+            and "switchReportView" in javascript
         )
 
 

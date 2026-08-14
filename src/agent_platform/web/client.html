@@ -49,6 +49,18 @@
 
     <section class="capability-strip" aria-label="产品能力" id="capability-strip"></section>
 
+    <section class="view-depth" aria-labelledby="view-depth-title">
+      <div>
+        <p class="panel-kicker">阅读方式</p>
+        <h2 id="view-depth-title">先看结论，需要时再看证据</h2>
+        <small id="view-depth-helper">普通版只保留结论、理由、风险和数据时间。</small>
+      </div>
+      <div class="view-depth-switch" role="group" aria-label="报告阅读方式">
+        <button type="button" class="active" data-report-view="basic">普通版</button>
+        <button type="button" data-report-view="professional">专业版</button>
+      </div>
+    </section>
+
     <section class="recent-analysis" id="recent-analysis" aria-labelledby="recent-title">
       <div class="recent-heading">
         <div><p class="panel-kicker">最近分析</p><h2 id="recent-title">重新打开当时的研究报告</h2></div>
@@ -93,10 +105,21 @@
           <span id="data-label">—</span>
           <strong id="data-as-of">—</strong>
         </div>
-        <div class="source-stamp"><span id="source-count">—</span><small>类数据来源交叉核对</small></div>
+        <div class="source-stamp" data-professional-only hidden><span id="source-count">—</span><small>类数据来源交叉核对</small></div>
       </div>
 
-      <section class="snapshot-health" id="snapshot-health" aria-labelledby="snapshot-title">
+      <section class="basic-brief" id="basic-brief" data-basic-only aria-labelledby="basic-brief-title">
+        <div class="basic-brief-copy">
+          <p class="panel-kicker">普通版 · 结论摘要</p>
+          <h2 id="basic-brief-title">核心结论与风险提示</h2>
+          <p>保留影响判断的关键信息。完整指标、评分和数据来源见专业版。</p>
+          <span>报告处理状态</span>
+          <ol id="basic-stages"></ol>
+        </div>
+        <div class="basic-guide" id="basic-guide"></div>
+      </section>
+
+      <section class="snapshot-health" id="snapshot-health" data-professional-only hidden aria-labelledby="snapshot-title">
         <div class="snapshot-heading">
           <div><p class="panel-kicker">统一数据快照</p><h3 id="snapshot-title">本次报告只使用这一批数据</h3></div>
           <div><strong id="snapshot-status">—</strong><small id="snapshot-reference">—</small></div>
@@ -109,31 +132,48 @@
         <div class="snapshot-datasets" id="snapshot-datasets"></div>
       </section>
 
-      <div class="analysis-grid">
+      <div class="analysis-grid" data-professional-only hidden>
         <article class="verdict-card">
-          <p class="panel-kicker">综合研判</p>
+          <p class="panel-kicker" id="verdict-kicker">综合研判</p>
           <div class="verdict-main">
             <div>
               <span class="verdict-label" id="verdict-label">—</span>
               <h3 id="action-label">—</h3>
-              <p>由四个研究维度加权，并经过一致性与偏差检查。</p>
+              <p id="verdict-description">由四个研究维度加权，并经过一致性与偏差检查。</p>
             </div>
-            <div class="confidence-ring" id="confidence-ring">
+            <div class="confidence-ring" id="confidence-ring" data-professional-only hidden>
               <strong id="confidence-value">—</strong><small>/100</small><span>证据一致性</span>
             </div>
           </div>
-          <div class="verdict-foot">
+          <div class="verdict-foot" data-professional-only hidden>
             <span>综合得分 <strong id="weighted-score">—</strong></span>
             <span>研究仓位上限 <strong id="position-cap">—</strong></span>
           </div>
         </article>
 
-        <article class="chart-card">
+        <article class="chart-card" data-professional-only hidden>
           <div class="panel-head">
-            <div><p class="panel-kicker">价格走势</p><h3>日 K 线</h3></div>
+            <div><p class="panel-kicker">价格走势</p><h3 id="chart-title">日 K 线</h3></div>
             <div class="chart-legend"><span class="up">上涨</span><span class="down">下跌</span></div>
           </div>
-          <div class="chart-wrap"><canvas id="kline-chart" aria-label="日 K 线图"></canvas></div>
+          <div class="chart-controls" data-professional-only hidden>
+            <div role="group" aria-label="K 线周期">
+              <button type="button" class="active" data-chart-period="daily">日 K</button>
+              <button type="button" data-chart-period="weekly">周 K</button>
+            </div>
+            <div role="group" aria-label="显示区间">
+              <button type="button" data-chart-range="20">20</button>
+              <button type="button" class="active" data-chart-range="40">40</button>
+              <button type="button" data-chart-range="60">60</button>
+            </div>
+            <label><input type="checkbox" data-chart-indicator="sma5" checked> SMA5</label>
+            <label><input type="checkbox" data-chart-indicator="sma20" checked> SMA20</label>
+            <label><input type="checkbox" data-chart-indicator="volume" checked> 成交量</label>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="kline-chart" tabindex="0" aria-label="可互动 K 线图，使用左右方向键查看每根 K 线" aria-describedby="chart-tooltip"></canvas>
+            <div class="chart-tooltip" id="chart-tooltip" data-professional-only hidden role="status">移动鼠标或使用左右方向键查看开高低收和成交量</div>
+          </div>
           <div class="chart-levels">
             <span>支撑观察 <strong id="support-price">—</strong></span>
             <span>当前参考 <strong id="reference-price">—</strong></span>
@@ -141,7 +181,7 @@
           </div>
         </article>
 
-        <article class="ai-card" id="ai-card">
+        <article class="ai-card" id="ai-card" data-professional-only hidden>
           <div class="ai-mark" aria-hidden="true">DS</div>
           <div>
             <p class="panel-kicker">智能解读</p>
@@ -153,7 +193,15 @@
         </article>
       </div>
 
-      <section class="dimension-section" id="dimensions" aria-labelledby="dimension-title">
+      <section class="workflow-proof" id="workflow-proof" data-professional-only hidden aria-labelledby="workflow-proof-title">
+        <div class="section-heading">
+          <div><p>VERIFIED WORKFLOW</p><h2 id="workflow-proof-title">17 个真实分析节点</h2></div>
+          <span>完成、跳过、失败均来自当时任务记录</span>
+        </div>
+        <ol class="professional-nodes" id="professional-nodes"></ol>
+      </section>
+
+      <section class="dimension-section" id="dimensions" data-professional-only hidden aria-labelledby="dimension-title">
         <div class="section-heading">
           <div><p>FOUR RESEARCH LENSES</p><h2 id="dimension-title">四个维度，分别在说什么</h2></div>
           <span>分数范围 -100 至 +100，仅表示规则强弱</span>
@@ -176,9 +224,10 @@
           </div>
         </article>
         <div class="dimension-grid" id="dimension-grid"></div>
+        <div class="agent-drilldown" id="agent-drilldown" aria-label="四类分析证据下钻"></div>
       </section>
 
-      <section class="evidence-grid">
+      <section class="evidence-grid" data-professional-only hidden>
         <div class="debate-toolbar">
           <div>
             <p>多空辩论</p>
@@ -204,9 +253,9 @@
 
       <section class="risk-section" id="risk" aria-labelledby="risk-title">
         <div class="risk-copy">
-          <p>RISK BEFORE RETURN</p>
+          <p id="risk-kicker">RISK BEFORE RETURN</p>
           <h2 id="risk-title">先把边界画清楚，<br>再谈观点。</h2>
-          <span>系统不会替用户下单。以下区间和仓位只用于研究与模拟风险说明。</span>
+          <span id="risk-description">系统不会替用户下单。以下区间和仓位只用于研究与模拟风险说明。</span>
         </div>
         <div class="price-band-card">
           <div class="price-band-head"><span>研究价格区间</span><small>不是价格预测</small></div>
@@ -216,15 +265,16 @@
             <span>参考<strong id="band-reference">—</strong></span>
             <span>上沿<strong id="band-upper">—</strong></span>
           </div>
-          <div class="risk-metrics">
+          <div class="risk-metrics" data-professional-only hidden>
             <span>预计单笔风险<strong id="estimated-loss">—</strong></span>
             <span>收益风险比<strong id="reward-risk">—</strong></span>
             <span>风险状态<strong id="risk-status">—</strong></span>
           </div>
+          <p class="basic-risk-explanation" id="basic-risk-explanation" data-basic-only>—</p>
         </div>
       </section>
 
-      <details class="source-details">
+      <details class="source-details" data-professional-only hidden>
         <summary>查看数据来源与研究边界</summary>
         <div><ul id="source-list"></ul><p id="scope-note"></p></div>
       </details>
