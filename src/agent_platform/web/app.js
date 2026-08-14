@@ -7,6 +7,7 @@ const state = {
   currentResult: null,
   running: false,
   observability: null,
+  governance: null,
   selectedTraceId: null,
 };
 
@@ -35,6 +36,11 @@ const elements = {
   reliabilityMetrics: document.querySelector("#reliability-metrics"),
   traceList: document.querySelector("#trace-list"),
   traceWaterfall: document.querySelector("#trace-waterfall"),
+  governanceRuntimeCards: document.querySelector("#governance-runtime-cards"),
+  governanceEvaluationStatus: document.querySelector("#governance-evaluation-status"),
+  governancePromotionStatus: document.querySelector("#governance-promotion-status"),
+  governanceRawStatus: document.querySelector("#governance-raw-status"),
+  governanceGateNote: document.querySelector("#governance-gate-note"),
 };
 
 async function api(path, options = {}) {
@@ -107,6 +113,60 @@ function renderReliability(overview) {
 async function loadReliability() {
   try { renderReliability(await api("/api/observability/overview")); }
   catch (error) { elements.traceList.replaceChildren(el("p", "trace-empty", `可靠性数据暂不可用：${error.message}`)); }
+}
+
+function governanceStatus(value) {
+  return {
+    pending_real_key: ["待真实评测", "pending"],
+    passed: ["已通过", "pass"],
+    failed: ["未通过", "fail"],
+    eligible: ["可以候选", "pass"],
+    blocked_until_live_pass: ["暂不可晋级", "blocked"],
+  }[value] || [String(value || "未知"), "pending"];
+}
+
+function renderGovernanceCard(card, title, data) {
+  card.replaceChildren();
+  card.append(el("p", "", title));
+  const provider = data.provider === "deepseek"
+    ? `DeepSeek · ${data.model || "未声明模型"}`
+    : "本地安全解释";
+  card.append(el("strong", "", provider));
+  const calls = `${Number(data.calls_used || 0)}/${Number(data.max_calls || 0)} 次调用`;
+  const tokens = `${Number(data.tokens_used || 0).toLocaleString("zh-CN")}/${Number(data.max_total_tokens || 0).toLocaleString("zh-CN")} Token`;
+  const cache = `${Number(data.cache_entries || 0)} 个缓存结果 · TTL ${Number(data.cache_ttl_seconds || 0)} 秒`;
+  const version = `${data.policy_version || "unknown"}\nPrompt ${data.prompt_version || "unknown"} · Schema ${data.schema_version || "unknown"}`;
+  const note = data.degraded ? `当前状态：安全降级（${data.fallback_reason || "模型未启用"}）` : data.configured ? "当前状态：已接入治理模型路由" : "当前状态：未配置模型，使用固定格式";
+  card.append(el("small", "", `${note}\n预算 ${calls} · ${tokens}\n${cache}\n${version}`));
+}
+
+function renderGovernance(governance) {
+  state.governance = governance;
+  const cards = elements.governanceRuntimeCards.querySelectorAll("[data-governance-card]");
+  const customer = governance.customer_explanation || {};
+  const dashboard = governance.dashboard_assistant || {};
+  cards.forEach((card) => renderGovernanceCard(
+    card,
+    card.dataset.governanceCard === "customer" ? "客户智能解读" : "后台项目助手",
+    card.dataset.governanceCard === "customer" ? customer : dashboard,
+  ));
+  const gate = governance.quality_gate || {};
+  const [evaluationText, evaluationClass] = governanceStatus(gate.fixed_evaluation);
+  const [promotionText, promotionClass] = governanceStatus(gate.promotion);
+  const latest = gate.latest;
+  const rawText = latest ? `已留存 ${Number(latest.raw_result_count || 0)} 次` : "等待真实结果";
+  const rawClass = latest ? "pass" : "pending";
+  [
+    [elements.governanceEvaluationStatus, evaluationText, evaluationClass],
+    [elements.governancePromotionStatus, promotionText, promotionClass],
+    [elements.governanceRawStatus, rawText, rawClass],
+  ].forEach(([node, text, className]) => { node.textContent = text; node.className = className; });
+  elements.governanceGateNote.textContent = latest?.conclusion || "Mock 只能验证门禁逻辑，不能替代真实 DeepSeek 评测。";
+}
+
+async function loadGovernance() {
+  try { renderGovernance(await api("/api/governance")); }
+  catch (error) { elements.governanceGateNote.textContent = `治理状态暂不可用：${error.message}`; }
 }
 
 async function loadTrace(traceId) {
@@ -323,6 +383,7 @@ const dialog = document.querySelector("#about-dialog");
 document.querySelector("#about-button").addEventListener("click", () => dialog.showModal());
 document.querySelector(".dialog-close").addEventListener("click", () => dialog.close());
 document.querySelector("#refresh-reliability").addEventListener("click", loadReliability);
+document.querySelector("#refresh-governance").addEventListener("click", loadGovernance);
 elements.traceList.addEventListener("click", (event) => {
   const row = event.target.closest("[data-trace-id]"); if (row) loadTrace(row.dataset.traceId);
 });
@@ -336,4 +397,6 @@ api("/api/overview")
   });
 
 loadReliability();
+loadGovernance();
 window.setInterval(loadReliability, 10000);
+window.setInterval(loadGovernance, 10000);

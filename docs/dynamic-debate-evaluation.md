@@ -46,10 +46,10 @@ D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py
 D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py --live
 ```
 
-默认不生成文件。需要留存某次真实实验时再显式指定；JSON 会包含每次最终辩论、trace 和统计：
+真实评测默认覆盖保存唯一固定文件 `.runtime/llm-evaluation/deepseek-fixed-v1.json`，避免每次运行堆积文件；如果需要另存一份，再显式指定其他路径。JSON 会包含每次最终辩论、trace 和统计：
 
 ```powershell
-D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py --live --output .runtime\evaluations\dynamic-debate-live.json
+D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py --live --output .runtime\llm-evaluation\custom.json
 ```
 
 安装项目后可把脚本名替换为 `agent-platform debate-eval`。Web 后台 `/admin` 的 C 阶段也有“C1+ · 动态辩论量化评测”卡片。

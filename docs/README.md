@@ -20,6 +20,7 @@
 - `macro-analysis-agent.md`：B2 大盘/宏观 Agent 的指数、资金面代理、情绪、Market Regime、风险偏好和验收方式。
 - `combined-analysis.md`：C1 四 Agent 并行编排、结构化辩论、Synthesis、目标区间、置信度、质量检查和 Market Regime 门控。
 - `dynamic-debate-evaluation.md`：受约束动态多空辩论的固定评测集、八类指标、Mock/DeepSeek 运行方式和结论边界。
+- `llm-governance.md`：P7 模型版本、预算、缓存、降级、解释反馈、固定评测质量门禁和候选版本回滚。
 - `trader.md`：C2 Trader 如何把 C1 结论转换为可校验的模拟候选信号，以及当前 Risk Manager 边界。
 - `risk-manager.md`：C2 完整 Trader→Risk Manager 链、固定风控阈值、模拟账户上下文和验收方式。
 - `financial-graph.md`：C3 单股票/批量完整 Graph、看空条件路由、Checkpoint 恢复、20 只真实股票验收和自动止损止盈来源。

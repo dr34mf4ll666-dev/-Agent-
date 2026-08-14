@@ -47,6 +47,14 @@ D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py --live
 
 该入口对应安装后的 `agent-platform debate-eval`。离线模式用可重复的脚本化 Mock 验证证据拒绝、语义重试、统计和安全边界；`--live` 使用真实 DeepSeek 运行同一固定评测集。默认只输出到终端，显式添加 `--output PATH` 才保存逐次原始结果。
 
+## P7 模型治理演示
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_llm_governance.py
+```
+
+该脚本离线展示 Prompt/Schema/策略版本、成功结果缓存、调用预算拒绝、治理快照和“模型只能解释、不能修改金融控制”的安全边界。它不联网、不需要 Key，也不会把这次 Mock 演示当成真实模型质量通过。
+
 ## D4 最终交付统一验收
 
 ```powershell

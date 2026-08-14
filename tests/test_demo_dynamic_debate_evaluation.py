@@ -4,11 +4,30 @@ import sys
 import unittest
 from pathlib import Path
 
+from Scripts import demo_dynamic_debate_evaluation
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class DynamicDebateEvaluationDemoTests(unittest.TestCase):
+    def test_live_arguments_use_one_canonical_raw_result_path(self):
+        self.assertEqual(
+            demo_dynamic_debate_evaluation.build_arguments(["--live"]),
+            [
+                "debate-eval",
+                "--live",
+                "--output",
+                ".runtime/llm-evaluation/deepseek-fixed-v1.json",
+            ],
+        )
+        self.assertEqual(
+            demo_dynamic_debate_evaluation.build_arguments(
+                ["--live", "--output", "custom.json"]
+            ),
+            ["debate-eval", "--live", "--output", "custom.json"],
+        )
+
     def test_offline_demo_prints_metrics_raw_runs_and_online_boundary(self):
         completed = subprocess.run(
             [sys.executable, "Scripts/demo_dynamic_debate_evaluation.py"],
@@ -32,6 +51,8 @@ class DynamicDebateEvaluationDemoTests(unittest.TestCase):
         self.assertIn("Token", completed.stdout)
         self.assertIn("结果稳定性", completed.stdout)
         self.assertIn("【验收阈值】", completed.stdout)
+        self.assertIn("【P7 模型质量门禁】", completed.stdout)
+        self.assertIn("真实模型运行: 未通过", completed.stdout)
         self.assertIn("【逐次原始结果】", completed.stdout)
         self.assertIn("脚本化 Mock", completed.stdout)
         self.assertIn("不冒充真实 DeepSeek 质量", completed.stdout)

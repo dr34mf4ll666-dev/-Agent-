@@ -97,6 +97,7 @@ class ProductAcceptanceRuntime:
             "普通版专业版和证据下钻入口存在": self._report_views_ready(),
             "实际耗时和可操作错误入口存在": self._client_observability_ready(),
             "研究工作台收藏比较打印导出入口存在": self._research_workspace_ready(),
+            "模型治理信息和解释反馈入口存在": self._llm_governance_ready(),
             "客户股票池不少于20只": len(SECURITIES) >= 20,
             "客户股票池覆盖沪深两市": {item["exchange"] for item in SECURITIES.values()}
             == {"上交所", "深交所"},
@@ -113,6 +114,7 @@ class ProductAcceptanceRuntime:
             "A-D四阶段均有入口": {action.stage for action in ACTIONS}
             == {"A", "B", "C", "D"},
             "动态辩论固定评测入口存在": self._dynamic_debate_evaluation_ready(),
+            "模型质量门禁与回滚入口存在": self._llm_quality_gate_ready(),
             "统一追踪和可靠性瀑布入口存在": self._admin_observability_ready(),
             "后台登记功能不少于19项": len(ACTIONS) >= 19,
         }
@@ -292,6 +294,37 @@ class ProductAcceptanceRuntime:
             and "toggleReportFavorite" in javascript
             and "downloadExport" in javascript
             and "@media print" in css
+        )
+
+    def _llm_governance_ready(self) -> bool:
+        web_root = self._root / "src" / "agent_platform" / "web"
+        html = (web_root / "client.html").read_text(encoding="utf-8")
+        javascript = (web_root / "client.js").read_text(encoding="utf-8")
+        runtime = self._root / "src" / "agent_platform" / "llm_governance.py"
+        return (
+            runtime.is_file()
+            and 'id="ai-feedback-helpful"' in html
+            and 'id="ai-feedback-not-helpful"' in html
+            and "explanation_version" in javascript
+            and "degraded" in javascript
+            and 'clientApi("/api/client/feedback"' in javascript
+        )
+
+    def _llm_quality_gate_ready(self) -> bool:
+        required = (
+            self._root / "src" / "agent_platform" / "llm_quality_gate.py",
+            self._root / "Scripts" / "demo_llm_governance.py",
+            self._root / "tests" / "test_llm_quality_gate.py",
+        )
+        web_root = self._root / "src" / "agent_platform" / "web"
+        html = (web_root / "index.html").read_text(encoding="utf-8")
+        javascript = (web_root / "app.js").read_text(encoding="utf-8")
+        return (
+            all(path.is_file() for path in required)
+            and 'id="model-governance"' in html
+            and 'id="governance-quality-gate"' in html
+            and 'api("/api/governance")' in javascript
+            and "renderGovernance" in javascript
         )
 
 

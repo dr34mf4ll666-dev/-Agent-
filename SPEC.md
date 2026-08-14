@@ -31,7 +31,7 @@ P4 新增只读 `ReportViewRuntime.project(report_id, view)`。它只接受 `bas
 
 客户前台允许用户主动请求 DeepSeek 基于四个 Specialist 的真实证据改写 Bull/Bear 论证语言。模型只能选择后端编号化证据，程序负责还原并复核路径、数值、来源、时间、双方覆盖和轮次关系；虚构数字、违规措辞或未知证据会被拒绝，最多两次后降级到固定辩论。Synthesis、价格区间、置信度、仓位与风控结果不得改变。普通分析不自动触发模型，不产生额外 Token。
 
-当前完成 Mock 离线测试、HTTP `analysis_id` 门禁、客户按钮、两轮展示、无 Key 降级和启动时隐藏输入 DeepSeek Key。`DynamicDebateEvaluationRuntime` 还用固定四 Agent 底稿重复运行 2/3 轮模板与动态辩论，输出证据有效率、观点多样性、正反平衡、重试、降级、耗时、Token、稳定性和逐次结果；CLI 与后台 C1+ 卡片共用该接口。Key 只注入本次服务进程。当前仅剩用户使用有效 Key 完成一次真实 DeepSeek 受控评测并留存结果。
+当前完成 Mock 离线测试、HTTP `analysis_id` 门禁、客户按钮、两轮展示、无 Key 降级和启动时隐藏输入 DeepSeek Key。`DynamicDebateEvaluationRuntime` 还用固定四 Agent 底稿重复运行 2/3 轮模板与动态辩论，输出证据有效率、观点多样性、正反平衡、重试、降级、耗时、Token、稳定性和逐次结果；CLI 与后台 C1+ 卡片共用该接口。真实 DeepSeek 固定评测已完成 4 次运行并通过质量门禁：候选/最终证据有效率 100%、正反平衡率 100%、重试率 0%、降级率 0%、结果稳定性 100%；原始结果覆盖保存到 `.runtime/llm-evaluation/deepseek-fixed-v1.json`。Key 只注入本次服务进程。
 
 ### 已完成基线：D4 最终交付
 
@@ -255,4 +255,4 @@ python -m unittest discover -s tests -v
 
 ## 12. 下一步
 
-当前 A–D 正式任务与 P1–P6 均已完成。研究工作台已经在冻结报告和双层视图之上完成自选、收藏、比较、状态提示与导出，并保持不重新取数或调用模型。下一项产品化主线是 P7 LLM 治理与真实质量门禁。
+当前 A–D 正式任务与 P1–P7 均已完成，下一项产品化主线为 P8。P7 已接入模型/Prompt/Schema 版本、调用与 Token 预算、成功缓存、安全降级、客户解释反馈，以及固定评测质量门禁和候选版本回滚；模型不可用时确定性报告仍可正常工作。真实 DeepSeek 固定评测已通过并留存逐次原始结果，离线 Mock 仍只作为链路回归，不替代真实质量结论。

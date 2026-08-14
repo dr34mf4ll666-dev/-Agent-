@@ -813,8 +813,40 @@ async function explainAnalysis(analysis) {
 }
 
 function renderExplanation(result) {
+  clientState.explanation = result;
   setText("#ai-headline", result.headline); setText("#ai-explanation", result.explanation); setText("#ai-risk", result.risk_note);
-  setText("#ai-provider", result.provider === "deepseek" ? `DeepSeek · ${result.model} · ${result.usage.total_tokens} tokens` : "本地安全解读 · 未调用外部模型");
+  const governance = result.governance || {};
+  const providerLabel = result.provider === "deepseek"
+    ? `DeepSeek · ${result.model} · ${result.usage.total_tokens} tokens`
+    : "本地安全解读 · 未调用外部模型";
+  const degradedLabel = result.degraded ? ` · 已降级 · ${result.fallback_reason || "模型未启用"}` : "";
+  setText("#ai-provider", `${providerLabel}${degradedLabel} · 版本 ${result.explanation_version || "unknown"}`);
+  setText("#ai-feedback-status", "");
+  ["#ai-feedback-helpful", "#ai-feedback-not-helpful"].forEach((selector) => { $(selector).disabled = false; });
+}
+
+async function submitExplanationFeedback(rating) {
+  const reportId = clientState.projection?.report_id || clientState.analysis?.report_id;
+  const explanation = clientState.explanation;
+  if (!reportId || !explanation) return;
+  ["#ai-feedback-helpful", "#ai-feedback-not-helpful"].forEach((selector) => { $(selector).disabled = true; });
+  try {
+    await clientApi("/api/client/feedback", {
+      method: "POST",
+      body: JSON.stringify({
+        report_id: reportId,
+        rating,
+        explanation_version: explanation.explanation_version,
+        provider: explanation.provider,
+        model: explanation.model,
+        governance: explanation.governance,
+      }),
+    });
+    setText("#ai-feedback-status", "反馈已记录");
+  } catch (error) {
+    setText("#ai-feedback-status", `反馈未保存：${error.message}`);
+    ["#ai-feedback-helpful", "#ai-feedback-not-helpful"].forEach((selector) => { $(selector).disabled = false; });
+  }
 }
 
 function drawKline(chart) {
@@ -886,6 +918,8 @@ $("#retry-button").addEventListener("click", () => {
 $("#cancel-analysis-button").addEventListener("click", cancelAnalysisJob);
 $("#retry-job-button").addEventListener("click", retryAnalysisJob);
 $("#dynamic-debate-button").addEventListener("click", runDynamicDebate);
+$("#ai-feedback-helpful").addEventListener("click", () => submitExplanationFeedback("helpful"));
+$("#ai-feedback-not-helpful").addEventListener("click", () => submitExplanationFeedback("not_helpful"));
 $("#clear-history-button").addEventListener("click", () => requestHistoryDeletion({ type: "all" }));
 $("#watchlist-toggle").addEventListener("click", () => toggleWatchlist());
 $("#compare-button").addEventListener("click", () => runReportComparison());

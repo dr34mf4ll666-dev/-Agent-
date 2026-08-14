@@ -34,6 +34,14 @@ P5 统一分析可观测性也已完成。每次分析从 HTTP 提交开始生�
 
 P6 研究工作台已经完成。客户首页可以把 20 只目录股票加入本地自选，收藏并筛选重要的冻结报告，再选择两份报告比较：同一股票显示前后判断和参考价格变化，不同股票显示横向结论并明确提示价格不可直接代表优劣。报告会标出数据时点是否过期、数据是否完整或发生来源降级。普通版可打印或下载只保留通俗结论的独立 HTML，专业版则同时带四维证据、来源和确定性风险边界；比较结果也支持同样的打印与导出。整个过程不重新取数、不运行 Agent 或 Graph，也不调用 DeepSeek。说明见 [`docs/research-workspace.md`](docs/research-workspace.md)。
 
+P7 LLM 治理已经完成。客户前台的智能解读会显示 provider、model、Token、是否使用本地降级、解释版本，并可直接反馈“有帮助/没帮助”；团队后台新增“模型治理”面板，显示两条模型路由的版本、预算、缓存、降级状态和固定评测门禁。后台和动态辩论使用版本化 Prompt/Schema、有限调用与 Token 预算、成功结果缓存和安全降级。SQLite 会保存解释版本与反馈，固定评测结果会经过质量门禁，未满足真实运行要求的候选不能成为默认版本。真实 DeepSeek 固定评测已通过，4 次运行的候选/最终证据有效率均为 100%、重试率和降级率均为 0%，唯一原始结果文件为 `.runtime/llm-evaluation/deepseek-fixed-v1.json`。离线治理演示如下：
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_llm_governance.py
+```
+
+完整接口、预算口径、反馈保存和真实评测门禁见 [`docs/llm-governance.md`](docs/llm-governance.md)。
+
 ```powershell
 D:\Anaconda\python.exe Scripts\demo_analysis_snapshot.py
 D:\Anaconda\python.exe Scripts\demo_analysis_history.py
@@ -76,11 +84,11 @@ D:\Anaconda\python.exe Scripts\demo_analysis_observability.py
 D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py
 ```
 
-再用真实 DeepSeek 运行相同固定评测集。命令会隐藏询问 Key；只有显式添加 `--output` 才保存包含逐次结果的 JSON：
+再用真实 DeepSeek 运行相同固定评测集。命令会隐藏询问 Key，并把本次结果覆盖保存到唯一固定路径 `.runtime/llm-evaluation/deepseek-fixed-v1.json`；也可以显式指定其他 `--output` 路径：
 
 ```powershell
 D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py --live
-D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py --live --output .runtime\evaluations\dynamic-debate-live.json
+D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py --live --output .runtime\llm-evaluation\custom.json
 ```
 
 安装项目后等价入口为 `agent-platform debate-eval`。评测固定重复运行 2 轮和 3 轮辩论，输出证据有效率、观点多样性、正反平衡率、重试率、降级率、平均耗时、Token 成本和结果稳定性。离线 Mock 只验证链路，不能替代真实模型质量结论。完整口径见 [`docs/dynamic-debate-evaluation.md`](docs/dynamic-debate-evaluation.md)。

@@ -16,6 +16,8 @@ from agent_platform.core import (
     ModelRetryPolicy,
     ModelUsage,
 )
+from agent_platform.llm_governance import GovernancePolicy, ModelGovernanceRuntime
+from agent_platform.llm_quality_gate import LLMQualityGateRuntime, QualityGatePolicy
 
 from .combined_analysis import CombinedAnalysisQuery, build_default_combined_analysis_runtime
 from .dynamic_debate import DynamicDebateRuntime, ModelGatewayPort
@@ -44,7 +46,7 @@ class DynamicDebateEvaluationReport:
     passed: bool
 
     def to_mapping(self) -> dict[str, Any]:
-        return {
+        value = {
             "dataset": deepcopy(dict(self.dataset)),
             "baseline": deepcopy(dict(self.baseline)),
             "dynamic": deepcopy(dict(self.dynamic)),
@@ -71,6 +73,11 @@ class DynamicDebateEvaluationReport:
                 "real_trading_allowed": False,
             },
         }
+        value["quality_gate"] = LLMQualityGateRuntime().evaluate(
+            value,
+            policy=QualityGatePolicy(require_live=True),
+        )
+        return value
 
 
 class DynamicDebateEvaluationRuntime:
@@ -101,12 +108,26 @@ class DynamicDebateEvaluationRuntime:
     ) -> "DynamicDebateEvaluationRuntime":
         root = Path(project_root or Path(__file__).resolve().parents[3]).resolve()
         if live:
-            gateway: ModelGatewayPort = ModelGateway(
+            raw_gateway = ModelGateway(
                 DeepSeekChatAdapter.from_env(model=model),
                 retry_policy=ModelRetryPolicy(
                     max_attempts=2,
                     timeout_seconds=30,
                     initial_backoff_seconds=0.25,
+                ),
+            )
+            gateway: ModelGatewayPort = ModelGovernanceRuntime(
+                raw_gateway,
+                policy=GovernancePolicy(
+                    policy_version="p7-dynamic-debate-eval-policy-v1",
+                    prompt_version="dynamic-debate-eval-prompt-v1",
+                    schema_version="dynamic-debate-schema-v1",
+                    route="deepseek",
+                    max_calls=8,
+                    max_total_tokens=48000,
+                    max_output_tokens=1400,
+                    # 评测需要重复真实调用，不能因为缓存命中而虚增稳定性。
+                    cache_ttl_seconds=0,
                 ),
             )
             return cls(
@@ -500,6 +521,15 @@ def print_dynamic_debate_evaluation(
     print("\n【验收阈值】")
     for name, passed in value["acceptance"].items():
         print(f"- {'通过' if passed else '失败'}: {name}")
+    gate = value["quality_gate"]
+    print("\n【P7 模型质量门禁】")
+    print(
+        f"- 真实模型运行: {'通过' if gate['checks']['real_model_run'] else '未通过'}"
+    )
+    print(
+        f"- 原始结果留存: {'通过' if gate['checks']['raw_results_retained'] else '未通过'}"
+    )
+    print(f"- 发布结论: {gate['conclusion']}")
     print("\n【逐次原始结果】")
     for item in value["raw_results"]:
         current = item["dynamic"]

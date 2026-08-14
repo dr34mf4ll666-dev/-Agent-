@@ -65,6 +65,8 @@ class DynamicDebateEvaluationTests(unittest.TestCase):
         self.assertGreater(value["dynamic"]["total_tokens"], 0)
         self.assertEqual(value["dynamic"]["result_stability_rate_percent"], 100.0)
         self.assertTrue(value["passed"])
+        self.assertFalse(value["quality_gate"]["passed"])
+        self.assertFalse(value["quality_gate"]["checks"]["real_model_run"])
         self.assertTrue(all(value["acceptance"].values()))
         self.assertIn("report", value["raw_results"][0]["dynamic"])
         self.assertIn("trace", value["raw_results"][0]["dynamic"])

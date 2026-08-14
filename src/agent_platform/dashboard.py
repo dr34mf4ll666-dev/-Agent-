@@ -10,7 +10,7 @@ import sys
 import time
 import webbrowser
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -60,6 +60,11 @@ from .research_workspace import (
     JsonResearchWorkspaceStore,
     ResearchWorkspaceError,
     ResearchWorkspaceRuntime,
+)
+from .llm_governance import (
+    GovernancePolicy,
+    ModelGovernanceRuntime,
+    local_fallback_metadata,
 )
 from uuid import uuid4
 
@@ -355,6 +360,9 @@ class ProjectAssistant(Protocol):
     def answer(self, message: str, context: Mapping[str, Any] | None) -> dict[str, Any]:
         """Explain a result and suggest, but never execute, one action."""
 
+    def governance_snapshot(self) -> dict[str, Any]:
+        """Expose safe governance counters for the control desk."""
+
 
 class LocalProjectAssistant:
     """Deterministic fallback that keeps the console useful without an API key."""
@@ -362,6 +370,16 @@ class LocalProjectAssistant:
     provider = "local"
     model = "rule-based-guide"
     live = False
+
+    def governance_snapshot(self) -> dict[str, Any]:
+        return {
+            **local_fallback_metadata(reason="未配置 DeepSeek，使用本地规则助手。"),
+            "provider": self.provider,
+            "model": self.model,
+            "configured": False,
+            "live": False,
+            "operation": "dashboard_assistant",
+        }
 
     def answer(self, message: str, context: Mapping[str, Any] | None) -> dict[str, Any]:
         text = message.strip()
@@ -395,6 +413,10 @@ class LocalProjectAssistant:
             "model": self.model,
             "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
             "latency_ms": 0,
+            "explanation_version": "local-rule-v1/dashboard-guide-v1",
+            "degraded": True,
+            "fallback_reason": "未配置 DeepSeek，使用本地规则助手。",
+            "governance": local_fallback_metadata(reason="未配置 DeepSeek，使用本地规则助手。"),
         }
 
 
@@ -402,9 +424,46 @@ class DeepSeekProjectAssistant:
     provider = "deepseek"
     live = True
 
-    def __init__(self, gateway: ModelGateway, *, model: str) -> None:
+    def __init__(
+        self,
+        gateway: Any,
+        *,
+        model: str,
+        fallback: ProjectAssistant | None = None,
+        governance: ModelGovernanceRuntime | None = None,
+    ) -> None:
         self._gateway = gateway
         self.model = model
+        self._fallback = fallback or LocalProjectAssistant()
+        self._governance = governance
+
+    def governance_snapshot(self) -> dict[str, Any]:
+        snapshot = (
+            self._governance.snapshot()
+            if self._governance is not None
+            else {
+                "policy_version": "unmanaged",
+                "prompt_version": "unknown",
+                "schema_version": "unknown",
+                "route": "deepseek",
+                "max_calls": 0,
+                "max_total_tokens": 0,
+                "max_output_tokens": 0,
+                "cache_ttl_seconds": 0,
+                "calls_used": 0,
+                "calls_remaining": 0,
+                "tokens_used": 0,
+                "tokens_remaining": 0,
+                "cache_entries": 0,
+            }
+        )
+        return {
+            **snapshot,
+            "provider": self.provider,
+            "model": self.model,
+            "configured": self._governance is not None,
+            "live": self.live,
+        }
 
     @classmethod
     def from_env(cls) -> "DeepSeekProjectAssistant":
@@ -418,7 +477,18 @@ class DeepSeekProjectAssistant:
                 initial_backoff_seconds=0.25,
             ),
         )
-        return cls(gateway, model=model)
+        governance = ModelGovernanceRuntime(
+            gateway,
+            policy=GovernancePolicy(
+                prompt_version="dashboard-assistant-prompt-v1",
+                schema_version="dashboard-assistant-schema-v1",
+                route="deepseek",
+                max_calls=4,
+                max_total_tokens=1800,
+                max_output_tokens=500,
+            ),
+        )
+        return cls(governance, model=model, governance=governance)
 
     def answer(self, message: str, context: Mapping[str, Any] | None) -> dict[str, Any]:
         action_ids = ["none", *ACTION_BY_ID]
@@ -437,20 +507,45 @@ class DeepSeekProjectAssistant:
             {"question": message, "current_result": safe_context},
             ensure_ascii=False,
         )
-        result = self._gateway.generate(
-            ModelRequest(
-                prompt=prompt,
-                system_prompt=(
-                    "你是该项目控制台中的中文讲解助手。只能依据给定运行结果解释，不能编造数据，"
-                    "不能提供保证收益的投资建议，不能声称已经下单。确定性指标、仓位和风控结果"
-                    "以程序输出为准。你可以从白名单 action id 中建议下一项，但不能执行它。"
-                ),
-                response_schema=schema,
-                schema_name="dashboard_assistant",
-                max_output_tokens=500,
+        try:
+            request = ModelRequest(
+                    prompt=prompt,
+                    system_prompt=(
+                        "你是该项目控制台中的中文讲解助手。只能依据给定运行结果解释，不能编造数据，"
+                        "不能提供保证收益的投资建议，不能声称已经下单。确定性指标、仓位和风控结果"
+                        "以程序输出为准。你可以从白名单 action id 中建议下一项，但不能执行它。"
+                    ),
+                    response_schema=schema,
+                    schema_name="dashboard_assistant",
+                    max_output_tokens=500,
             )
-        )
+            result = (
+                self._gateway.generate(request, operation="dashboard_assistant")
+                if self._governance is not None
+                else self._gateway.generate(request)
+            )
+        except Exception:
+            fallback = self._fallback.answer(message, context)
+            fallback["fallback_reason"] = "DeepSeek 暂时不可用，已切换为本地规则助手。"
+            fallback["governance"] = local_fallback_metadata(
+                reason=fallback["fallback_reason"]
+            )
+            fallback["explanation_version"] = "local-rule-v1/dashboard-guide-v1"
+            fallback["degraded"] = True
+            return fallback
         output = dict(result.response.structured_output)
+        governance = dict(getattr(result, "governance", {}) or {})
+        if not governance:
+            governance = {
+                "policy_version": "p7-policy-v1",
+                "prompt_version": "dashboard-assistant-prompt-v1",
+                "schema_version": "dashboard-assistant-schema-v1",
+                "route": "deepseek",
+                "operation": "dashboard_assistant",
+                "cache_hit": False,
+                "degraded": False,
+                "fallback_reason": None,
+            }
         output.update(
             {
                 "provider": result.response.provider,
@@ -461,6 +556,13 @@ class DeepSeekProjectAssistant:
                     "total_tokens": result.response.usage.total_tokens,
                 },
                 "latency_ms": result.response.latency_ms,
+                "explanation_version": (
+                    f"{governance.get('prompt_version', 'unknown')}/"
+                    f"{governance.get('schema_version', 'unknown')}"
+                ),
+                "degraded": bool(governance.get("degraded", False)),
+                "fallback_reason": governance.get("fallback_reason"),
+                "governance": governance,
             }
         )
         return output
@@ -493,9 +595,14 @@ class DashboardRuntime:
         report_view_runtime: ReportViewRuntime | None = None,
         research_workspace: ResearchWorkspaceRuntime | None = None,
         observability: AnalysisObservabilityRuntime | None = None,
+        evaluation_root: Path | None = None,
         timeout_seconds: float = 180.0,
     ) -> None:
         self.project_root = project_root.resolve()
+        self.evaluation_root = (
+            evaluation_root
+            or self.project_root / ".runtime" / "llm-evaluation"
+        ).resolve()
         self.command_runner = command_runner or SubprocessDashboardCommandRunner()
         self.assistant = assistant or build_default_assistant()
         self.client_runtime = client_runtime or ClientAnalysisRuntime.from_project(
@@ -572,6 +679,75 @@ class DashboardRuntime:
                 "note": "真实数据只读；交易动作只进入本地模拟撮合。",
             },
         }
+
+    def get_model_governance_overview(self) -> dict[str, Any]:
+        """Return safe model policy/counter facts for the admin governance panel."""
+
+        dynamic_policy = GovernancePolicy(
+            policy_version="p7-dynamic-debate-policy-v1",
+            prompt_version="dynamic-debate-prompt-v1",
+            schema_version="dynamic-debate-schema-v1",
+            route="deepseek",
+            max_calls=3,
+            max_total_tokens=7200,
+            max_output_tokens=1400,
+            cache_ttl_seconds=300,
+        )
+        quality_gate: dict[str, Any] = {
+            "require_live": True,
+            "raw_results_required": True,
+            "acceptance_checks_required": True,
+            "offline_mock": "blocked",
+            "fixed_evaluation": "pending_real_key",
+            "promotion": "blocked_until_live_pass",
+            "latest": None,
+        }
+        latest = self._latest_quality_gate_result()
+        if latest is not None:
+            quality_gate["latest"] = latest
+            quality_gate["fixed_evaluation"] = (
+                "passed" if latest["passed"] else "failed"
+            )
+            if latest["can_promote"]:
+                quality_gate["promotion"] = "eligible"
+        return {
+            "customer_explanation": self.market_assistant.governance_snapshot(),
+            "dashboard_assistant": self.assistant.governance_snapshot(),
+            "dynamic_debate": asdict(dynamic_policy),
+            "quality_gate": quality_gate,
+            "safety": {
+                "model_only_explains": True,
+                "deterministic_finance_controls_unchanged": True,
+                "real_trading_allowed": False,
+            },
+        }
+
+    def _latest_quality_gate_result(self) -> dict[str, Any] | None:
+        evaluation_root = self.evaluation_root
+        if not evaluation_root.is_dir():
+            return None
+        candidates = sorted(
+            evaluation_root.glob("*.json"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+        for path in candidates:
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                gate = payload.get("quality_gate")
+                if not isinstance(gate, Mapping):
+                    continue
+                return {
+                    "file": path.name,
+                    "passed": gate.get("passed") is True,
+                    "can_promote": gate.get("can_promote") is True,
+                    "live": gate.get("live") is True,
+                    "raw_result_count": int(gate.get("raw_result_count", 0) or 0),
+                    "conclusion": str(gate.get("conclusion", "")),
+                }
+            except (OSError, ValueError, TypeError):
+                continue
+        return None
 
     def client_overview(self) -> dict[str, Any]:
         return {
@@ -933,6 +1109,44 @@ class DashboardRuntime:
                 raise DashboardError(f"解读已生成，但调用记录保存失败: {error}") from error
         return output
 
+    def record_client_feedback(
+        self,
+        report_id: str,
+        rating: str,
+        *,
+        explanation_version: str = "unknown",
+        provider: str = "unknown",
+        model: str = "unknown",
+        governance: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if not isinstance(report_id, str) or not report_id.strip():
+            raise DashboardError("缺少要反馈的历史报告编号。")
+        if rating not in {"helpful", "not_helpful"}:
+            raise DashboardError("反馈只能是 helpful 或 not_helpful。")
+        safe_governance = (
+            dict(governance) if isinstance(governance, Mapping) else {}
+        )
+        try:
+            feedback_id = self.analysis_repository.record_model_feedback(
+                report_id,
+                {
+                    "rating": rating,
+                    "explanation_version": str(explanation_version)[:160],
+                    "provider": str(provider)[:80],
+                    "model": str(model)[:160],
+                    "created_at": self._timestamp(),
+                    "metadata": safe_governance,
+                },
+            )
+        except AnalysisRepositoryError as error:
+            raise DashboardError(f"解释反馈保存失败: {error}") from error
+        return {
+            "feedback_id": feedback_id,
+            "report_id": report_id,
+            "rating": rating,
+            "recorded": True,
+        }
+
     @staticmethod
     def _timestamp() -> str:
         return datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(timespec="milliseconds")
@@ -1032,6 +1246,12 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/overview":
             self._send_json(HTTPStatus.OK, self.server.runtime.overview())
+            return
+        if path == "/api/governance":
+            self._send_json(
+                HTTPStatus.OK,
+                self.server.runtime.get_model_governance_overview(),
+            )
             return
         if path == "/api/observability/overview":
             self._send_json(
@@ -1198,6 +1418,17 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/client/explain":
                 result = self.server.runtime.explain_client(body.get("analysis", {}))
+                self._send_json(HTTPStatus.OK, result)
+                return
+            if path == "/api/client/feedback":
+                result = self.server.runtime.record_client_feedback(
+                    str(body.get("report_id", "")),
+                    str(body.get("rating", "")),
+                    explanation_version=str(body.get("explanation_version", "unknown")),
+                    provider=str(body.get("provider", "unknown")),
+                    model=str(body.get("model", "unknown")),
+                    governance=body.get("governance"),
+                )
                 self._send_json(HTTPStatus.OK, result)
                 return
             if path == "/api/client/debate":

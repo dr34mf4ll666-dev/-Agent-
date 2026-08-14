@@ -94,6 +94,10 @@ class DynamicDebateTests(unittest.TestCase):
         self.assertTrue(validate_structured_debate(result["report"], self.bundle).valid)
         self.assertEqual(len(gateway.requests), 1)
         self.assertNotIn("reports", json.loads(gateway.requests[0].prompt))
+        self.assertIn(
+            "Claim 和 Reasoning 中不要写任何数字、百分比、日期或价格",
+            gateway.requests[0].system_prompt,
+        )
 
     def test_unknown_evidence_id_retries_then_falls_back(self):
         gateway = _CatalogGateway(invalid=True)

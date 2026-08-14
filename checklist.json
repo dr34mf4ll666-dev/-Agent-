@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "3.3.0",
+  "version": "3.5.0",
   "updated_at": "2026-08-14",
-  "current_focus": "P1-P6 产品补强已完成；下一步进入 P7 LLM 治理与真实质量门禁",
+  "current_focus": "P8 正式部署、安全和质量门禁；P7真实DeepSeek质量门禁已通过",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "done",
   "items": [
@@ -679,8 +679,8 @@
     },
     {
       "id": "DYNAMIC_LLM_DEBATE",
-      "status": "in_progress",
-      "result": "受约束动态Bull/Bear、证据复核、有限重试、安全降级、固定重复评测、量化统计、统一CLI和后台入口已经完成",
+      "status": "done",
+      "result": "受约束动态Bull/Bear、证据复核、有限重试、安全降级、固定重复评测、量化统计、统一CLI、后台入口和真实DeepSeek质量评测已经完成",
       "evidence": [
         "src/agent_platform/finance/dynamic_debate.py",
         "src/agent_platform/finance/dynamic_debate_evaluation.py",
@@ -697,12 +697,59 @@
         "tests/test_dashboard_startup.py",
         "tests/test_dashboard.py",
         "docs/client-app.md",
-        "docs/dynamic-debate-evaluation.md"
+        "docs/dynamic-debate-evaluation.md",
+        ".runtime/llm-evaluation/deepseek-fixed-v1.json"
       ],
-      "remaining": [
-        "使用用户自己的有效DeepSeek Key运行固定评测集，并通过可选--output留存本次真实原始结果"
-      ],
+      "remaining": [],
       "scope_note": "仅改写Claim和Reasoning候选；Synthesis、价格区间、仓位、风控和真实交易边界不变"
+    },
+    {
+      "id": "P7_LLM_GOVERNANCE",
+      "status": "done",
+      "result": "已完成统一模型治理和真实质量门禁：Prompt/Schema/策略版本、调用与Token预算、成功缓存、安全降级、客户解释反馈、固定评测质量门禁和候选版本回滚；动态辩论真实路由也接入有限预算",
+      "completed_slices": [
+        "新增ModelGovernanceRuntime，统一记录策略、Prompt、Schema、路由、缓存、调用次数和Token余量",
+        "模型调用在访问供应商前检查输出上限和预计预算，实际Token超限时拒绝结果进入缓存",
+        "客户解读、后台助手和动态辩论均保留本地安全降级；确定性指标、价格区间、仓位和风控不受模型影响",
+        "SQLite Schema v3保存解释反馈、解释版本、provider、model和治理元数据",
+        "客户前台显示模型、Token、解释版本、降级状态，并提供有帮助/没帮助反馈入口",
+        "团队后台新增模型治理面板和GET /api/governance，只展示安全元数据，不触发模型调用",
+        "新增LLMQualityGateRuntime和ModelReleaseRegistry；Mock在require_live门禁下不能晋级，候选版本可显式回滚",
+        "新增离线治理演示，直观展示版本、缓存命中、预算拒绝和交易安全边界",
+        "真实 DeepSeek 固定评测 4 次运行通过：候选/最终证据有效率 100%、重试率 0%、降级率 0%、结果稳定性 100%",
+        "动态辩论提示词明确禁止在 Claim/Reasoning 中写数字、百分比、日期和价格，修复真实模型因自然语言数字触发误拒绝的问题",
+        "真实评测自动覆盖保存到 .runtime/llm-evaluation/deepseek-fixed-v1.json，保留逐次原始结果和统计口径"
+      ],
+      "remaining": [],
+      "evidence": [
+        "src/agent_platform/llm_governance.py",
+        "src/agent_platform/llm_quality_gate.py",
+        "src/agent_platform/finance/dynamic_debate.py",
+        "src/agent_platform/finance/dynamic_debate_evaluation.py",
+        "src/agent_platform/analysis_repository.py",
+        "src/agent_platform/dashboard.py",
+        "src/agent_platform/client_app.py",
+        "src/agent_platform/product_acceptance.py",
+        "src/agent_platform/web/client.html",
+        "src/agent_platform/web/client.css",
+        "src/agent_platform/web/client.js",
+        "src/agent_platform/web/index.html",
+        "src/agent_platform/web/styles.css",
+        "src/agent_platform/web/app.js",
+        "Scripts/demo_llm_governance.py",
+        "tests/test_llm_governance.py",
+        "tests/test_llm_quality_gate.py",
+        "tests/test_demo_llm_governance.py",
+        "tests/test_analysis_repository.py",
+        "tests/test_dashboard.py",
+        "docs/llm-governance.md",
+        "README.md",
+        "ROADMAP.md",
+        "SPEC.md",
+        "progress.txt",
+        ".runtime/llm-evaluation/deepseek-fixed-v1.json"
+      ],
+      "scope_note": "LLM只负责解释或受证据约束的语言候选；不计算或覆盖指标、估值、价格区间、仓位、风险和交易状态；固定评测关闭缓存以避免虚增稳定性"
     }
   ],
   "planned_product_enhancements": [

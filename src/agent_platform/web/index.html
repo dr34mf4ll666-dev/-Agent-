@@ -132,6 +132,30 @@
         </div>
       </section>
 
+      <section class="governance-section" id="model-governance" aria-labelledby="governance-title">
+        <div class="governance-head">
+          <div><p>GOVERNANCE / 04</p><h2 id="governance-title">模型治理：谁在解释，能花多少，能不能上线</h2><small>这块只约束语言模型，不改金融计算、仓位或交易边界。</small></div>
+          <button type="button" id="refresh-governance">刷新治理状态</button>
+        </div>
+        <div class="governance-grid" id="governance-runtime-cards" aria-live="polite">
+          <article class="governance-card" data-governance-card="customer">
+            <p>客户智能解读</p><strong>读取中…</strong><small>版本、预算和缓存</small>
+          </article>
+          <article class="governance-card" data-governance-card="dashboard">
+            <p>后台项目助手</p><strong>读取中…</strong><small>版本、预算和缓存</small>
+          </article>
+        </div>
+        <div class="governance-gate" id="governance-quality-gate">
+          <div class="governance-gate-title"><span>QUALITY GATE</span><strong>固定评测发布门禁</strong></div>
+          <div class="governance-gate-grid">
+            <div><small>真实评测</small><strong id="governance-evaluation-status">读取中…</strong></div>
+            <div><small>候选版本</small><strong id="governance-promotion-status">读取中…</strong></div>
+            <div><small>原始结果</small><strong id="governance-raw-status">读取中…</strong></div>
+          </div>
+          <p id="governance-gate-note">Mock 只能验证门禁逻辑，不能替代真实 DeepSeek 评测。</p>
+        </div>
+      </section>
+
       <section class="reliability-section" id="reliability" aria-labelledby="reliability-title">
         <div class="reliability-head">
           <div><p>RELIABILITY / 03</p><h2 id="reliability-title">一次分析，哪里慢、哪里失败</h2></div>

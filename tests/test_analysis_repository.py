@@ -56,10 +56,24 @@ class InMemoryAnalysisRepositoryTests(unittest.TestCase):
             "report-01",
             {"provider": "local", "model": "guide", "status": "succeeded", "usage": {}, "latency_ms": 0},
         )
+        repository.record_model_feedback(
+            "report-01",
+            {
+                "rating": "helpful",
+                "explanation_version": "local-rule-v1/local-explanation-v1",
+                "provider": "local",
+                "model": "guide",
+                "created_at": "2026-08-14T10:00:00+08:00",
+            },
+        )
 
         self.assertEqual(repository.list_reports()[0]["snapshot_id"], "snapshot-01")
         self.assertEqual(repository.get_report("report-01")["agents"]["technical"]["score"], 10)
         self.assertEqual(len(repository.get_report("report-01")["model_calls"]), 1)
+        self.assertEqual(
+            repository.get_report("report-01")["model_feedback"][0]["rating"],
+            "helpful",
+        )
 
     def test_memory_adapter_deletes_one_or_clears_all(self):
         repository = InMemoryAnalysisRepository()
@@ -85,7 +99,7 @@ class SQLiteAnalysisRepositoryTests(unittest.TestCase):
         repository.archive(_archive())
 
         with closing(sqlite3.connect(self.path)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 2)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 3)
         restarted = SQLiteAnalysisRepository(self.path)
 
         report = restarted.get_report("report-01")
@@ -94,7 +108,7 @@ class SQLiteAnalysisRepositoryTests(unittest.TestCase):
         self.assertIn("technical", report["agents"])
         self.assertIn("financial", report["graphs"])
 
-    def test_existing_version_one_database_migrates_to_version_two(self):
+    def test_existing_version_one_database_migrates_to_current_version(self):
         with closing(sqlite3.connect(self.path)) as connection:
             connection.executescript(
                 """
@@ -118,8 +132,12 @@ class SQLiteAnalysisRepositoryTests(unittest.TestCase):
         with closing(sqlite3.connect(self.path)) as connection:
             version = connection.execute("PRAGMA user_version").fetchone()[0]
             columns = {row[1] for row in connection.execute("PRAGMA table_info(model_calls)")}
-        self.assertEqual(version, 2)
+            feedback_columns = {
+                row[1] for row in connection.execute("PRAGMA table_info(model_feedback)")
+            }
+        self.assertEqual(version, 3)
         self.assertTrue({"kind", "output_json"}.issubset(columns))
+        self.assertTrue({"rating", "explanation_version"}.issubset(feedback_columns))
 
     def test_distinct_reports_never_overwrite_each_other(self):
         repository = SQLiteAnalysisRepository(self.path)
@@ -205,6 +223,16 @@ class SQLiteAnalysisRepositoryTests(unittest.TestCase):
                 "kind": "client_explanation", "output": {"headline": "已保存解读"},
             },
         )
+        repository.record_model_feedback(
+            "report-01",
+            {
+                "rating": "not_helpful",
+                "explanation_version": "p7-policy-v1",
+                "provider": "deepseek",
+                "model": "deepseek-test",
+                "created_at": "2026-08-13T10:03:00+08:00",
+            },
+        )
 
         call = SQLiteAnalysisRepository(self.path).get_report("report-01")["model_calls"][0]
 
@@ -212,6 +240,8 @@ class SQLiteAnalysisRepositoryTests(unittest.TestCase):
         self.assertEqual(call["output"]["headline"], "已保存解读")
         self.assertNotIn("prompt", call)
         self.assertNotIn("api_key", call)
+        feedback = SQLiteAnalysisRepository(self.path).get_report("report-01")["model_feedback"]
+        self.assertEqual(feedback[0]["rating"], "not_helpful")
 
     def test_delete_report_cascades_all_related_rows(self):
         repository = SQLiteAnalysisRepository(self.path)
@@ -227,9 +257,9 @@ class SQLiteAnalysisRepositoryTests(unittest.TestCase):
         with closing(sqlite3.connect(self.path)) as connection:
             counts = [
                 connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-                for table in ("analysis_reports", "analysis_tasks", "analysis_snapshots", "analysis_agents", "analysis_graphs", "model_calls")
+                for table in ("analysis_reports", "analysis_tasks", "analysis_snapshots", "analysis_agents", "analysis_graphs", "model_calls", "model_feedback")
             ]
-        self.assertEqual(counts, [0, 0, 0, 0, 0, 0])
+        self.assertEqual(counts, [0, 0, 0, 0, 0, 0, 0])
 
     def test_clear_reports_removes_every_report_and_related_row(self):
         repository = SQLiteAnalysisRepository(self.path)

@@ -40,6 +40,11 @@ class _FakeGateway:
         )
 
 
+class _FailingGateway:
+    def generate(self, request):
+        raise RuntimeError("provider timeout")
+
+
 class _CapturingGraph:
     def __init__(self):
         self.query = None
@@ -149,6 +154,16 @@ class ClientAnalysisTests(unittest.TestCase):
         self.assertIn("不能改写分数", gateway.requests[0].system_prompt)
         self.assertEqual(result["usage"]["total_tokens"], 50)
         self.assertEqual(self.analysis["verdict"], before)
+
+    def test_deepseek_failure_returns_local_explanation_with_degradation_metadata(self):
+        result = DeepSeekMarketAssistant(
+            _FailingGateway(), model="deepseek-test"
+        ).explain(self.analysis)
+
+        self.assertEqual(result["provider"], "local")
+        self.assertTrue(result["degraded"])
+        self.assertIn("本地确定性解释", result["fallback_reason"])
+        self.assertEqual(result["governance"]["route"], "local")
 
 
 if __name__ == "__main__":

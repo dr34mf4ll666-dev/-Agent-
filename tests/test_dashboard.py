@@ -100,6 +100,7 @@ class DashboardRuntimeTests(unittest.TestCase):
                 InMemoryResearchWorkspaceStore(),
             ),
             observability=observability,
+            evaluation_root=Path(self.temporary_runtime.name) / "llm-evaluation",
         )
 
     def tearDown(self):
@@ -115,6 +116,22 @@ class DashboardRuntimeTests(unittest.TestCase):
         self.assertEqual({item["stage"] for item in overview["actions"]}, {"A", "B", "C", "D"})
         self.assertFalse(overview["safety"]["real_trading_allowed"])
         self.assertFalse(overview["safety"]["order_created"])
+
+    def test_model_governance_overview_exposes_runtime_and_release_boundary(self):
+        governance = self.runtime.get_model_governance_overview()
+
+        self.assertEqual(governance["customer_explanation"]["route"], "local")
+        self.assertEqual(governance["dashboard_assistant"]["route"], "local")
+        self.assertEqual(
+            governance["dynamic_debate"]["policy_version"],
+            "p7-dynamic-debate-policy-v1",
+        )
+        self.assertTrue(governance["quality_gate"]["require_live"])
+        self.assertEqual(governance["quality_gate"]["offline_mock"], "blocked")
+        self.assertEqual(
+            governance["quality_gate"]["promotion"],
+            "blocked_until_live_pass",
+        )
 
     def test_client_overview_exposes_twenty_stocks_and_mode_availability(self):
         overview = self.runtime.client_overview()
@@ -285,12 +302,17 @@ class DashboardHTTPTests(unittest.TestCase):
             overview = json.loads(response.read().decode("utf-8"))
         with urlopen(f"{self.base_url}/api/client/overview", timeout=2) as response:
             client_overview = json.loads(response.read().decode("utf-8"))
+        with urlopen(f"{self.base_url}/api/governance", timeout=2) as response:
+            governance = json.loads(response.read().decode("utf-8"))
 
         self.assertIn("看懂一只股票", client_html)
         self.assertNotIn("Harness", client_html)
         self.assertIn("把 Agent 的能力", admin_html)
         self.assertIn("DeepSeek 助手", admin_html)
+        self.assertIn('id="model-governance"', admin_html)
+        self.assertIn('id="governance-quality-gate"', admin_html)
         self.assertEqual(len(overview["stages"]), 4)
+        self.assertEqual(governance["quality_gate"]["offline_mock"], "blocked")
         self.assertIn("K 线与技术指标", client_overview["capabilities"])
 
     def test_workspace_http_supports_snapshot_and_watchlist_toggle(self):
@@ -409,6 +431,25 @@ class DashboardHTTPTests(unittest.TestCase):
         self.assertEqual(len(analysis["data"]["bars"]), 30)
         self.assertEqual(len(analysis["analysis_id"]), 32)
         self.assertEqual(explanation["provider"], "local")
+
+        feedback = Request(
+            f"{self.base_url}/api/client/feedback",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps(
+                {
+                    "report_id": analysis["report_id"],
+                    "rating": "helpful",
+                    "explanation_version": explanation["explanation_version"],
+                    "provider": explanation["provider"],
+                    "model": explanation["model"],
+                    "governance": explanation["governance"],
+                }
+            ).encode("utf-8"),
+        )
+        with urlopen(feedback, timeout=5) as response:
+            feedback_result = json.loads(response.read().decode("utf-8"))
+        self.assertTrue(feedback_result["recorded"])
 
         debate = Request(
             f"{self.base_url}/api/client/debate",
@@ -591,6 +632,10 @@ class DashboardAssetTests(unittest.TestCase):
         self.assertIn('id="professional-nodes"', client_html)
         self.assertIn('id="basic-guide"', client_html)
         self.assertIn('id="basic-risk-explanation"', client_html)
+        self.assertIn('id="ai-feedback-helpful"', client_html)
+        self.assertIn('id="ai-feedback-not-helpful"', client_html)
+        self.assertIn('id="model-governance"', html)
+        self.assertIn('id="governance-quality-gate"', html)
         self.assertIn('普通版 · 结论摘要', client_html)
         self.assertIn('核心结论与风险提示', client_html)
         self.assertNotIn('普通版 · 先说人话', client_html)
@@ -604,11 +649,13 @@ class DashboardAssetTests(unittest.TestCase):
         self.assertIn("projection_fingerprint", (PROJECT_ROOT / "src" / "agent_platform" / "report_views.py").read_text(encoding="utf-8"))
         self.assertIn(".balance-zero-line", client_css)
         self.assertIn('api("/api/overview")', javascript)
+        self.assertIn('api("/api/governance")', javascript)
         self.assertIn('clientApi("/api/client/overview")', client_javascript)
         self.assertIn("syncModeAvailability", client_javascript)
         self.assertIn("renderResearchBalance", client_javascript)
         self.assertIn("localizeDebateText", client_javascript)
         self.assertIn('clientApi("/api/client/debate"', client_javascript)
+        self.assertIn('clientApi("/api/client/feedback"', client_javascript)
         self.assertIn('clientApi("/api/client/jobs"', client_javascript)
         self.assertIn("followAnalysisJob", client_javascript)
         self.assertIn("retryAnalysisJob", client_javascript)

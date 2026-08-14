@@ -49,6 +49,9 @@ class AnalysisRepository(Protocol):
     def record_model_call(self, report_id: str, value: Mapping[str, Any]) -> str:
         """Append non-sensitive model-call metadata for an archived report."""
 
+    def record_model_feedback(self, report_id: str, value: Mapping[str, Any]) -> str:
+        """Append helpful/not-helpful feedback for one archived explanation."""
+
     def delete_report(self, report_id: str) -> dict[str, Any]:
         """Delete one report and return the deleted report/job identity."""
 
@@ -142,6 +145,7 @@ class InMemoryAnalysisRepository:
     def __init__(self) -> None:
         self._reports: dict[str, dict[str, Any]] = {}
         self._model_calls: dict[str, list[dict[str, Any]]] = {}
+        self._model_feedback: dict[str, list[dict[str, Any]]] = {}
         self._lock = RLock()
 
     def archive(self, value: AnalysisArchive) -> str:
@@ -177,6 +181,7 @@ class InMemoryAnalysisRepository:
                 raise AnalysisRepositoryError("历史报告不存在。")
             output = deepcopy(value)
             output["model_calls"] = deepcopy(self._model_calls.get(report_id, []))
+            output["model_feedback"] = deepcopy(self._model_feedback.get(report_id, []))
             return output
 
     def record_model_call(self, report_id: str, value: Mapping[str, Any]) -> str:
@@ -189,6 +194,18 @@ class InMemoryAnalysisRepository:
             self._model_calls.setdefault(report_id, []).append({"call_id": call_id, **deepcopy(dict(value))})
         return call_id
 
+    def record_model_feedback(self, report_id: str, value: Mapping[str, Any]) -> str:
+        report_id = _validate_id(report_id)
+        _validate_feedback(value)
+        feedback_id = uuid4().hex
+        with self._lock:
+            if report_id not in self._reports:
+                raise AnalysisRepositoryError("历史报告不存在。")
+            self._model_feedback.setdefault(report_id, []).append(
+                {"feedback_id": feedback_id, **deepcopy(dict(value))}
+            )
+        return feedback_id
+
     def delete_report(self, report_id: str) -> dict[str, Any]:
         report_id = _validate_id(report_id)
         with self._lock:
@@ -196,6 +213,7 @@ class InMemoryAnalysisRepository:
             if value is None:
                 raise AnalysisRepositoryError("历史报告不存在。")
             self._model_calls.pop(report_id, None)
+            self._model_feedback.pop(report_id, None)
             return {"report_id": report_id, "job_id": value["job_id"]}
 
     def clear_reports(self) -> list[dict[str, Any]]:
@@ -206,13 +224,14 @@ class InMemoryAnalysisRepository:
             ]
             self._reports.clear()
             self._model_calls.clear()
+            self._model_feedback.clear()
             return deleted
 
 
 class SQLiteAnalysisRepository:
     """SQLite adapter with versioned migrations and atomic report archives."""
 
-    SCHEMA_VERSION = 2
+    SCHEMA_VERSION = 3
 
     def __init__(self, path: str | Path, *, timeout_seconds: float = 5.0) -> None:
         self.path = Path(path).resolve()
@@ -310,6 +329,26 @@ class SQLiteAnalysisRepository:
                 ALTER TABLE model_calls ADD COLUMN kind TEXT NOT NULL DEFAULT 'unknown';
                 ALTER TABLE model_calls ADD COLUMN output_json TEXT NOT NULL DEFAULT '{}';
                 PRAGMA user_version = 2;
+                COMMIT;
+                """
+            )
+            current = 2
+        if current < 3:
+            connection.executescript(
+                """
+                BEGIN IMMEDIATE;
+                CREATE TABLE model_feedback (
+                    feedback_id TEXT PRIMARY KEY,
+                    report_id TEXT NOT NULL REFERENCES analysis_reports(report_id) ON DELETE CASCADE,
+                    rating TEXT NOT NULL CHECK (rating IN ('helpful', 'not_helpful')),
+                    explanation_version TEXT NOT NULL,
+                    provider TEXT NOT NULL,
+                    model TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    metadata_json TEXT NOT NULL
+                );
+                CREATE INDEX model_feedback_report_idx ON model_feedback(report_id, created_at);
+                PRAGMA user_version = 3;
                 COMMIT;
                 """
             )
@@ -426,6 +465,21 @@ class SQLiteAnalysisRepository:
                         "SELECT * FROM model_calls WHERE report_id = ? ORDER BY created_at, call_id", (report_id,)
                     )
                 ]
+                feedback = [
+                    {
+                        "feedback_id": item["feedback_id"],
+                        "rating": item["rating"],
+                        "explanation_version": item["explanation_version"],
+                        "provider": item["provider"],
+                        "model": item["model"],
+                        "created_at": item["created_at"],
+                        "metadata": self._decode(item["metadata_json"], "feedback metadata"),
+                    }
+                    for item in connection.execute(
+                        "SELECT * FROM model_feedback WHERE report_id = ? ORDER BY created_at, feedback_id",
+                        (report_id,),
+                    )
+                ]
             result = self._decode(row["result_json"], "report")
             context = self._decode(row["debate_context_json"], "debate context")
             snapshot = self._decode(row["snapshot_json"], "snapshot")
@@ -441,6 +495,7 @@ class SQLiteAnalysisRepository:
                 "task": self._decode(row["payload_json"], "task"), "result": result,
                 "debate_context": context or None, "snapshot": snapshot or None,
                 "agents": agents, "graphs": graphs, "model_calls": calls,
+                "model_feedback": feedback,
             }
         except AnalysisRepositoryError:
             raise
@@ -475,6 +530,40 @@ class SQLiteAnalysisRepository:
             raise
         except (sqlite3.Error, TypeError, ValueError) as error:
             raise AnalysisRepositoryError(f"无法保存模型调用记录: {error}") from error
+
+    def record_model_feedback(self, report_id: str, value: Mapping[str, Any]) -> str:
+        report_id = _validate_id(report_id)
+        _validate_feedback(value)
+        feedback_id = uuid4().hex
+        try:
+            with self._session() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                if connection.execute(
+                    "SELECT 1 FROM analysis_reports WHERE report_id = ?", (report_id,)
+                ).fetchone() is None:
+                    raise AnalysisRepositoryError("历史报告不存在。")
+                connection.execute(
+                    """INSERT INTO model_feedback
+                       (feedback_id, report_id, rating, explanation_version,
+                        provider, model, created_at, metadata_json)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        feedback_id,
+                        report_id,
+                        str(value["rating"]),
+                        str(value.get("explanation_version", "unknown")),
+                        str(value.get("provider", "unknown")),
+                        str(value.get("model", "unknown")),
+                        str(value.get("created_at", "")),
+                        _json(value.get("metadata", {})),
+                    ),
+                )
+                connection.execute("COMMIT")
+            return feedback_id
+        except AnalysisRepositoryError:
+            raise
+        except (sqlite3.Error, TypeError, ValueError) as error:
+            raise AnalysisRepositoryError(f"无法保存模型反馈: {error}") from error
 
     def delete_report(self, report_id: str) -> dict[str, Any]:
         report_id = _validate_id(report_id)
@@ -530,6 +619,15 @@ def _validate_id(value: str) -> str:
     if not isinstance(value, str) or not value.strip() or len(value.strip()) > 80:
         raise AnalysisRepositoryError("历史报告编号无效。")
     return value.strip()
+
+
+def _validate_feedback(value: Mapping[str, Any]) -> None:
+    if not isinstance(value, Mapping):
+        raise AnalysisRepositoryError("模型反馈必须是对象。")
+    rating = value.get("rating")
+    if rating not in {"helpful", "not_helpful"}:
+        raise AnalysisRepositoryError("模型反馈必须是 helpful 或 not_helpful。")
+    _assert_safe(value)
 
 
 __all__ = [

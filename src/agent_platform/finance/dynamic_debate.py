@@ -7,7 +7,7 @@ import os
 import re
 from collections.abc import Mapping
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from agent_platform.core import (
@@ -17,6 +17,7 @@ from agent_platform.core import (
     ModelRequest,
     ModelRetryPolicy,
 )
+from agent_platform.llm_governance import GovernancePolicy, ModelGovernanceRuntime
 
 from .structured_debate import (
     DEBATE_SIDES,
@@ -86,6 +87,7 @@ class DynamicDebateResult:
     usage: Mapping[str, int]
     latency_ms: int
     trace: tuple[Mapping[str, Any], ...]
+    governance: Mapping[str, Any] = field(default_factory=dict)
 
     def to_mapping(self) -> dict[str, Any]:
         return {
@@ -98,6 +100,7 @@ class DynamicDebateResult:
             "usage": dict(self.usage),
             "latency_ms": self.latency_ms,
             "trace": [deepcopy(dict(event)) for event in self.trace],
+            "governance": deepcopy(dict(self.governance)),
             "safety": {
                 "candidate_language_only": True,
                 "deterministic_evidence_validation": True,
@@ -151,12 +154,16 @@ class DynamicDebateRuntime:
         total_latency = 0
         provider = "unknown"
         model = "unknown"
+        governance: Mapping[str, Any] = {}
         for attempt in range(1, self._max_semantic_attempts + 1):
             trace.append({"event": "dynamic_debate.model_candidate.started", "attempt": attempt})
             try:
                 gateway_result = self._gateway.generate(
                     _build_model_request(query, catalog, attempt=attempt, previous_error=last_error)
                 )
+                candidate_governance = getattr(gateway_result, "governance", None)
+                if isinstance(candidate_governance, Mapping):
+                    governance = dict(candidate_governance)
                 response = gateway_result.response
                 provider = str(response.provider)
                 model = str(response.model)
@@ -187,6 +194,7 @@ class DynamicDebateRuntime:
                     usage=total_usage,
                     latency_ms=total_latency,
                     trace=tuple(trace),
+                    governance=governance,
                 )
             except Exception as error:  # model output remains untrusted
                 last_error = str(error)
@@ -207,6 +215,7 @@ class DynamicDebateRuntime:
             model=model,
             usage=total_usage,
             latency_ms=total_latency,
+            governance=governance,
         )
 
     @staticmethod
@@ -220,6 +229,7 @@ class DynamicDebateRuntime:
         model: str = "deterministic-debate",
         usage: Mapping[str, int] | None = None,
         latency_ms: int = 0,
+        governance: Mapping[str, Any] | None = None,
     ) -> DynamicDebateResult:
         trace.append({"event": "dynamic_debate.fallback.used", "detail": reason})
         return DynamicDebateResult(
@@ -232,6 +242,7 @@ class DynamicDebateRuntime:
             usage=usage or {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
             latency_ms=latency_ms,
             trace=tuple(trace),
+            governance=dict(governance or {}),
         )
 
 
@@ -265,7 +276,8 @@ def _build_model_request(
         system_prompt=(
             "你是证券研究中的 Bull/Bear 辩论写作者，只能改写论证语言。每方每轮至少选择两个"
             " evidence_id，且整场每方必须覆盖至少两个不同 Specialist。只能使用目录中的证据，"
-            "不能创造或修改数值、来源、时间和路径；第二轮和第三轮必须回应上一轮对方观点。"
+            "不能创造或修改数值、来源、时间和路径。Claim 和 Reasoning 中不要写任何数字、百分比、日期或价格，"
+            "数值和时间只保留在 evidence 中；第二轮和第三轮必须回应上一轮对方观点。"
             "不能给出买卖指令、目标价、仓位或收益承诺。返回指定 JSON。"
         ),
         response_schema=DYNAMIC_DEBATE_SCHEMA,
@@ -389,7 +401,20 @@ def build_default_dynamic_debate_runtime() -> DynamicDebateRuntime:
         )
     except ModelGatewayConfigurationError:
         return DynamicDebateRuntime(gateway=None)
-    return DynamicDebateRuntime(gateway=gateway)
+    governed_gateway = ModelGovernanceRuntime(
+        gateway,
+        policy=GovernancePolicy(
+            policy_version="p7-dynamic-debate-policy-v1",
+            prompt_version="dynamic-debate-prompt-v1",
+            schema_version="dynamic-debate-schema-v1",
+            route="deepseek",
+            max_calls=3,
+            max_total_tokens=7200,
+            max_output_tokens=1400,
+            cache_ttl_seconds=300,
+        ),
+    )
+    return DynamicDebateRuntime(gateway=governed_gateway)
 
 
 __all__ = [

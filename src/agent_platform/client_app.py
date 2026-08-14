@@ -19,6 +19,11 @@ from .core import (
     ModelRequest,
     ModelRetryPolicy,
 )
+from .llm_governance import (
+    GovernancePolicy,
+    ModelGovernanceRuntime,
+    local_fallback_metadata,
+)
 
 from .finance import (
     AnalysisSnapshot,
@@ -630,17 +635,30 @@ class MarketAssistant(Protocol):
     def explain(self, analysis: Mapping[str, Any]) -> dict[str, Any]:
         """Explain an already-computed analysis without changing it."""
 
+    def governance_snapshot(self) -> dict[str, Any]:
+        """Expose safe governance counters for the team control desk."""
+
 
 class LocalMarketAssistant:
     provider = "local"
     model = "deterministic-market-guide"
     live = False
 
+    def governance_snapshot(self) -> dict[str, Any]:
+        return {
+            **local_fallback_metadata(reason="未配置 DeepSeek，使用本地确定性解释。"),
+            "provider": self.provider,
+            "model": self.model,
+            "configured": False,
+            "live": False,
+        }
+
     def explain(self, analysis: Mapping[str, Any]) -> dict[str, Any]:
         verdict = analysis["verdict"]
         dimensions = analysis["dimensions"]
         strongest = max(dimensions, key=lambda item: int(item["score"]))
         weakest = min(dimensions, key=lambda item: int(item["score"]))
+        governance = local_fallback_metadata(reason="未配置 DeepSeek，使用本地确定性解释。")
         return {
             "headline": f"研究观点为{verdict['label']}，但四个维度并不完全一致",
             "explanation": (
@@ -657,6 +675,10 @@ class LocalMarketAssistant:
             "model": self.model,
             "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
             "latency_ms": 0,
+            "explanation_version": "local-rule-v1/local-explanation-v1",
+            "degraded": True,
+            "fallback_reason": governance["fallback_reason"],
+            "governance": governance,
         }
 
 
@@ -664,9 +686,46 @@ class DeepSeekMarketAssistant:
     provider = "deepseek"
     live = True
 
-    def __init__(self, gateway: ModelGateway, *, model: str) -> None:
+    def __init__(
+        self,
+        gateway: Any,
+        *,
+        model: str,
+        fallback: MarketAssistant | None = None,
+        governance: ModelGovernanceRuntime | None = None,
+    ) -> None:
         self._gateway = gateway
         self.model = model
+        self._fallback = fallback or LocalMarketAssistant()
+        self._governance = governance
+
+    def governance_snapshot(self) -> dict[str, Any]:
+        snapshot = (
+            self._governance.snapshot()
+            if self._governance is not None
+            else {
+                "policy_version": "unmanaged",
+                "prompt_version": "unknown",
+                "schema_version": "unknown",
+                "route": "deepseek",
+                "max_calls": 0,
+                "max_total_tokens": 0,
+                "max_output_tokens": 0,
+                "cache_ttl_seconds": 0,
+                "calls_used": 0,
+                "calls_remaining": 0,
+                "tokens_used": 0,
+                "tokens_remaining": 0,
+                "cache_entries": 0,
+            }
+        )
+        return {
+            **snapshot,
+            "provider": self.provider,
+            "model": self.model,
+            "configured": self._governance is not None,
+            "live": self.live,
+        }
 
     @classmethod
     def from_env(cls) -> "DeepSeekMarketAssistant":
@@ -679,7 +738,18 @@ class DeepSeekMarketAssistant:
                 initial_backoff_seconds=0.25,
             ),
         )
-        return cls(gateway, model=model)
+        governance = ModelGovernanceRuntime(
+            gateway,
+            policy=GovernancePolicy(
+                prompt_version="client-explanation-prompt-v1",
+                schema_version="client-explanation-schema-v1",
+                route="deepseek",
+                max_calls=2,
+                max_total_tokens=2400,
+                max_output_tokens=420,
+            ),
+        )
+        return cls(governance, model=model, governance=governance)
 
     def explain(self, analysis: Mapping[str, Any]) -> dict[str, Any]:
         schema = {
@@ -705,21 +775,45 @@ class DeepSeekMarketAssistant:
                 for key in ("label", "as_of", "source_count")
             },
         }
-        result = self._gateway.generate(
-            ModelRequest(
-                prompt=json.dumps(context, ensure_ascii=False),
-                system_prompt=(
-                    "你是面向普通用户的证券研究解读助手。只解释给定的确定性分析，使用简明中文；"
-                    "不能改写分数、价格、仓位或风险结论，不能把一致性置信度说成上涨概率，"
-                    "不能承诺收益或声称已经交易。headline 一句话，explanation 两到三句，"
-                    "risk_note 一到两句。"
-                ),
-                response_schema=schema,
-                schema_name="client_market_explanation",
-                max_output_tokens=420,
+        try:
+            request = ModelRequest(
+                    prompt=json.dumps(context, ensure_ascii=False),
+                    system_prompt=(
+                        "你是面向普通用户的证券研究解读助手。只解释给定的确定性分析，使用简明中文；"
+                        "不能改写分数、价格、仓位或风险结论，不能把一致性置信度说成上涨概率，"
+                        "不能承诺收益或声称已经交易。headline 一句话，explanation 两到三句，"
+                        "risk_note 一到两句。"
+                    ),
+                    response_schema=schema,
+                    schema_name="client_market_explanation",
+                    max_output_tokens=420,
             )
-        )
+            result = (
+                self._gateway.generate(request, operation="client_explanation")
+                if self._governance is not None
+                else self._gateway.generate(request)
+            )
+        except Exception as error:
+            reason = _safe_governance_reason(error)
+            fallback = self._fallback.explain(analysis)
+            fallback["fallback_reason"] = reason
+            fallback["governance"] = local_fallback_metadata(reason=reason)
+            fallback["explanation_version"] = "local-rule-v1/local-explanation-v1"
+            fallback["degraded"] = True
+            return fallback
         output = dict(result.response.structured_output)
+        governance = dict(getattr(result, "governance", {}) or {})
+        if not governance:
+            governance = {
+                "policy_version": "p7-policy-v1",
+                "prompt_version": "client-explanation-prompt-v1",
+                "schema_version": "client-explanation-schema-v1",
+                "route": "deepseek",
+                "operation": "client_explanation",
+                "cache_hit": False,
+                "degraded": False,
+                "fallback_reason": None,
+            }
         output.update(
             {
                 "provider": result.response.provider,
@@ -730,9 +824,25 @@ class DeepSeekMarketAssistant:
                     "total_tokens": result.response.usage.total_tokens,
                 },
                 "latency_ms": result.response.latency_ms,
+                "explanation_version": (
+                    f"{governance.get('prompt_version', 'unknown')}/"
+                    f"{governance.get('schema_version', 'unknown')}"
+                ),
+                "degraded": bool(governance.get("degraded", False)),
+                "fallback_reason": governance.get("fallback_reason"),
+                "governance": governance,
             }
         )
         return output
+
+
+def _safe_governance_reason(error: Exception) -> str:
+    text = str(error).lower()
+    if "budget" in text or "预算" in text or "token" in text:
+        return "模型调用超过本地预算，已切换为本地确定性解释。"
+    if "key" in text or "authentication" in text or "认证" in text:
+        return "DeepSeek 未通过认证，已切换为本地确定性解释。"
+    return "DeepSeek 暂时不可用，已切换为本地确定性解释。"
 
 
 def build_default_market_assistant() -> MarketAssistant:
