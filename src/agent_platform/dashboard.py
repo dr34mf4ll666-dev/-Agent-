@@ -56,6 +56,11 @@ from .finance import (
     build_default_dynamic_debate_runtime,
 )
 from .report_views import ReportViewError, ReportViewRuntime
+from .research_workspace import (
+    JsonResearchWorkspaceStore,
+    ResearchWorkspaceError,
+    ResearchWorkspaceRuntime,
+)
 from uuid import uuid4
 
 
@@ -486,6 +491,7 @@ class DashboardRuntime:
         analysis_jobs: AnalysisJobRuntime | None = None,
         analysis_repository: AnalysisRepository | None = None,
         report_view_runtime: ReportViewRuntime | None = None,
+        research_workspace: ResearchWorkspaceRuntime | None = None,
         observability: AnalysisObservabilityRuntime | None = None,
         timeout_seconds: float = 180.0,
     ) -> None:
@@ -504,6 +510,13 @@ class DashboardRuntime:
         )
         self.report_view_runtime = report_view_runtime or ReportViewRuntime(
             self.analysis_repository
+        )
+        self.research_workspace = research_workspace or ResearchWorkspaceRuntime(
+            self.analysis_repository,
+            self.report_view_runtime,
+            JsonResearchWorkspaceStore(
+                self.project_root / ".runtime" / "research_workspace.json"
+            ),
         )
         if analysis_jobs is None:
             self.observability = observability or AnalysisObservabilityRuntime(
@@ -697,6 +710,72 @@ class DashboardRuntime:
         try:
             return self.report_view_runtime.project(report_id, view)
         except (AnalysisRepositoryError, ReportViewError) as error:
+            raise DashboardError(str(error)) from error
+
+    def get_client_research_workspace(self) -> dict[str, Any]:
+        try:
+            return self.research_workspace.snapshot()
+        except (AnalysisRepositoryError, ResearchWorkspaceError) as error:
+            raise DashboardError(str(error)) from error
+
+    def toggle_client_watchlist(self, symbol: str) -> dict[str, Any]:
+        try:
+            return self.research_workspace.toggle_watchlist(symbol)
+        except (AnalysisRepositoryError, ResearchWorkspaceError) as error:
+            raise DashboardError(str(error)) from error
+
+    def toggle_client_report_favorite(self, report_id: str) -> dict[str, Any]:
+        try:
+            return self.research_workspace.toggle_favorite(report_id)
+        except (AnalysisRepositoryError, ResearchWorkspaceError) as error:
+            raise DashboardError(str(error)) from error
+
+    def compare_client_reports(
+        self,
+        left_report_id: str,
+        right_report_id: str,
+        *,
+        view: str = "basic",
+    ) -> dict[str, Any]:
+        try:
+            return self.research_workspace.compare(
+                left_report_id, right_report_id, view=view
+            )
+        except (
+            AnalysisRepositoryError,
+            ReportViewError,
+            ResearchWorkspaceError,
+        ) as error:
+            raise DashboardError(str(error)) from error
+
+    def export_client_report(
+        self, report_id: str, *, view: str = "basic"
+    ) -> dict[str, Any]:
+        try:
+            return self.research_workspace.export_report(report_id, view=view)
+        except (
+            AnalysisRepositoryError,
+            ReportViewError,
+            ResearchWorkspaceError,
+        ) as error:
+            raise DashboardError(str(error)) from error
+
+    def export_client_comparison(
+        self,
+        left_report_id: str,
+        right_report_id: str,
+        *,
+        view: str = "basic",
+    ) -> dict[str, Any]:
+        try:
+            return self.research_workspace.export_comparison(
+                left_report_id, right_report_id, view=view
+            )
+        except (
+            AnalysisRepositoryError,
+            ReportViewError,
+            ResearchWorkspaceError,
+        ) as error:
             raise DashboardError(str(error)) from error
 
     def delete_client_historical_report(self, report_id: str) -> dict[str, Any]:
@@ -981,6 +1060,48 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             except DashboardError as error:
                 self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
             return
+        if path == "/api/client/workspace/export":
+            try:
+                query = parse_qs(parsed.query)
+                exported = self.server.runtime.export_client_comparison(
+                    query.get("left_report_id", [""])[0],
+                    query.get("right_report_id", [""])[0],
+                    view=query.get("view", ["basic"])[0],
+                )
+                self._send_download(
+                    HTTPStatus.OK,
+                    str(exported["content"]).encode("utf-8"),
+                    str(exported["content_type"]),
+                    str(exported["filename"]),
+                )
+            except DashboardError as error:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+            return
+        if path == "/api/client/workspace":
+            try:
+                self._send_json(
+                    HTTPStatus.OK,
+                    self.server.runtime.get_client_research_workspace(),
+                )
+            except DashboardError as error:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+            return
+        report_export_id = _match_client_report_export_path(path)
+        if report_export_id is not None:
+            try:
+                view = parse_qs(parsed.query).get("view", ["basic"])[0]
+                exported = self.server.runtime.export_client_report(
+                    report_export_id, view=view
+                )
+                self._send_download(
+                    HTTPStatus.OK,
+                    str(exported["content"]).encode("utf-8"),
+                    str(exported["content_type"]),
+                    str(exported["filename"]),
+                )
+            except DashboardError as error:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+            return
         report_view_id = _match_client_report_view_path(path)
         if report_view_id is not None:
             try:
@@ -1085,6 +1206,26 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 )
                 self._send_json(HTTPStatus.OK, result)
                 return
+            if path == "/api/client/workspace/watchlist":
+                result = self.server.runtime.toggle_client_watchlist(
+                    str(body.get("symbol", ""))
+                )
+                self._send_json(HTTPStatus.OK, result)
+                return
+            if path == "/api/client/workspace/favorites":
+                result = self.server.runtime.toggle_client_report_favorite(
+                    str(body.get("report_id", ""))
+                )
+                self._send_json(HTTPStatus.OK, result)
+                return
+            if path == "/api/client/workspace/compare":
+                result = self.server.runtime.compare_client_reports(
+                    str(body.get("left_report_id", "")),
+                    str(body.get("right_report_id", "")),
+                    view=str(body.get("view", "basic")),
+                )
+                self._send_json(HTTPStatus.OK, result)
+                return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "接口不存在。"})
         except DashboardError as error:
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
@@ -1140,7 +1281,35 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         payload = json.dumps(value, ensure_ascii=False).encode("utf-8")
         self._send_bytes(status, payload, "application/json; charset=utf-8")
 
-    def _send_bytes(self, status: HTTPStatus, payload: bytes, content_type: str) -> None:
+    def _send_download(
+        self,
+        status: HTTPStatus,
+        payload: bytes,
+        content_type: str,
+        filename: str,
+    ) -> None:
+        safe_filename = "".join(
+            character
+            for character in filename
+            if character.isascii() and (character.isalnum() or character in "._-")
+        )
+        if not safe_filename:
+            safe_filename = "research_report.html"
+        self._send_bytes(
+            status,
+            payload,
+            content_type,
+            headers={"Content-Disposition": f'attachment; filename="{safe_filename}"'},
+        )
+
+    def _send_bytes(
+        self,
+        status: HTTPStatus,
+        payload: bytes,
+        content_type: str,
+        *,
+        headers: Mapping[str, str] | None = None,
+    ) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(payload)))
@@ -1151,6 +1320,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             "Content-Security-Policy",
             "default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:",
         )
+        for key, value in (headers or {}).items():
+            self.send_header(key, value)
         self.end_headers()
         self.wfile.write(payload)
 
@@ -1232,4 +1403,12 @@ def _match_client_report_view_path(path: str) -> str | None:
     if not path.startswith(prefix) or not path.endswith("/view"):
         return None
     report_id = path[len(prefix):-len("/view")].strip("/")
+    return report_id if report_id and "/" not in report_id else None
+
+
+def _match_client_report_export_path(path: str) -> str | None:
+    prefix = "/api/client/reports/"
+    if not path.startswith(prefix) or not path.endswith("/export"):
+        return None
+    report_id = path[len(prefix):-len("/export")].strip("/")
     return report_id if report_id and "/" not in report_id else None

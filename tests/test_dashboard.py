@@ -1,5 +1,6 @@
 import json
 import sys
+import tempfile
 import threading
 import time
 import unittest
@@ -23,10 +24,17 @@ from agent_platform.dashboard import (  # noqa: E402
     create_server,
 )
 from agent_platform.client_app import LocalMarketAssistant  # noqa: E402
+from agent_platform.client_app import ClientAnalysisRuntime  # noqa: E402
+from agent_platform.analysis_jobs import AnalysisJobRuntime  # noqa: E402
 from agent_platform.analysis_repository import InMemoryAnalysisRepository  # noqa: E402
 from agent_platform.analysis_observability import (  # noqa: E402
     AnalysisObservabilityRuntime,
     InMemoryAnalysisTraceStore,
+)
+from agent_platform.report_views import ReportViewRuntime  # noqa: E402
+from agent_platform.research_workspace import (  # noqa: E402
+    InMemoryResearchWorkspaceStore,
+    ResearchWorkspaceRuntime,
 )
 
 
@@ -68,14 +76,35 @@ class _FakeGateway:
 class DashboardRuntimeTests(unittest.TestCase):
     def setUp(self):
         self.runner = _FakeRunner()
+        self.temporary_runtime = tempfile.TemporaryDirectory()
+        repository = InMemoryAnalysisRepository()
+        observability = AnalysisObservabilityRuntime(InMemoryAnalysisTraceStore())
+        client_runtime = ClientAnalysisRuntime.from_project(PROJECT_ROOT)
+        analysis_jobs = AnalysisJobRuntime.from_client_runtime(
+            client_runtime,
+            checkpoint_root=Path(self.temporary_runtime.name) / "checkpoints",
+            repository=repository,
+            observability=observability,
+        )
         self.runtime = DashboardRuntime.from_project(
             PROJECT_ROOT,
             command_runner=self.runner,
             assistant=LocalProjectAssistant(),
+            client_runtime=client_runtime,
             market_assistant=LocalMarketAssistant(),
-            analysis_repository=InMemoryAnalysisRepository(),
-            observability=AnalysisObservabilityRuntime(InMemoryAnalysisTraceStore()),
+            analysis_jobs=analysis_jobs,
+            analysis_repository=repository,
+            research_workspace=ResearchWorkspaceRuntime(
+                repository,
+                ReportViewRuntime(repository),
+                InMemoryResearchWorkspaceStore(),
+            ),
+            observability=observability,
         )
+
+    def tearDown(self):
+        self.runtime.analysis_jobs.close()
+        self.temporary_runtime.cleanup()
 
     def test_overview_unifies_every_stage_and_keeps_trading_disabled(self):
         overview = self.runtime.overview()
@@ -99,6 +128,14 @@ class DashboardRuntimeTests(unittest.TestCase):
             next(item for item in overview["securities"] if item["symbol"] == "sh600000")["modes"],
             ["live"],
         )
+
+    def test_research_workspace_watchlist_is_available_through_dashboard_interface(self):
+        initial = self.runtime.get_client_research_workspace()
+        added = self.runtime.toggle_client_watchlist("sz000001")
+
+        self.assertEqual(initial["watchlist"], [])
+        self.assertTrue(added["added"])
+        self.assertEqual(added["workspace"]["watchlist"][0]["name"], "平安银行")
 
     def test_history_interface_reopens_the_same_frozen_report(self):
         job = self.runtime.submit_client_analysis({"symbol": "sz000001", "mode": "offline"})
@@ -200,13 +237,32 @@ class DashboardRuntimeTests(unittest.TestCase):
 class DashboardHTTPTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.temporary_runtime = tempfile.TemporaryDirectory()
+        repository = InMemoryAnalysisRepository()
+        observability = AnalysisObservabilityRuntime(InMemoryAnalysisTraceStore())
+        client_runtime = ClientAnalysisRuntime.from_project(PROJECT_ROOT)
+        analysis_jobs = AnalysisJobRuntime.from_client_runtime(
+            client_runtime,
+            checkpoint_root=Path(cls.temporary_runtime.name) / "checkpoints",
+            repository=repository,
+            observability=observability,
+        )
         runtime = DashboardRuntime.from_project(
             PROJECT_ROOT,
             command_runner=_FakeRunner(),
             assistant=LocalProjectAssistant(),
+            client_runtime=client_runtime,
             market_assistant=LocalMarketAssistant(),
-            analysis_repository=InMemoryAnalysisRepository(),
+            analysis_jobs=analysis_jobs,
+            analysis_repository=repository,
+            research_workspace=ResearchWorkspaceRuntime(
+                repository,
+                ReportViewRuntime(repository),
+                InMemoryResearchWorkspaceStore(),
+            ),
+            observability=observability,
         )
+        cls.runtime = runtime
         cls.server = create_server(port=0, runtime=runtime)
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
@@ -217,6 +273,8 @@ class DashboardHTTPTests(unittest.TestCase):
         cls.server.shutdown()
         cls.server.server_close()
         cls.thread.join(timeout=2)
+        cls.runtime.analysis_jobs.close()
+        cls.temporary_runtime.cleanup()
 
     def test_serves_customer_frontend_admin_and_both_overview_apis(self):
         with urlopen(f"{self.base_url}/", timeout=2) as response:
@@ -234,6 +292,79 @@ class DashboardHTTPTests(unittest.TestCase):
         self.assertIn("DeepSeek 助手", admin_html)
         self.assertEqual(len(overview["stages"]), 4)
         self.assertIn("K 线与技术指标", client_overview["capabilities"])
+
+    def test_workspace_http_supports_snapshot_and_watchlist_toggle(self):
+        with urlopen(f"{self.base_url}/api/client/workspace", timeout=2) as response:
+            initial = json.loads(response.read().decode("utf-8"))
+        toggle = Request(
+            f"{self.base_url}/api/client/workspace/watchlist",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps({"symbol": "sz000001"}).encode("utf-8"),
+        )
+        with urlopen(toggle, timeout=2) as response:
+            added = json.loads(response.read().decode("utf-8"))
+
+        self.assertIn("reports", initial)
+        self.assertTrue(initial["frozen_data_only"])
+        self.assertTrue(added["added"])
+        self.assertEqual(added["workspace"]["watchlist"][0]["symbol"], "sz000001")
+
+        with urlopen(toggle, timeout=2) as response:
+            removed = json.loads(response.read().decode("utf-8"))
+        self.assertFalse(removed["added"])
+
+    def test_workspace_http_supports_favorite_and_both_export_depths(self):
+        reports = []
+        for _ in range(2):
+            job = self.server.runtime.submit_client_analysis(
+                {"symbol": "sz000001", "mode": "offline"}
+            )
+            deadline = time.monotonic() + 20
+            while time.monotonic() < deadline:
+                status = self.server.runtime.get_client_analysis_job(job["job_id"])
+                if status["status"] in {"succeeded", "failed"}:
+                    break
+                time.sleep(0.02)
+            self.assertEqual(status["status"], "succeeded", status)
+            reports.append(
+                self.server.runtime.get_client_analysis_result(job["job_id"])
+            )
+
+        favorite_request = Request(
+            f"{self.base_url}/api/client/workspace/favorites",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps({"report_id": reports[0]["report_id"]}).encode("utf-8"),
+        )
+        with urlopen(favorite_request, timeout=2) as response:
+            favorite = json.loads(response.read().decode("utf-8"))
+        self.assertTrue(favorite["added"])
+
+        export_base = (
+            f"{self.base_url}/api/client/reports/{reports[0]['report_id']}/export"
+        )
+        with urlopen(f"{export_base}?view=basic", timeout=2) as response:
+            basic = response.read().decode("utf-8")
+            disposition = response.headers["Content-Disposition"]
+        with urlopen(f"{export_base}?view=professional", timeout=2) as response:
+            professional = response.read().decode("utf-8")
+        comparison_url = (
+            f"{self.base_url}/api/client/workspace/export?"
+            f"left_report_id={reports[0]['report_id']}&"
+            f"right_report_id={reports[1]['report_id']}&view=professional"
+        )
+        with urlopen(comparison_url, timeout=2) as response:
+            comparison = response.read().decode("utf-8")
+
+        self.assertIn("attachment", disposition)
+        self.assertIn("研究摘要", basic)
+        self.assertNotIn("证据来源", basic)
+        self.assertIn("证据来源", professional)
+        self.assertIn("风险边界", professional)
+        self.assertIn("同一股票前后变化", comparison)
+        self.assertIn("计划仓位上限", comparison)
+        self.assertIn("预计单次亏损", comparison)
 
     def test_customer_analysis_and_explanation_are_visible_through_http(self):
         analyze = Request(
@@ -432,6 +563,15 @@ class DashboardAssetTests(unittest.TestCase):
         self.assertIn('id="job-progress"', client_html)
         self.assertIn('id="clear-history-button"', client_html)
         self.assertIn('id="history-confirm"', client_html)
+        self.assertIn('id="research-workspace"', client_html)
+        self.assertIn('id="watchlist-toggle"', client_html)
+        self.assertIn('id="compare-left"', client_html)
+        self.assertIn('id="compare-right"', client_html)
+        self.assertIn('id="comparison-result"', client_html)
+        self.assertIn('id="favorite-report-button"', client_html)
+        self.assertIn('id="export-report-button"', client_html)
+        self.assertIn('id="print-report-button"', client_html)
+        self.assertIn('data-history-filter="favorites"', client_html)
         self.assertIn("X-Confirm-Delete", client_javascript)
         self.assertIn("当前运行的是旧版后台", client_javascript)
         self.assertNotIn("服务返回了无法识别的内容", client_javascript)
@@ -473,7 +613,15 @@ class DashboardAssetTests(unittest.TestCase):
         self.assertIn("followAnalysisJob", client_javascript)
         self.assertIn("retryAnalysisJob", client_javascript)
         self.assertIn("renderSnapshotHealth", client_javascript)
+        self.assertIn("loadResearchWorkspace", client_javascript)
+        self.assertIn("runReportComparison", client_javascript)
+        self.assertIn("renderReportComparison", client_javascript)
+        self.assertIn("toggleReportFavorite", client_javascript)
+        self.assertIn("downloadExport", client_javascript)
+        self.assertIn("printResearch", client_javascript)
         self.assertIn(".snapshot-dataset", client_css)
+        self.assertIn(".comparison-rail", client_css)
+        self.assertIn("@media print", client_css)
         self.assertIn("只重试失败步骤", client_html)
         self.assertIn(".job-stage", client_css)
 

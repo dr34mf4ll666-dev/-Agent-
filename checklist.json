@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "3.1.0",
+  "version": "3.3.0",
   "updated_at": "2026-08-14",
-  "current_focus": "正式任务和 P1-P5 已完成；下一项为 P6 研究工作台与产品闭环",
+  "current_focus": "P1-P6 产品补强已完成；下一步进入 P7 LLM 治理与真实质量门禁",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "done",
   "items": [
@@ -767,6 +767,39 @@
         "ROADMAP.md"
       ],
       "scope_note": "数据快照只记录真实最终来源状态，不伪造每个外部请求耗时；当前使用模块化单体和本地JSON adapter，不提前接外部APM；P5不改变金融结论或真实交易关闭边界"
+    },
+    {
+      "id": "P6_RESEARCH_WORKSPACE",
+      "status": "done",
+      "result": "研究工作台闭环已完成：持久化自选、报告收藏与筛选、同股前后变化、两股横向比较、报告状态提示，以及普通版/专业版打印和独立HTML导出均复用冻结报告事实",
+      "completed_slices": [
+        "新增ResearchWorkspaceRuntime深模块和内存/JSON两个偏好存储adapter",
+        "自选股加入或移出后保存到.runtime/research_workspace.json",
+        "比较只读取SQLite冻结报告并复用ReportViewRuntime，不重新取数、不运行Graph、不调用DeepSeek",
+        "同股报告展示前后观点、参考收盘价和判断把握度变化",
+        "跨股报告明确价格不可直接代表优劣，避免把横向差异误写成时间趋势",
+        "专业版增加四个研究维度差值，普通版保持通俗摘要",
+        "客户前台新增研究工作台、自选架和双报告对比轨道",
+        "报告级收藏可持久化，并可在最近分析中只查看收藏",
+        "普通版导出只保留通俗结论，专业版导出增加四维证据、来源和确定性风险边界",
+        "单报告和双报告比较均支持浏览器打印与下载独立HTML，不在项目中堆积导出文件",
+        "报告明确显示当前、过期、数据完整、来源降级、部分可用或旧报告健康未知状态",
+        "偏好文件从schema v1自动兼容迁移到包含收藏的v2",
+        "收藏、状态、导出HTTP和前端入口均有专项测试；项目完整回归375项与产品验收通过"
+      ],
+      "remaining": [],
+      "evidence": [
+        "src/agent_platform/research_workspace.py",
+        "src/agent_platform/dashboard.py",
+        "src/agent_platform/web/client.html",
+        "src/agent_platform/web/client.css",
+        "src/agent_platform/web/client.js",
+        "tests/test_research_workspace.py",
+        "docs/research-workspace.md",
+        "README.md",
+        "ROADMAP.md"
+      ],
+      "scope_note": "自选是股票级偏好，收藏是报告级偏好；比较和导出双方均来自冻结报告。打印/导出只在用户操作时生成浏览器下载内容，不写入项目目录；DeepSeek不参与差异和风险数值计算"
     }
   ],
   "enhancements_to_preserve": [

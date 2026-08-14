@@ -43,6 +43,7 @@
           <button class="active" type="button" data-client-mode="offline">已验证快照</button>
           <button type="button" data-client-mode="live">最新数据</button>
           <small id="mode-helper">稳定复现，适合查看完整功能</small>
+          <button class="watchlist-toggle" type="button" id="watchlist-toggle">☆ 加入自选</button>
         </div>
       </form>
     </section>
@@ -61,10 +62,45 @@
       </div>
     </section>
 
+    <section class="research-workspace" id="research-workspace" aria-labelledby="workspace-title">
+      <div class="workspace-heading">
+        <div>
+          <p class="panel-kicker">研究工作台</p>
+          <h2 id="workspace-title">把关注的股票和报告放在一起看</h2>
+        </div>
+        <span id="workspace-status">正在读取自选与报告…</span>
+      </div>
+      <div class="watchlist-shelf">
+        <strong>我的自选</strong>
+        <div id="watchlist-items" class="watchlist-items" aria-live="polite"></div>
+      </div>
+      <div class="comparison-desk">
+        <div class="comparison-copy">
+          <span>REPORT COMPARISON</span>
+          <h3>选择两份已保存报告</h3>
+          <p>同一只股票看前后变化，两只股票做横向研究。比较只读取当时保存的结果。</p>
+        </div>
+        <div class="comparison-controls">
+          <label>左侧报告<select id="compare-left" aria-label="选择左侧报告"></select></label>
+          <i aria-hidden="true">⇄</i>
+          <label>右侧报告<select id="compare-right" aria-label="选择右侧报告"></select></label>
+          <button type="button" id="compare-button">开始比较</button>
+        </div>
+      </div>
+      <div class="comparison-result" id="comparison-result" hidden aria-live="polite"></div>
+    </section>
+
     <section class="recent-analysis" id="recent-analysis" aria-labelledby="recent-title">
       <div class="recent-heading">
         <div><p class="panel-kicker">最近分析</p><h2 id="recent-title">重新打开当时的研究报告</h2></div>
-        <div class="recent-heading-actions"><span>报告使用当时冻结的数据，不会重新取数</span><button type="button" id="clear-history-button" hidden>清空历史</button></div>
+        <div class="recent-heading-actions">
+          <span>报告使用当时冻结的数据，不会重新取数</span>
+          <div class="history-filter" role="group" aria-label="历史报告筛选">
+            <button type="button" class="active" data-history-filter="all">全部报告</button>
+            <button type="button" data-history-filter="favorites">仅看收藏</button>
+          </div>
+          <button type="button" id="clear-history-button" hidden>清空历史</button>
+        </div>
       </div>
       <div class="recent-list" id="recent-list" aria-live="polite">
         <p class="recent-empty">正在读取历史报告…</p>
@@ -91,6 +127,12 @@
         <span id="report-version">—</span>
         <strong id="report-history-state">—</strong>
         <small id="report-reference">—</small>
+        <small class="report-data-state" id="report-data-state">—</small>
+        <div class="report-actions">
+          <button type="button" id="favorite-report-button">☆ 收藏报告</button>
+          <button type="button" id="export-report-button">导出报告</button>
+          <button type="button" id="print-report-button">打印报告</button>
+        </div>
       </div>
       <div class="security-ribbon">
         <div class="security-name">

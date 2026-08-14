@@ -96,6 +96,7 @@ class ProductAcceptanceRuntime:
             "统一数据快照和来源健康可见": self._analysis_snapshot_ready(client),
             "普通版专业版和证据下钻入口存在": self._report_views_ready(),
             "实际耗时和可操作错误入口存在": self._client_observability_ready(),
+            "研究工作台收藏比较打印导出入口存在": self._research_workspace_ready(),
             "客户股票池不少于20只": len(SECURITIES) >= 20,
             "客户股票池覆盖沪深两市": {item["exchange"] for item in SECURITIES.values()}
             == {"上交所", "深交所"},
@@ -270,6 +271,27 @@ class ProductAcceptanceRuntime:
             and 'data-chart-period="weekly"' in html
             and "/view?view=" in javascript
             and "switchReportView" in javascript
+        )
+
+    def _research_workspace_ready(self) -> bool:
+        runtime = self._root / "src" / "agent_platform" / "research_workspace.py"
+        web_root = self._root / "src" / "agent_platform" / "web"
+        html = (web_root / "client.html").read_text(encoding="utf-8")
+        css = (web_root / "client.css").read_text(encoding="utf-8")
+        javascript = (web_root / "client.js").read_text(encoding="utf-8")
+        runtime_text = runtime.read_text(encoding="utf-8") if runtime.is_file() else ""
+        return (
+            runtime.is_file()
+            and "def toggle_favorite" in runtime_text
+            and "def export_report" in runtime_text
+            and "def export_comparison" in runtime_text
+            and 'id="research-workspace"' in html
+            and 'data-history-filter="favorites"' in html
+            and 'id="export-report-button"' in html
+            and "runReportComparison" in javascript
+            and "toggleReportFavorite" in javascript
+            and "downloadExport" in javascript
+            and "@media print" in css
         )
 
 

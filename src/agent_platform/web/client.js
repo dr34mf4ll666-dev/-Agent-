@@ -4,6 +4,7 @@ const savedReportView = window.localStorage.getItem("client_report_view");
 const clientState = {
   mode: "offline", analysis: null, projection: null, overview: null, running: false,
   jobId: null, pollTimer: null, deleteIntent: null,
+  workspace: null, comparison: null, historyReports: [], historyFilter: "all",
   reportView: savedReportView === "professional" ? "professional" : "basic",
   chartPeriod: "daily", chartRange: 40, chartIndicators: { sma5: true, sma20: true, volume: true },
   chartHoverIndex: null, chartGeometry: null,
@@ -52,7 +53,7 @@ function populateOverview(overview) {
   });
   const strip = $("#capability-strip"); strip.replaceChildren();
   overview.capabilities.forEach((item) => { const span = document.createElement("span"); span.textContent = item; strip.append(span); });
-  syncModeAvailability();
+  syncModeAvailability(); syncWatchlistButton();
 }
 
 function selectedSecurity() {
@@ -77,6 +78,32 @@ function syncModeAvailability() {
       ? (clientState.mode === "live" ? "读取最新只读数据，不会连接交易" : "稳定复现，适合查看完整功能")
       : `${security.name}使用最新只读数据`,
   );
+}
+
+function syncWatchlistButton() {
+  const button = $("#watchlist-toggle");
+  const symbol = $("#stock-select").value;
+  const selected = clientState.workspace?.watchlist?.some((item) => item.symbol === symbol) || false;
+  button.classList.toggle("active", selected);
+  button.textContent = selected ? "★ 已在自选" : "☆ 加入自选";
+}
+
+function syncCurrentReportActions() {
+  const reportId = clientState.projection?.report_id || clientState.analysis?.report_id;
+  const report = clientState.workspace?.reports?.find((item) => item.report_id === reportId);
+  const favorite = Boolean(report?.favorite);
+  const favoriteButton = $("#favorite-report-button");
+  favoriteButton.disabled = !reportId; favoriteButton.classList.toggle("active", favorite);
+  favoriteButton.textContent = favorite ? "★ 已收藏" : "☆ 收藏报告";
+  $("#export-report-button").disabled = !reportId;
+  $("#print-report-button").disabled = !reportId;
+  const stateNode = $("#report-data-state");
+  stateNode.className = "report-data-state";
+  if (!report?.state) { stateNode.textContent = "状态读取中"; return; }
+  const freshness = report.state.freshness; const availability = report.state.availability;
+  stateNode.textContent = `${freshness.label} · ${availability.label}`;
+  stateNode.classList.add(freshness.status, availability.status);
+  stateNode.title = `${freshness.note} ${availability.note}`;
 }
 
 async function runClientAnalysis() {
@@ -220,6 +247,7 @@ function renderReportProjection(projection, raw) {
   setText("#report-version", `报告 v${projection.report_version || 1}`);
   setText("#report-history-state", raw.history ? "已从历史记录重新打开" : "已保存到历史记录");
   setText("#report-reference", `报告 ${projection.report_id.slice(0, 8)} · 快照 ${(data.data.snapshot_id || "未知").slice(0, 8)}`);
+  syncCurrentReportActions();
   setText("#security-exchange", data.security.exchange);
   setText("#security-name", data.security.name);
   setText("#security-code", data.security.code);
@@ -328,45 +356,254 @@ function applyReportViewVisibility() {
 async function switchReportView(view) {
   if (!["basic", "professional"].includes(view) || view === clientState.reportView) return;
   clientState.reportView = view; window.localStorage.setItem("client_report_view", view);
-  if (!clientState.analysis?.report_id) { applyReportViewVisibility(); return; }
+  if (!clientState.analysis?.report_id) {
+    applyReportViewVisibility();
+    if (clientState.comparison) await runReportComparison({ silent: true });
+    return;
+  }
   try {
     const projection = await clientApi(`/api/client/reports/${clientState.analysis.report_id}/view?view=${view}`);
     clientState.projection = projection; renderReportProjection(projection, clientState.analysis);
+    if (clientState.comparison) await runReportComparison({ silent: true });
     showClientToast(view === "professional" ? "已展开专业证据，没有重新分析。" : "已切换到普通版，没有重新分析。");
   } catch (error) { showClientToast(error.message); }
 }
 
-async function loadRecentAnalyses() {
-  const list = $("#recent-list");
+async function loadResearchWorkspace() {
   try {
-    const history = await clientApi("/api/client/history");
-    list.replaceChildren();
-    $("#clear-history-button").hidden = !history.reports.length;
-    if (!history.reports.length) {
-      const empty = document.createElement("p"); empty.className = "recent-empty";
-      empty.textContent = "完成一次分析后，报告会出现在这里。"; list.append(empty); return;
-    }
-    history.reports.slice(0, 8).forEach((report) => {
-      const card = document.createElement("article"); card.className = "recent-card";
-      const open = document.createElement("button"); open.type = "button"; open.className = "recent-open";
-      open.dataset.reportId = report.report_id;
-      const top = document.createElement("span");
-      const time = document.createElement("b"); time.textContent = formatDateTime(report.archived_at);
-      const status = document.createElement("i"); status.textContent = report.task_status === "succeeded" ? "已完成" : report.task_status;
-      top.append(time, status);
-      const name = document.createElement("strong"); name.textContent = `${report.name || report.symbol} · ${report.verdict || "研究报告"}`;
-      const detail = document.createElement("small");
-      detail.textContent = `${report.data_label || report.mode} · 数据 ${formatDateTime(report.as_of)} · v${report.report_version}`;
-      open.append(top, name, detail);
-      const remove = document.createElement("button"); remove.type = "button"; remove.className = "recent-delete";
-      remove.dataset.deleteReportId = report.report_id; remove.dataset.deleteReportName = report.name || report.symbol;
-      remove.setAttribute("aria-label", `删除${report.name || report.symbol}的这份历史报告`); remove.textContent = "×";
-      card.append(open, remove); list.append(card);
-    });
+    const workspace = await clientApi("/api/client/workspace");
+    clientState.workspace = workspace; clientState.historyReports = workspace.reports;
+    renderResearchWorkspace(workspace); renderRecentAnalyses();
+    syncWatchlistButton(); syncCurrentReportActions();
+    if (clientState.comparison) renderReportComparison(clientState.comparison);
   } catch (error) {
-    list.replaceChildren(); const empty = document.createElement("p"); empty.className = "recent-empty";
+    setText("#workspace-status", `工作台暂时不可用：${error.message}`);
+    $("#compare-button").disabled = true;
+    const list = $("#recent-list"); list.replaceChildren();
+    const empty = document.createElement("p"); empty.className = "recent-empty";
     empty.textContent = `历史报告暂时不可用：${error.message}`; list.append(empty);
   }
+}
+
+function renderResearchWorkspace(workspace) {
+  setText(
+    "#workspace-status",
+    `${workspace.watchlist_count} 只自选 · ${workspace.report_count} 份冻结报告 · ${workspace.favorite_count} 份收藏`,
+  );
+  const shelf = $("#watchlist-items"); shelf.replaceChildren();
+  if (!workspace.watchlist.length) {
+    const empty = document.createElement("span"); empty.className = "watchlist-empty";
+    empty.textContent = "还没有自选股票，可从上方选择后加入。"; shelf.append(empty);
+  } else {
+    workspace.watchlist.forEach((security) => {
+      const chip = document.createElement("button"); chip.type = "button"; chip.className = "watchlist-chip";
+      chip.dataset.watchlistSymbol = security.symbol;
+      const name = document.createElement("span"); name.textContent = security.name;
+      const code = document.createElement("small"); code.textContent = security.code;
+      chip.append(name, code); shelf.append(chip);
+    });
+  }
+  populateComparisonSelect($("#compare-left"), workspace.reports, 1);
+  populateComparisonSelect($("#compare-right"), workspace.reports, 0);
+  $("#compare-button").disabled = !workspace.comparison_ready;
+}
+
+function populateComparisonSelect(select, reports, fallbackIndex) {
+  const previous = select.value; select.replaceChildren();
+  if (!reports.length) {
+    const option = document.createElement("option"); option.value = "";
+    option.textContent = "暂无已保存报告"; select.append(option); return;
+  }
+  reports.forEach((report) => {
+    const option = document.createElement("option"); option.value = report.report_id;
+    const favorite = report.favorite ? "★ " : "";
+    option.textContent = `${favorite}${report.name || report.symbol} · ${formatDateTime(report.as_of)} · ${report.verdict || "研究报告"}`;
+    select.append(option);
+  });
+  if (reports.some((item) => item.report_id === previous)) select.value = previous;
+  else select.value = reports[Math.min(fallbackIndex, reports.length - 1)].report_id;
+}
+
+async function toggleWatchlist(symbol = null) {
+  const target = symbol || $("#stock-select").value;
+  try {
+    const result = await clientApi("/api/client/workspace/watchlist", {
+      method: "POST", body: JSON.stringify({ symbol: target }),
+    });
+    clientState.workspace = result.workspace; renderResearchWorkspace(result.workspace);
+    syncWatchlistButton(); showClientToast(result.message);
+  } catch (error) { showClientToast(error.message); }
+}
+
+async function toggleReportFavorite(reportId) {
+  if (!reportId) return;
+  try {
+    const result = await clientApi("/api/client/workspace/favorites", {
+      method: "POST", body: JSON.stringify({ report_id: reportId }),
+    });
+    clientState.workspace = result.workspace; clientState.historyReports = result.workspace.reports;
+    renderResearchWorkspace(result.workspace); renderRecentAnalyses();
+    syncCurrentReportActions();
+    if (clientState.comparison) renderReportComparison(clientState.comparison);
+    showClientToast(result.message);
+  } catch (error) { showClientToast(error.message); }
+}
+
+async function runReportComparison({ silent = false } = {}) {
+  const leftReportId = $("#compare-left").value;
+  const rightReportId = $("#compare-right").value;
+  if (!leftReportId || !rightReportId) { if (!silent) showClientToast("请先保存至少两份报告。"); return; }
+  const button = $("#compare-button"); button.disabled = true; button.textContent = "正在比较…";
+  try {
+    const result = await clientApi("/api/client/workspace/compare", {
+      method: "POST",
+      body: JSON.stringify({ left_report_id: leftReportId, right_report_id: rightReportId, view: clientState.reportView }),
+    });
+    clientState.comparison = result; renderReportComparison(result);
+  } catch (error) { if (!silent) showClientToast(error.message); }
+  finally { button.disabled = !clientState.workspace?.comparison_ready; button.textContent = "开始比较"; }
+}
+
+function renderReportComparison(result) {
+  const container = $("#comparison-result"); container.replaceChildren(); container.hidden = false;
+  const heading = document.createElement("div"); heading.className = "comparison-result-head";
+  const badge = document.createElement("span"); badge.textContent = result.kind_label;
+  const title = document.createElement("h3"); title.textContent = result.headline;
+  const note = document.createElement("p"); note.textContent = result.notice;
+  const actions = document.createElement("div"); actions.className = "comparison-result-actions";
+  const exportButton = document.createElement("button"); exportButton.type = "button";
+  exportButton.dataset.exportComparison = "true"; exportButton.textContent = "导出比较";
+  const printButton = document.createElement("button"); printButton.type = "button";
+  printButton.dataset.printTarget = "comparison"; printButton.textContent = "打印比较";
+  actions.append(exportButton, printButton); heading.append(badge, title, note, actions);
+
+  const rail = document.createElement("div"); rail.className = "comparison-rail";
+  rail.append(renderComparisonCard(result.left), renderComparisonDeltas(result.changes), renderComparisonCard(result.right));
+  container.append(heading, rail);
+  if (result.professional) {
+    const professional = document.createElement("section"); professional.className = "professional-comparison";
+    const label = document.createElement("strong"); label.textContent = "专业版 · 四个研究维度差值（右侧减左侧）";
+    const grid = document.createElement("div"); grid.className = "professional-comparison-grid";
+    result.professional.dimension_changes.forEach((item) => {
+      const cell = document.createElement("span"); cell.textContent = item.label;
+      const value = document.createElement("b"); value.textContent = item.delta === null ? "不可比较" : `${item.delta} ${item.unit}`;
+      cell.append(value); grid.append(cell);
+    });
+    professional.append(label, grid); container.append(professional);
+  }
+}
+
+function renderComparisonCard(report) {
+  const card = document.createElement("article"); card.className = "comparison-report";
+  const time = document.createElement("small"); time.textContent = `数据 ${formatDateTime(report.as_of)} · 报告 ${formatDateTime(report.archived_at)}`;
+  const name = document.createElement("h4"); name.textContent = `${report.name} ${report.code}`;
+  const verdict = document.createElement("strong"); verdict.textContent = `${report.verdict.label} · ${report.verdict.action_label}`;
+  const summary = document.createElement("p"); summary.textContent = `${report.support.summary} 主要风险：${report.risk_summary.summary}`;
+  const details = document.createElement("dl");
+  [["参考收盘价", report.latest_close], ["研究区间", `${report.price_band.lower}–${report.price_band.upper}`], ["判断把握度", `${report.verdict.confidence}%`], ["计划仓位上限", `${report.risk.position_cap_percent}%`]].forEach(([key, value]) => {
+    const term = document.createElement("dt"); term.textContent = key; const description = document.createElement("dd"); description.textContent = value; details.append(term, description);
+  });
+  const state = document.createElement("div"); state.className = "recent-state";
+  [report.state.freshness, report.state.availability].forEach((item) => {
+    const badge = document.createElement("em"); badge.className = item.status; badge.textContent = item.label; badge.title = item.note; state.append(badge);
+  });
+  const actions = document.createElement("div"); actions.className = "comparison-card-actions";
+  const favorite = document.createElement("button"); favorite.type = "button";
+  favorite.dataset.favoriteReportId = report.report_id;
+  const isFavorite = clientState.workspace?.reports?.find((item) => item.report_id === report.report_id)?.favorite;
+  favorite.classList.toggle("active", Boolean(isFavorite)); favorite.textContent = isFavorite ? "★ 已收藏" : "☆ 收藏";
+  const open = document.createElement("button"); open.type = "button"; open.dataset.reportId = report.report_id; open.textContent = "打开报告";
+  actions.append(favorite, open);
+  card.append(time, name, verdict, summary, details, state, actions); return card;
+}
+
+function renderComparisonDeltas(changes) {
+  const container = document.createElement("div"); container.className = "comparison-deltas";
+  changes.forEach((item) => {
+    const row = document.createElement("div"); row.className = "comparison-delta";
+    const label = document.createElement("span"); label.textContent = item.label;
+    const value = document.createElement("strong");
+    value.textContent = item.delta !== undefined && item.delta !== null ? `${item.delta} ${item.unit}` : (item.changed === true ? "发生变化" : item.changed === false ? "保持一致" : "不直接比较");
+    const note = document.createElement("small"); note.textContent = item.note || `${item.left} → ${item.right}`;
+    row.append(label, value, note); container.append(row);
+  });
+  return container;
+}
+
+async function loadRecentAnalyses() {
+  await loadResearchWorkspace();
+}
+
+function renderRecentAnalyses() {
+  const list = $("#recent-list"); list.replaceChildren();
+  const reports = clientState.historyFilter === "favorites"
+    ? clientState.historyReports.filter((item) => item.favorite)
+    : clientState.historyReports;
+  $("#clear-history-button").hidden = !clientState.historyReports.length;
+  document.querySelectorAll("[data-history-filter]").forEach((button) => button.classList.toggle("active", button.dataset.historyFilter === clientState.historyFilter));
+  if (!reports.length) {
+    const empty = document.createElement("p"); empty.className = "recent-empty";
+    empty.textContent = clientState.historyFilter === "favorites" ? "还没有收藏报告，点击报告上的星标即可收藏。" : "完成一次分析后，报告会出现在这里。";
+    list.append(empty); return;
+  }
+  reports.slice(0, 8).forEach((report) => {
+    const card = document.createElement("article"); card.className = "recent-card"; card.classList.toggle("favorite", report.favorite);
+    const open = document.createElement("button"); open.type = "button"; open.className = "recent-open"; open.dataset.reportId = report.report_id;
+    const top = document.createElement("span");
+    const time = document.createElement("b"); time.textContent = formatDateTime(report.archived_at);
+    const status = document.createElement("i"); status.textContent = report.task_status === "succeeded" ? "已完成" : report.task_status;
+    top.append(time, status);
+    const name = document.createElement("strong"); name.textContent = `${report.name || report.symbol} · ${report.verdict || "研究报告"}`;
+    const detail = document.createElement("small"); detail.textContent = `${report.data_label || report.mode} · 数据 ${formatDateTime(report.as_of)} · v${report.report_version}`;
+    const states = document.createElement("span"); states.className = "recent-state";
+    [report.state.freshness, report.state.availability].forEach((item) => {
+      const badge = document.createElement("em"); badge.className = item.status; badge.textContent = item.label; badge.title = item.note; states.append(badge);
+    });
+    open.append(top, name, detail, states);
+    const favorite = document.createElement("button"); favorite.type = "button"; favorite.className = "recent-favorite"; favorite.classList.toggle("active", report.favorite);
+    favorite.dataset.favoriteReportId = report.report_id; favorite.setAttribute("aria-label", report.favorite ? "取消收藏这份报告" : "收藏这份报告"); favorite.textContent = report.favorite ? "★" : "☆";
+    const remove = document.createElement("button"); remove.type = "button"; remove.className = "recent-delete";
+    remove.dataset.deleteReportId = report.report_id; remove.dataset.deleteReportName = report.name || report.symbol;
+    remove.setAttribute("aria-label", `删除${report.name || report.symbol}的这份历史报告`); remove.textContent = "×";
+    card.append(open, favorite, remove); list.append(card);
+  });
+}
+
+async function downloadExport(path) {
+  try {
+    const response = await fetch(path, { headers: { Accept: "text/html" } });
+    if (!response.ok) {
+      let message = `导出失败 (${response.status})`;
+      try { const error = await response.json(); message = error.error || message; } catch { /* 保留明确状态码 */ }
+      throw new Error(message);
+    }
+    const blob = await response.blob();
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
+    link.download = match?.[1] || "research_report.html"; document.body.append(link); link.click(); link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    showClientToast("报告已导出，内容来自冻结数据。");
+  } catch (error) { showClientToast(error.message); }
+}
+
+function exportCurrentReport() {
+  const reportId = clientState.projection?.report_id || clientState.analysis?.report_id;
+  if (!reportId) { showClientToast("请先完成或打开一份报告。"); return; }
+  downloadExport(`/api/client/reports/${reportId}/export?view=${clientState.reportView}`);
+}
+
+function exportCurrentComparison() {
+  if (!clientState.comparison) { showClientToast("请先完成一次报告比较。"); return; }
+  const left = encodeURIComponent(clientState.comparison.left.report_id);
+  const right = encodeURIComponent(clientState.comparison.right.report_id);
+  downloadExport(`/api/client/workspace/export?left_report_id=${left}&right_report_id=${right}&view=${clientState.reportView}`);
+}
+
+function printResearch(target) {
+  if (target === "report" && !clientState.projection?.report_id) { showClientToast("请先完成或打开一份报告。"); return; }
+  if (target === "comparison" && !clientState.comparison) { showClientToast("请先完成一次报告比较。"); return; }
+  document.body.dataset.printTarget = target; window.print();
 }
 
 function requestHistoryDeletion(intent) {
@@ -650,10 +887,29 @@ $("#cancel-analysis-button").addEventListener("click", cancelAnalysisJob);
 $("#retry-job-button").addEventListener("click", retryAnalysisJob);
 $("#dynamic-debate-button").addEventListener("click", runDynamicDebate);
 $("#clear-history-button").addEventListener("click", () => requestHistoryDeletion({ type: "all" }));
+$("#watchlist-toggle").addEventListener("click", () => toggleWatchlist());
+$("#compare-button").addEventListener("click", () => runReportComparison());
+$("#favorite-report-button").addEventListener("click", () => toggleReportFavorite(clientState.projection?.report_id || clientState.analysis?.report_id));
+$("#export-report-button").addEventListener("click", exportCurrentReport);
+$("#print-report-button").addEventListener("click", () => printResearch("report"));
 $("#confirm-cancel").addEventListener("click", closeHistoryConfirmation);
 $("#confirm-delete").addEventListener("click", confirmHistoryDeletion);
-$("#stock-select").addEventListener("change", syncModeAvailability);
+$("#stock-select").addEventListener("change", () => { syncModeAvailability(); syncWatchlistButton(); });
 document.addEventListener("click", (event) => {
+  const favoriteReport = event.target.closest("[data-favorite-report-id]");
+  if (favoriteReport) { toggleReportFavorite(favoriteReport.dataset.favoriteReportId); return; }
+  const historyFilter = event.target.closest("[data-history-filter]");
+  if (historyFilter) { clientState.historyFilter = historyFilter.dataset.historyFilter; renderRecentAnalyses(); return; }
+  const exportComparison = event.target.closest("[data-export-comparison]");
+  if (exportComparison) { exportCurrentComparison(); return; }
+  const printTarget = event.target.closest("[data-print-target]");
+  if (printTarget) { printResearch(printTarget.dataset.printTarget); return; }
+  const watchlist = event.target.closest("[data-watchlist-symbol]");
+  if (watchlist) {
+    $("#stock-select").value = watchlist.dataset.watchlistSymbol;
+    syncModeAvailability(); syncWatchlistButton();
+    document.querySelector(".research-entry").scrollIntoView({ behavior: "smooth", block: "center" }); return;
+  }
   const deleteButton = event.target.closest("[data-delete-report-id]");
   if (deleteButton) {
     requestHistoryDeletion({ type: "one", reportId: deleteButton.dataset.deleteReportId, name: deleteButton.dataset.deleteReportName }); return;
@@ -686,6 +942,7 @@ $("#kline-chart").addEventListener("keydown", (event) => {
   drawKline(clientState.projection.shared.chart);
 });
 window.addEventListener("resize", () => { if (clientState.projection) drawKline(clientState.projection.shared.chart); });
+window.addEventListener("afterprint", () => { delete document.body.dataset.printTarget; });
 
 applyReportViewVisibility();
 

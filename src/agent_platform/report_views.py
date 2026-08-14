@@ -75,6 +75,9 @@ class ReportViewRuntime:
                     "source_count": data["source_count"],
                     "snapshot_id": data.get("snapshot_id")
                     or (data.get("snapshot") or {}).get("snapshot_id"),
+                    "health": _snapshot_health_projection(
+                        archive.get("snapshot") or data.get("snapshot")
+                    ),
                 },
                 "quote": deepcopy(result["quote"]),
                 "verdict": deepcopy(result["verdict"]),
@@ -460,6 +463,27 @@ def _snapshot_projection(value: Any) -> dict[str, Any] | None:
         if isinstance(dataset, Mapping)
     ]
     return output
+
+
+def _snapshot_health_projection(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, Mapping):
+        return None
+    datasets = value.get("datasets", [])
+    statuses = [
+        str(item.get("status", "unknown"))
+        for item in datasets
+        if isinstance(item, Mapping)
+    ]
+    return {
+        "available_count": value.get("available_count"),
+        "dataset_count": value.get("dataset_count"),
+        "degraded": bool(value.get("degraded", False)),
+        "unavailable_count": statuses.count("not_available"),
+        "degraded_count": sum(
+            status in {"backup", "cache_stale", "not_available"}
+            for status in statuses
+        ),
+    }
 
 
 def _fingerprint(value: Mapping[str, Any]) -> str:

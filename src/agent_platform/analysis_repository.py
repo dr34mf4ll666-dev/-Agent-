@@ -102,6 +102,12 @@ def _summary_from_result(
     data = result.get("data", {})
     verdict = result.get("verdict", {})
     snapshot = data.get("snapshot") or {}
+    datasets = snapshot.get("datasets", []) if isinstance(snapshot, Mapping) else []
+    statuses = [
+        str(item.get("status", "unknown"))
+        for item in datasets
+        if isinstance(item, Mapping)
+    ]
     return {
         "report_id": report_id,
         "report_version": report_version,
@@ -117,6 +123,16 @@ def _summary_from_result(
         "verdict": verdict.get("label", ""),
         "action": verdict.get("action_label", ""),
         "archived_at": archived_at,
+        "data_health": {
+            "available_count": snapshot.get("available_count"),
+            "dataset_count": snapshot.get("dataset_count"),
+            "degraded": bool(snapshot.get("degraded", False)),
+            "unavailable_count": statuses.count("not_available"),
+            "degraded_count": sum(
+                status in {"backup", "cache_stale", "not_available"}
+                for status in statuses
+            ),
+        },
     }
 
 
