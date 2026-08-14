@@ -2,7 +2,7 @@
   "project": "通用 Agent 平台及证券金融分析应用",
   "version": "3.1.0",
   "updated_at": "2026-08-14",
-  "current_focus": "正式任务和 P1-P4 已完成；下一项为 P5 统一可观测性和可靠性面板",
+  "current_focus": "正式任务和 P1-P5 已完成；下一项为 P6 研究工作台与产品闭环",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "done",
   "items": [
@@ -735,6 +735,38 @@
         "ROADMAP.md"
       ],
       "scope_note": "这是同一分析结果的两种只读展示投影，不是两套Agent流程；P6历史比较与导出继续复用ReportViewRuntime。专业版仍是客户研究界面，不暴露后台配置、Checkpoint文件和原始日志"
+    },
+    {
+      "id": "P5_ANALYSIS_OBSERVABILITY",
+      "status": "done",
+      "result": "已完成统一trace_id、七层结构化span、JSON持久化与脱敏、客户实际耗时和可操作错误、后台可靠性指标与单次分析瀑布，以及离线故障注入",
+      "acceptance": [
+        "HTTP、任务、数据、Graph、Harness、模型和数据库共用同一trace_id",
+        "客户运行中看到节点和整次实际耗时，失败时看到处理办法与追踪号",
+        "后台展示成功率、P50/P95、数据源失败率、缓存命中率、重试/降级率和Token",
+        "后台可选择最近分析并查看真实时间瀑布、状态文字和全局慢节点",
+        "观测存储不包含API Key、Prompt、授权头、完整输入输出和原始行情",
+        "离线故障注入产生数据源失败、两次尝试、缓存降级和Graph失败证据"
+      ],
+      "dependencies": ["P1 异步分析任务中心", "P2 统一分析快照", "P3 SQLite持久化"],
+      "evidence": [
+        "src/agent_platform/analysis_observability.py",
+        "src/agent_platform/analysis_jobs.py",
+        "src/agent_platform/dashboard.py",
+        "src/agent_platform/web/client.html",
+        "src/agent_platform/web/client.js",
+        "src/agent_platform/web/index.html",
+        "src/agent_platform/web/app.js",
+        "src/agent_platform/web/styles.css",
+        "Scripts/demo_analysis_observability.py",
+        "tests/test_analysis_observability.py",
+        "tests/test_analysis_jobs.py",
+        "tests/test_dashboard.py",
+        "docs/analysis-observability.md",
+        "README.md",
+        "ROADMAP.md"
+      ],
+      "scope_note": "数据快照只记录真实最终来源状态，不伪造每个外部请求耗时；当前使用模块化单体和本地JSON adapter，不提前接外部APM；P5不改变金融结论或真实交易关闭边界"
     }
   ],
   "enhancements_to_preserve": [

@@ -24,6 +24,10 @@ from agent_platform.dashboard import (  # noqa: E402
 )
 from agent_platform.client_app import LocalMarketAssistant  # noqa: E402
 from agent_platform.analysis_repository import InMemoryAnalysisRepository  # noqa: E402
+from agent_platform.analysis_observability import (  # noqa: E402
+    AnalysisObservabilityRuntime,
+    InMemoryAnalysisTraceStore,
+)
 
 
 class _FakeRunner:
@@ -70,6 +74,7 @@ class DashboardRuntimeTests(unittest.TestCase):
             assistant=LocalProjectAssistant(),
             market_assistant=LocalMarketAssistant(),
             analysis_repository=InMemoryAnalysisRepository(),
+            observability=AnalysisObservabilityRuntime(InMemoryAnalysisTraceStore()),
         )
 
     def test_overview_unifies_every_stage_and_keeps_trading_disabled(self):
@@ -106,6 +111,8 @@ class DashboardRuntimeTests(unittest.TestCase):
         self.assertEqual(status["status"], "succeeded", status)
         current = self.runtime.get_client_analysis_result(job["job_id"])
         self.runtime.explain_client(current)
+        trace = self.runtime.get_observability_trace(job["trace_id"])
+        layers = {span["layer"] for span in trace["spans"]}
 
         history = self.runtime.list_client_analysis_history()
         reopened = self.runtime.get_client_historical_report(current["report_id"])
@@ -115,6 +122,13 @@ class DashboardRuntimeTests(unittest.TestCase):
         self.assertEqual(reopened["verdict"], current["verdict"])
         self.assertEqual(reopened["history"]["task_status"], "succeeded")
         self.assertEqual(reopened["history"]["explanation"]["provider"], "local")
+        self.assertEqual(current["trace_id"], job["trace_id"])
+        self.assertTrue(
+            {"http", "task", "data", "graph", "harness", "model", "database"}.issubset(layers)
+        )
+        self.assertGreaterEqual(
+            self.runtime.get_observability_overview()["metrics"]["trace_count"], 1
+        )
 
         basic = self.runtime.get_client_report_view(current["report_id"], view="basic")
         professional = self.runtime.get_client_report_view(

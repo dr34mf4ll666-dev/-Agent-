@@ -36,6 +36,11 @@ function showClientToast(message) {
   const toast = $("#client-toast"); toast.textContent = message; toast.classList.add("show");
   window.clearTimeout(showClientToast.timer); showClientToast.timer = window.setTimeout(() => toast.classList.remove("show"), 2800);
 }
+function formatJobDuration(milliseconds) {
+  if (milliseconds === null || milliseconds === undefined) return "";
+  const value = Number(milliseconds);
+  return value < 1000 ? `${Math.round(value)} 毫秒` : `${(value / 1000).toFixed(value < 10000 ? 1 : 0)} 秒`;
+}
 
 function populateOverview(overview) {
   clientState.overview = overview;
@@ -139,6 +144,7 @@ function renderJobProgress(job) {
     const copy = document.createElement("div"); const label = document.createElement("strong"); label.textContent = stage.label;
     const state = document.createElement("span"); state.textContent = ({ pending: "等待中", running: "进行中", completed: "已完成", failed: "失败", cancelled: "已停止", skipped: "无需执行", retrying: "正在重试" })[stage.status] || stage.status;
     if (stage.attempts > 1) state.textContent += ` · 第 ${stage.attempts} 次`;
+    if (stage.duration_ms !== null && stage.status !== "pending") state.textContent += ` · ${formatJobDuration(stage.duration_ms)}`;
     copy.append(label, state); item.append(marker, copy); list.append(item);
   });
   $("#cancel-analysis-button").disabled = ["succeeded", "failed", "cancelled"].includes(job.status) || job.cancel_requested;
@@ -146,7 +152,8 @@ function renderJobProgress(job) {
   $("#retry-job-button").hidden = !job.can_retry;
   const recovery = job.recovered ? "服务重启后已从检查点恢复。" : "";
   const retries = job.retry_count ? ` 已重试 ${job.retry_count} 次。` : "";
-  setText("#job-progress-note", job.cancel_requested ? "停止请求已提交，当前步骤会在下一个安全点结束。" : `${recovery}${retries}这里只显示程序确认的真实节点，不使用模拟百分比。`);
+  const elapsed = job.duration_ms === null ? "" : ` 已用时 ${formatJobDuration(job.duration_ms)}。`;
+  setText("#job-progress-note", job.cancel_requested ? "停止请求已提交，当前步骤会在下一个安全点结束。" : `${recovery}${retries}${elapsed}这里只显示程序确认的真实节点，不使用模拟百分比。`);
 }
 
 async function cancelAnalysisJob() {
@@ -161,6 +168,7 @@ async function cancelAnalysisJob() {
 async function retryAnalysisJob() {
   if (!clientState.jobId || clientState.running) return;
   clientState.running = true; $("#analyze-button").disabled = true; syncModeAvailability();
+  $("#error-state").hidden = true; $("#analysis").hidden = true; $("#loading-state").hidden = false;
   $("#retry-job-button").disabled = true; setText("#loading-message", "正在从失败步骤继续…");
   try {
     const job = await clientApi(`/api/client/jobs/${clientState.jobId}/retry`, { method: "POST", body: "{}" });
@@ -171,14 +179,20 @@ async function retryAnalysisJob() {
 function finishJobControls() { clientState.running = false; $("#analyze-button").disabled = false; $("#cancel-analysis-button").textContent = "停止本次分析"; syncModeAvailability(); }
 function finishFailedJob(job) {
   window.clearTimeout(clientState.pollTimer); clientState.running = false; renderJobProgress(job);
-  $("#loading-state").hidden = false; $("#analysis").hidden = true; $("#error-state").hidden = true;
+  $("#loading-state").hidden = true; $("#analysis").hidden = true; $("#error-state").hidden = false;
   $("#retry-job-button").disabled = false; $("#analyze-button").disabled = false; syncModeAvailability();
+  setText("#error-message", job.error?.message || "分析任务执行失败。");
+  setText("#error-action", job.error?.user_action || "可以重新开始一次分析。");
+  setText("#error-trace", `追踪号 ${job.trace_id || job.error?.trace_id || "暂不可用"}`);
+  $("#retry-button").textContent = job.can_retry ? "只重试失败步骤" : "重新分析";
   showClientToast(job.error?.message || "分析任务执行失败，可从失败步骤继续。");
 }
 function finishJobWithError(message) {
   window.clearTimeout(clientState.pollTimer); clientState.jobId = null; window.sessionStorage.removeItem("active_analysis_job");
   $("#loading-state").hidden = true; $("#error-state").hidden = false;
-  setText("#error-message", message); showClientToast(message); finishJobControls();
+  setText("#error-message", message); setText("#error-action", "请确认后台仍在运行，然后重新分析。");
+  setText("#error-trace", "尚未创建追踪号"); $("#retry-button").textContent = "重新分析";
+  showClientToast(message); finishJobControls();
 }
 async function resumeOrStartAnalysis() {
   const existing = window.sessionStorage.getItem("active_analysis_job");
@@ -629,7 +643,9 @@ function updateChartHover(clientX) {
 function formatDateTime(value) { if (!value) return "—"; return `${value.slice(0, 10)} ${value.slice(11, 16)}`; }
 
 $("#stock-form").addEventListener("submit", (event) => { event.preventDefault(); runClientAnalysis(); });
-$("#retry-button").addEventListener("click", runClientAnalysis);
+$("#retry-button").addEventListener("click", () => {
+  if (clientState.jobId) retryAnalysisJob(); else runClientAnalysis();
+});
 $("#cancel-analysis-button").addEventListener("click", cancelAnalysisJob);
 $("#retry-job-button").addEventListener("click", retryAnalysisJob);
 $("#dynamic-debate-button").addEventListener("click", runDynamicDebate);

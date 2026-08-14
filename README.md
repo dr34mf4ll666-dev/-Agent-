@@ -28,9 +28,12 @@ P3 SQLite 历史也已完成。每次成功分析都会原子保存任务、冻�
 
 P4 双层报告也已完成。后端 `ReportViewRuntime.project(report_id, view)` 从 P3 的同一份冻结报告生成普通版或专业版投影；切换视图不会重新获取数据、运行 Agent、创建任务或调用 DeepSeek。普通版以“结论摘要、主要依据、主要风险、关注区间”呈现，隐藏 K 线、分数、模型解释和专业风控指标。专业版再显示日/周 K、20/40/60 根区间、SMA5、SMA20、成交量、十字线、四个 Agent 指标及来源。两种视图的报告号、快照号和确定性结果完全一致。完整说明与验收见 [`docs/report-views.md`](docs/report-views.md)。
 
+P5 统一分析可观测性也已完成。每次分析从 HTTP 提交开始生成同一个 `trace_id`，并贯通后台任务、数据快照、17 个 Graph 节点、输出护栏、DeepSeek/本地解释和 SQLite 归档。客户页显示节点实际耗时；失败时显示可执行的处理办法和追踪号。团队后台 `/admin` 下方新增可靠性工作台，可查看成功率、P50/P95、数据源失败/缓存/降级、重试、Token、最近分析瀑布和慢节点。观测存储不记录 API Key、Prompt、授权头或完整行情。完整说明见 [`docs/analysis-observability.md`](docs/analysis-observability.md)。
+
 ```powershell
 D:\Anaconda\python.exe Scripts\demo_analysis_snapshot.py
 D:\Anaconda\python.exe Scripts\demo_analysis_history.py
+D:\Anaconda\python.exe Scripts\demo_analysis_observability.py
 ```
 
 #### 第一次使用怎么选

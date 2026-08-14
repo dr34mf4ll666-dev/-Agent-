@@ -67,9 +67,15 @@ class ProductAcceptanceTests(unittest.TestCase):
         self.assertTrue(
             value["client_app"]["checks"]["普通版专业版和证据下钻入口存在"]
         )
+        self.assertTrue(
+            value["client_app"]["checks"]["实际耗时和可操作错误入口存在"]
+        )
         self.assertTrue(value["admin_console"]["passed"])
         self.assertTrue(
             value["admin_console"]["checks"]["动态辩论固定评测入口存在"]
+        )
+        self.assertTrue(
+            value["admin_console"]["checks"]["统一追踪和可靠性瀑布入口存在"]
         )
         self.assertGreaterEqual(value["admin_console"]["action_count"], 19)
         self.assertTrue(value["model_assistance"]["passed"])

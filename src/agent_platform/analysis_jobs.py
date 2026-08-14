@@ -11,13 +11,19 @@ from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from threading import Lock, Timer
+from threading import RLock, Timer
 from typing import Any, Protocol
 from uuid import NAMESPACE_URL, uuid4, uuid5
 from zoneinfo import ZoneInfo
 
 from .client_app import ClientAnalysisRequest, ClientAnalysisResult, ClientAnalysisRuntime
 from .analysis_repository import AnalysisArchive, AnalysisRepository, AnalysisRepositoryError
+from .analysis_observability import (
+    AnalysisObservabilityRuntime,
+    InMemoryAnalysisTraceStore,
+    TraceSpan,
+    safe_observation_text,
+)
 
 
 class AnalysisJobError(ValueError):
@@ -72,6 +78,7 @@ class ClientAnalysisJobWorker:
 @dataclass
 class _JobRecord:
     job_id: str
+    trace_id: str
     request: ClientAnalysisRequest
     created_at: str
     updated_at: str
@@ -86,6 +93,7 @@ class _JobRecord:
     resume: bool = False
     timed_out: bool = False
     generation: int = 0
+    run_started_at: str | None = None
 
 
 _STAGES = (
@@ -124,6 +132,7 @@ class AnalysisJobRuntime:
         storage_path: str | Path | None = None,
         checkpoint_root: str | Path | None = None,
         repository: AnalysisRepository | None = None,
+        observability: AnalysisObservabilityRuntime | None = None,
         now: Callable[[], datetime] | None = None,
     ) -> None:
         if isinstance(max_workers, bool) or not isinstance(max_workers, int) or max_workers < 1:
@@ -139,9 +148,12 @@ class AnalysisJobRuntime:
         self._storage_path = Path(storage_path).resolve() if storage_path is not None else None
         self._checkpoint_root = Path(checkpoint_root).resolve() if checkpoint_root is not None else None
         self._repository = repository
+        self.observability = observability or AnalysisObservabilityRuntime(
+            InMemoryAnalysisTraceStore()
+        )
         self._now = now or (lambda: datetime.now(ZoneInfo("Asia/Shanghai")))
         self._jobs: OrderedDict[str, _JobRecord] = OrderedDict()
-        self._lock = Lock()
+        self._lock = RLock()
         self._load_and_resume()
 
     @classmethod
@@ -152,9 +164,11 @@ class AnalysisJobRuntime:
         if not isinstance(request, ClientAnalysisRequest):
             raise AnalysisJobError("request must be a ClientAnalysisRequest")
         job_id = uuid4().hex
+        trace_id = uuid4().hex
         timestamp = self._timestamp()
         record = _JobRecord(
             job_id=job_id,
+            trace_id=trace_id,
             request=request,
             created_at=timestamp,
             updated_at=timestamp,
@@ -166,6 +180,19 @@ class AnalysisJobRuntime:
             if len(self._jobs) >= self._max_jobs:
                 raise AnalysisJobError("分析任务已达到容量上限，请稍后再试。")
             self._jobs[job_id] = record
+            self.observability.begin(
+                trace_id,
+                job_id=job_id,
+                request={"symbol": request.symbol, "mode": request.mode},
+                timestamp=timestamp,
+            )
+            self.observability.span(
+                trace_id,
+                TraceSpan(
+                    "task", "analysis_job", "queue", "queued", timestamp,
+                    attributes={"generation": 0},
+                ),
+            )
             self._persist_locked()
             record.future = self._executor.submit(self._execute, job_id)
             return self._snapshot(record)
@@ -204,6 +231,15 @@ class AnalysisJobRuntime:
                 record.job_id, previous_generation, record.generation
             )
             record.updated_at = self._timestamp()
+            self.observability.span(
+                record.trace_id,
+                TraceSpan(
+                    "task", "analysis_job", f"retry_generation_{record.generation}",
+                    "retrying", record.updated_at, attempts=record.retry_count + 1,
+                    detail="从失败检查点继续执行",
+                    attributes={"generation": record.generation},
+                ),
+            )
             for stage in record.stages:
                 if stage["status"] in {"failed", "cancelled", "retrying", "running"}:
                     stage.update(status="pending", started_at=None, finished_at=None, detail="")
@@ -258,6 +294,16 @@ class AnalysisJobRuntime:
                     return
                 record.status = "running"
                 record.updated_at = self._timestamp()
+                record.run_started_at = record.updated_at
+                self.observability.span(
+                    record.trace_id,
+                    TraceSpan(
+                        "task", "analysis_job", f"run_generation_{record.generation}",
+                        "running", record.updated_at,
+                        attempts=record.retry_count + 1,
+                        attributes={"generation": record.generation},
+                    ),
+                )
                 self._persist_locked()
                 resume = record.resume
                 generation = record.generation
@@ -308,6 +354,18 @@ class AnalysisJobRuntime:
                     record.resume = False
                     record.updated_at = finished_at
                     record.stages = final_stages
+                    self.observability.span(
+                        record.trace_id,
+                        TraceSpan(
+                            "task", "analysis_job", f"run_generation_{record.generation}",
+                            "succeeded", record.run_started_at or record.created_at, finished_at,
+                            attempts=record.retry_count + 1,
+                            attributes={"generation": record.generation},
+                        ),
+                    )
+                    self.observability.finish(
+                        record.trace_id, status="succeeded", timestamp=finished_at
+                    )
                 self._persist_locked()
         except _AnalysisCancelled:
             with self._lock:
@@ -326,13 +384,33 @@ class AnalysisJobRuntime:
                     return
                 record.status = "failed"
                 record.resume = True
+                safe_message = safe_observation_text(str(error) or type(error).__name__)
                 record.error = {
-                    "message": str(error) or type(error).__name__,
+                    "message": safe_message,
                     "type": type(error).__name__,
                     "retryable": True,
+                    "user_action": "可点击“只重试失败步骤”；若仍失败，请把追踪号提供给维护人员。",
+                    "trace_id": record.trace_id,
                 }
                 record.updated_at = self._timestamp()
-                self._fail_running_stages(record, str(error))
+                self._fail_running_stages(record, safe_message)
+                self.observability.span(
+                    record.trace_id,
+                    TraceSpan(
+                        "task", "analysis_job", f"run_generation_{record.generation}",
+                        "failed", record.run_started_at or record.created_at, record.updated_at,
+                        attempts=record.retry_count + 1, detail=safe_message,
+                        attributes={"generation": record.generation},
+                    ),
+                )
+                self.observability.finish(
+                    record.trace_id,
+                    status="failed",
+                    timestamp=record.updated_at,
+                    error_type=type(error).__name__,
+                    error_message=safe_message,
+                    user_action=record.error["user_action"],
+                )
                 self._persist_locked()
         finally:
             if timer is not None:
@@ -347,17 +425,28 @@ class AnalysisJobRuntime:
         stages: list[dict[str, Any]],
         archived_at: str,
     ) -> ClientAnalysisResult:
-        if self._repository is None:
-            return result
-        report_id = uuid5(NAMESPACE_URL, f"agent-platform:analysis:{record.job_id}").hex
         value = result.to_mapping()
+        value["trace_id"] = record.trace_id
+        self._observe_result_layers(record, value, archived_at)
+        if self._repository is None:
+            self.observability.span(
+                record.trace_id,
+                TraceSpan(
+                    "database", "analysis_repository", "archive_report", "skipped",
+                    archived_at, archived_at, detail="未配置历史报告仓库",
+                ),
+            )
+            return ClientAnalysisResult(value, debate_context=result.debate_context)
+        report_id = uuid5(NAMESPACE_URL, f"agent-platform:analysis:{record.job_id}").hex
         value["report_id"] = report_id
         value["report_version"] = 1
         snapshot = self._checkpoint_json(checkpoint_dir, "analysis-snapshot.json")
         if snapshot is None:
             candidate = value.get("data", {}).get("snapshot")
             snapshot = dict(candidate) if isinstance(candidate, Mapping) else None
-        graphs: dict[str, Any] = {"task_progress": {"stages": deepcopy(stages)}}
+        graphs: dict[str, Any] = {
+            "task_progress": {"trace_id": record.trace_id, "stages": deepcopy(stages)}
+        }
         for name, filename in (
             ("specialist", "specialist-graph.json"),
             ("financial", "c3-graph.json"),
@@ -370,6 +459,7 @@ class AnalysisJobRuntime:
         agents = dict(reports) if isinstance(reports, Mapping) else {}
         task = {
             "job_id": record.job_id,
+            "trace_id": record.trace_id,
             "status": "succeeded",
             "request": {"symbol": record.request.symbol, "mode": record.request.mode},
             "created_at": record.created_at,
@@ -379,24 +469,90 @@ class AnalysisJobRuntime:
             "generation": record.generation,
             "stages": deepcopy(stages),
         }
-        self._repository.archive(
-            AnalysisArchive(
-                report_id=report_id,
-                report_version=1,
-                job_id=record.job_id,
-                symbol=record.request.symbol,
-                mode=record.request.mode,
-                created_at=record.created_at,
-                archived_at=archived_at,
-                task=task,
-                result=value,
-                debate_context=context,
-                snapshot=snapshot,
-                agents=agents,
-                graphs=graphs,
+        database_started = self._timestamp()
+        try:
+            self._repository.archive(
+                AnalysisArchive(
+                    report_id=report_id,
+                    report_version=1,
+                    job_id=record.job_id,
+                    symbol=record.request.symbol,
+                    mode=record.request.mode,
+                    created_at=record.created_at,
+                    archived_at=archived_at,
+                    task=task,
+                    result=value,
+                    debate_context=context,
+                    snapshot=snapshot,
+                    agents=agents,
+                    graphs=graphs,
+                )
             )
+        except Exception as error:
+            database_failed = self._timestamp()
+            self.observability.span(
+                record.trace_id,
+                TraceSpan(
+                    "database", "analysis_repository", "archive_report", "failed",
+                    database_started, database_failed,
+                    detail=safe_observation_text(error), attributes={"report_version": 1},
+                ),
+            )
+            raise
+        database_finished = self._timestamp()
+        self.observability.span(
+            record.trace_id,
+            TraceSpan(
+                "database", "analysis_repository", "archive_report", "succeeded",
+                database_started, database_finished,
+                attributes={"report_version": 1},
+            ),
         )
         return ClientAnalysisResult(value, debate_context=context)
+
+    def _observe_result_layers(
+        self, record: _JobRecord, value: Mapping[str, Any], timestamp: str
+    ) -> None:
+        snapshot = value.get("data", {}).get("snapshot")
+        if isinstance(snapshot, Mapping):
+            for dataset in snapshot.get("datasets", []):
+                if not isinstance(dataset, Mapping):
+                    continue
+                source_status = str(dataset.get("status", "not_available"))
+                status = {
+                    "not_available": "failed",
+                    "backup": "degraded",
+                    "cache_stale": "degraded",
+                    "cache_fresh": "cache_hit",
+                }.get(source_status, "succeeded")
+                self.observability.span(
+                    record.trace_id,
+                    TraceSpan(
+                        "data", str(dataset.get("dataset", "unknown")), "acquire_snapshot",
+                        status, timestamp, timestamp,
+                        detail=str(dataset.get("detail", "")),
+                        attributes={
+                            "source": str(dataset.get("source", "")),
+                            "source_status": source_status,
+                            "freshness": str(dataset.get("freshness", "")),
+                            "cache_hit": source_status in {"cache_fresh", "cache_stale"},
+                            "required": bool(dataset.get("required", True)),
+                        },
+                    ),
+                )
+        quality = value.get("quality", {})
+        passed = isinstance(quality, Mapping) and all(
+            str(quality.get(key, "")).lower() in {"passed", "pass"}
+            for key in ("consistency", "bias")
+        )
+        self.observability.span(
+            record.trace_id,
+            TraceSpan(
+                "harness", "financial_output_guardrails", "postflight_validation",
+                "succeeded" if passed else "failed", timestamp, timestamp,
+                attributes={"consistency": str(quality.get("consistency", "unknown")), "bias": str(quality.get("bias", "unknown"))},
+            ),
+        )
 
     @staticmethod
     def _checkpoint_json(checkpoint_dir: Path | None, filename: str) -> dict[str, Any] | None:
@@ -439,6 +595,7 @@ class AnalysisJobRuntime:
                 stage["started_at"] = stage["started_at"] or now
                 stage["finished_at"] = now
             record.updated_at = now
+            self._observe_stage(record, stage)
             self._persist_locked()
 
     def _timeout_job(self, job_id: str, generation: int) -> None:
@@ -459,11 +616,29 @@ class AnalysisJobRuntime:
                 "message": f"分析任务超过 {self._timeout_seconds:g} 秒总时限，已停止接收结果。",
                 "type": "AnalysisJobTimeout",
                 "retryable": True,
+                "user_action": "可点击“只重试失败步骤”；若持续超时，可改用已验证快照。",
+                "trace_id": record.trace_id,
             }
             self._fail_running_stages(record, record.error["message"])
+            self.observability.span(
+                record.trace_id,
+                TraceSpan(
+                    "task", "analysis_job", f"run_generation_{record.generation}",
+                    "failed", record.run_started_at or record.created_at,
+                    record.updated_at, attempts=record.retry_count + 1,
+                    detail=record.error["message"],
+                    attributes={"generation": record.generation},
+                ),
+            )
+            self.observability.finish(
+                record.trace_id, status="failed", timestamp=record.updated_at,
+                error_type="AnalysisJobTimeout", error_message=record.error["message"],
+                user_action=record.error["user_action"],
+            )
             self._persist_locked()
 
     def _finish_cancelled(self, record: _JobRecord) -> None:
+        previous_status = record.status
         record.status = "cancelled"
         record.resume = True
         record.updated_at = self._timestamp()
@@ -471,14 +646,50 @@ class AnalysisJobRuntime:
             if stage["status"] in {"pending", "running", "retrying"}:
                 stage["status"] = "cancelled"
                 stage["finished_at"] = record.updated_at
+                self._observe_stage(record, stage)
+        operation = "queue" if previous_status == "queued" else f"run_generation_{record.generation}"
+        self.observability.span(
+            record.trace_id,
+            TraceSpan(
+                "task", "analysis_job", operation, "cancelled",
+                record.run_started_at or record.created_at, record.updated_at,
+                attempts=record.retry_count + 1,
+                attributes={"generation": record.generation},
+            ),
+        )
+        self.observability.finish(
+            record.trace_id, status="cancelled", timestamp=record.updated_at,
+            error_type="AnalysisCancelled", error_message="用户停止了本次分析。",
+            user_action="可以重新开始一次分析。",
+        )
 
-    @staticmethod
-    def _fail_running_stages(record: _JobRecord, detail: str) -> None:
+    def _observe_stage(self, record: _JobRecord, stage: Mapping[str, Any]) -> None:
+        started_at = str(stage.get("started_at") or record.updated_at)
+        finished_at = stage.get("finished_at")
+        status = {
+            "completed": "succeeded",
+            "cancelled": "cancelled",
+        }.get(str(stage.get("status")), str(stage.get("status")))
+        layer = "task" if stage.get("id") in {"chart", "report"} else "graph"
+        self.observability.span(
+            record.trace_id,
+            TraceSpan(
+                layer, str(stage.get("id", "unknown")),
+                f"execute_generation_{record.generation}", status,
+                started_at, str(finished_at) if finished_at else None,
+                attempts=max(1, int(stage.get("attempts", 0) or 0)),
+                detail=str(stage.get("detail", "")),
+                attributes={"group": str(stage.get("group", "")), "generation": record.generation},
+            ),
+        )
+
+    def _fail_running_stages(self, record: _JobRecord, detail: str) -> None:
         for stage in record.stages:
             if stage["status"] in {"running", "retrying"}:
                 stage["status"] = "failed"
                 stage["finished_at"] = record.updated_at
                 stage["detail"] = detail[:500]
+                self._observe_stage(record, stage)
 
     def _record(self, job_id: str) -> _JobRecord:
         if not isinstance(job_id, str) or not job_id.strip():
@@ -498,12 +709,19 @@ class AnalysisJobRuntime:
     def _snapshot(self, record: _JobRecord) -> dict[str, Any]:
         completed = sum(stage["status"] in {"completed", "skipped"} for stage in record.stages)
         current = next((stage["id"] for stage in record.stages if stage["status"] in {"running", "retrying"}), None)
+        stages = deepcopy(record.stages)
+        for stage in stages:
+            stage["duration_ms"] = self._duration_ms(
+                stage.get("started_at"), stage.get("finished_at") or record.updated_at
+            )
         return {
             "job_id": record.job_id,
+            "trace_id": record.trace_id,
             "status": record.status,
             "request": {"symbol": record.request.symbol, "mode": record.request.mode},
             "created_at": record.created_at,
             "updated_at": record.updated_at,
+            "duration_ms": self._duration_ms(record.created_at, record.updated_at),
             "cancel_requested": record.cancel_requested,
             "result_available": record.status == "succeeded",
             "error": deepcopy(record.error),
@@ -516,7 +734,7 @@ class AnalysisJobRuntime:
                 "completed": completed,
                 "total": len(record.stages),
                 "percent": round(completed / len(record.stages) * 100),
-                "stages": deepcopy(record.stages),
+                "stages": stages,
             },
             "persistence": "json" if self._storage_path is not None else "memory_only",
         }
@@ -566,6 +784,15 @@ class AnalysisJobRuntime:
             for item in payload["jobs"]:
                 record = self._record_from_mapping(item)
                 self._jobs[record.job_id] = record
+                self.observability.begin(
+                    record.trace_id,
+                    job_id=record.job_id,
+                    request={
+                        "symbol": record.request.symbol,
+                        "mode": record.request.mode,
+                    },
+                    timestamp=record.created_at,
+                )
         except (OSError, TypeError, ValueError, KeyError, json.JSONDecodeError) as error:
             if isinstance(error, AnalysisJobError):
                 raise
@@ -599,6 +826,7 @@ class AnalysisJobRuntime:
             raise AnalysisJobError("分析任务存储缺少阶段状态。")
         return _JobRecord(
             job_id=str(value["job_id"]),
+            trace_id=str(value.get("trace_id") or uuid5(NAMESPACE_URL, f"agent-platform:trace:{value['job_id']}").hex),
             request=ClientAnalysisRequest.from_mapping(value["request"]),
             created_at=str(value["created_at"]),
             updated_at=str(value["updated_at"]),
@@ -612,6 +840,7 @@ class AnalysisJobRuntime:
             resume=bool(value.get("resume", False)),
             timed_out=bool(value.get("timed_out", False)),
             generation=int(value.get("generation", 0)),
+            run_started_at=(str(value["run_started_at"]) if value.get("run_started_at") else None),
         )
 
     def _persist_locked(self) -> None:
@@ -630,6 +859,7 @@ class AnalysisJobRuntime:
     def _record_mapping(record: _JobRecord) -> dict[str, Any]:
         return {
             "job_id": record.job_id,
+            "trace_id": record.trace_id,
             "request": {"symbol": record.request.symbol, "mode": record.request.mode},
             "created_at": record.created_at,
             "updated_at": record.updated_at,
@@ -647,6 +877,7 @@ class AnalysisJobRuntime:
             "resume": record.resume,
             "timed_out": record.timed_out,
             "generation": record.generation,
+            "run_started_at": record.run_started_at,
         }
 
     def _timestamp(self) -> str:
@@ -654,6 +885,19 @@ class AnalysisJobRuntime:
         if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
             raise AnalysisJobError("analysis job clock must include a timezone")
         return value.isoformat(timespec="milliseconds")
+
+    @staticmethod
+    def _duration_ms(started_at: Any, finished_at: Any) -> int | None:
+        if not started_at or not finished_at:
+            return None
+        try:
+            started = datetime.fromisoformat(str(started_at))
+            finished = datetime.fromisoformat(str(finished_at))
+        except ValueError:
+            return None
+        if started.tzinfo is None or finished.tzinfo is None:
+            return None
+        return max(0, round((finished - started).total_seconds() * 1000))
 
 
 __all__ = ["AnalysisJobError", "AnalysisJobRuntime", "AnalysisJobWorker", "ClientAnalysisJobWorker"]

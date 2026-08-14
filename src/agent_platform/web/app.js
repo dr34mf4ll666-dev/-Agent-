@@ -6,6 +6,8 @@ const state = {
   mode: "offline",
   currentResult: null,
   running: false,
+  observability: null,
+  selectedTraceId: null,
 };
 
 const elements = {
@@ -30,6 +32,9 @@ const elements = {
   resultSummary: document.querySelector("#result-summary"),
   resultRaw: document.querySelector("#result-raw"),
   toast: document.querySelector("#toast"),
+  reliabilityMetrics: document.querySelector("#reliability-metrics"),
+  traceList: document.querySelector("#trace-list"),
+  traceWaterfall: document.querySelector("#trace-waterfall"),
 };
 
 async function api(path, options = {}) {
@@ -55,6 +60,85 @@ function el(tag, className, text) {
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+function formatObservedDuration(milliseconds) {
+  const value = Number(milliseconds || 0);
+  if (value < 1000) return `${Math.round(value)} ms`;
+  if (value < 60000) return `${(value / 1000).toFixed(value < 10000 ? 1 : 0)} 秒`;
+  return `${Math.floor(value / 60000)} 分 ${Math.round((value % 60000) / 1000)} 秒`;
+}
+
+function metricText(value, suffix = "") {
+  return `${Number(value || 0).toLocaleString("zh-CN")}${suffix}`;
+}
+
+function renderReliability(overview) {
+  state.observability = overview;
+  const metricValues = [
+    metricText(overview.metrics.success_rate_percent, "%"),
+    formatObservedDuration(overview.metrics.latency_p50_ms),
+    formatObservedDuration(overview.metrics.latency_p95_ms),
+    metricText(overview.metrics.data_source_failure_rate_percent, "%"),
+    metricText(overview.metrics.cache_hit_rate_percent, "%"),
+    metricText(overview.metrics.total_tokens),
+  ];
+  elements.reliabilityMetrics.querySelectorAll("strong").forEach((node, index) => { node.textContent = metricValues[index]; });
+  elements.traceList.replaceChildren();
+  if (!overview.recent_traces.length) {
+    elements.traceList.append(el("p", "trace-empty", "完成一次客户分析后，这里会出现追踪记录。"));
+  } else {
+    overview.recent_traces.forEach((trace) => {
+      const button = el("button", `trace-row${trace.trace_id === state.selectedTraceId ? " active" : ""}`);
+      button.type = "button"; button.dataset.traceId = trace.trace_id;
+      const top = el("span"); top.append(el("strong", "", trace.request.symbol || "未知标的"), el("i", trace.status, ({succeeded:"成功",failed:"失败",cancelled:"已停止",running:"运行中",queued:"排队中"})[trace.status] || trace.status));
+      const meta = el("small", "", `${trace.trace_id.slice(0, 8)} · ${formatObservedDuration(trace.duration_ms)}`);
+      button.append(top, meta); elements.traceList.append(button);
+    });
+    if (!state.selectedTraceId || !overview.recent_traces.some((item) => item.trace_id === state.selectedTraceId)) {
+      loadTrace(overview.recent_traces[0].trace_id);
+    }
+  }
+  const slow = document.querySelector("#slow-spans"); slow.replaceChildren();
+  if (!overview.slowest.length) slow.append(el("span", "", "暂无数据"));
+  overview.slowest.forEach((span) => slow.append(el("span", "", `${span.component} · ${formatObservedDuration(span.duration_ms)}`)));
+}
+
+async function loadReliability() {
+  try { renderReliability(await api("/api/observability/overview")); }
+  catch (error) { elements.traceList.replaceChildren(el("p", "trace-empty", `可靠性数据暂不可用：${error.message}`)); }
+}
+
+async function loadTrace(traceId) {
+  state.selectedTraceId = traceId;
+  document.querySelectorAll(".trace-row").forEach((item) => item.classList.toggle("active", item.dataset.traceId === traceId));
+  try {
+    const trace = await api(`/api/observability/traces/${traceId}`);
+    document.querySelector("#trace-title").textContent = `${trace.request.symbol || "分析任务"} · ${trace.trace_id}`;
+    document.querySelector("#trace-status").textContent = ({succeeded:"分析成功",failed:"分析失败",cancelled:"用户停止",running:"正在运行",queued:"排队中"})[trace.status] || trace.status;
+    document.querySelector("#trace-status").className = trace.status;
+    document.querySelector("#trace-duration").textContent = `${trace.spans.length} 个观测步骤 · ${formatObservedDuration(trace.duration_ms)}`;
+    renderWaterfall(trace);
+  } catch (error) { elements.traceWaterfall.replaceChildren(el("p", "trace-empty", error.message)); }
+}
+
+function renderWaterfall(trace) {
+  elements.traceWaterfall.replaceChildren();
+  if (!trace.spans.length) { elements.traceWaterfall.append(el("p", "trace-empty", "任务已创建，等待第一个运行步骤。")); return; }
+  const starts = trace.spans.map((span) => Date.parse(span.started_at));
+  const origin = Math.min(...starts); const total = Math.max(1, trace.duration_ms);
+  const layerNames = { http:"HTTP 接口", task:"分析任务", data:"数据中心", graph:"Graph 节点", harness:"安全护栏", model:"模型网关", database:"历史数据库" };
+  const statusNames = { queued:"排队",running:"运行中",succeeded:"成功",failed:"失败",cancelled:"已停止",skipped:"跳过",retrying:"重试",degraded:"降级",cache_hit:"缓存命中" };
+  trace.spans.forEach((span) => {
+    const row = el("div", "waterfall-row");
+    const label = el("div", "waterfall-label"); label.append(el("small", "", layerNames[span.layer] || span.layer), el("strong", "", span.component));
+    const track = el("div", "waterfall-track");
+    const bar = el("span", `waterfall-bar ${span.status}`); const left = Math.max(0, (Date.parse(span.started_at) - origin) / total * 100); const width = Math.max(1.5, Number(span.duration_ms || 0) / total * 100);
+    bar.style.setProperty("--bar-left", `${Math.min(98.5, left)}%`); bar.style.setProperty("--bar-width", `${Math.min(100 - left, width)}%`);
+    bar.title = `${statusNames[span.status] || span.status} · ${formatObservedDuration(span.duration_ms)}`; track.append(bar);
+    const meta = el("div", "waterfall-meta"); meta.append(el("strong", span.status, statusNames[span.status] || span.status), el("small", "", `${formatObservedDuration(span.duration_ms)}${span.attempts > 1 ? ` · ${span.attempts} 次` : ""}`));
+    row.append(label, track, meta); elements.traceWaterfall.append(row);
+  });
 }
 
 function renderOverview() {
@@ -238,6 +322,10 @@ document.querySelector("#explain-result").addEventListener("click", () => {
 const dialog = document.querySelector("#about-dialog");
 document.querySelector("#about-button").addEventListener("click", () => dialog.showModal());
 document.querySelector(".dialog-close").addEventListener("click", () => dialog.close());
+document.querySelector("#refresh-reliability").addEventListener("click", loadReliability);
+elements.traceList.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-trace-id]"); if (row) loadTrace(row.dataset.traceId);
+});
 
 api("/api/overview")
   .then((overview) => { state.overview = overview; renderOverview(); })
@@ -246,3 +334,6 @@ api("/api/overview")
     elements.stageDescription.textContent = error.message;
     showToast(error.message);
   });
+
+loadReliability();
+window.setInterval(loadReliability, 10000);

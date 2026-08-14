@@ -95,6 +95,7 @@ class ProductAcceptanceRuntime:
             "异步分析任务和客户进度入口存在": self._analysis_jobs_ready(),
             "统一数据快照和来源健康可见": self._analysis_snapshot_ready(client),
             "普通版专业版和证据下钻入口存在": self._report_views_ready(),
+            "实际耗时和可操作错误入口存在": self._client_observability_ready(),
             "客户股票池不少于20只": len(SECURITIES) >= 20,
             "客户股票池覆盖沪深两市": {item["exchange"] for item in SECURITIES.values()}
             == {"上交所", "深交所"},
@@ -111,6 +112,7 @@ class ProductAcceptanceRuntime:
             "A-D四阶段均有入口": {action.stage for action in ACTIONS}
             == {"A", "B", "C", "D"},
             "动态辩论固定评测入口存在": self._dynamic_debate_evaluation_ready(),
+            "统一追踪和可靠性瀑布入口存在": self._admin_observability_ready(),
             "后台登记功能不少于19项": len(ACTIONS) >= 19,
         }
         safety_checks = {
@@ -220,6 +222,29 @@ class ProductAcceptanceRuntime:
             and snapshot.get("available_count", 0) >= 12
             and 'id="snapshot-health"' in html
             and "renderSnapshotHealth" in javascript
+        )
+
+    def _client_observability_ready(self) -> bool:
+        web_root = self._root / "src" / "agent_platform" / "web"
+        html = (web_root / "client.html").read_text(encoding="utf-8")
+        javascript = (web_root / "client.js").read_text(encoding="utf-8")
+        return (
+            'id="error-action"' in html
+            and 'id="error-trace"' in html
+            and "duration_ms" in javascript
+            and "只重试失败步骤" in javascript
+        )
+
+    def _admin_observability_ready(self) -> bool:
+        web_root = self._root / "src" / "agent_platform" / "web"
+        html = (web_root / "index.html").read_text(encoding="utf-8")
+        javascript = (web_root / "app.js").read_text(encoding="utf-8")
+        dashboard = (self._root / "src" / "agent_platform" / "dashboard.py").read_text(encoding="utf-8")
+        return (
+            'id="reliability"' in html
+            and 'id="trace-waterfall"' in html
+            and "/api/observability/overview" in javascript
+            and "/api/observability/traces/" in dashboard
         )
 
     def _dynamic_debate_evaluation_ready(self) -> bool:

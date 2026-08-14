@@ -131,6 +131,36 @@
           </details>
         </div>
       </section>
+
+      <section class="reliability-section" id="reliability" aria-labelledby="reliability-title">
+        <div class="reliability-head">
+          <div><p>RELIABILITY / 03</p><h2 id="reliability-title">一次分析，哪里慢、哪里失败</h2></div>
+          <div><span class="reliability-live"><i></i>结构化观测</span><button type="button" id="refresh-reliability">刷新</button></div>
+        </div>
+        <div class="reliability-metrics" id="reliability-metrics" aria-label="运行可靠性指标">
+          <div><span>成功率</span><strong>—</strong><small>已结束任务</small></div>
+          <div><span>P50 耗时</span><strong>—</strong><small>中位数</small></div>
+          <div><span>P95 耗时</span><strong>—</strong><small>慢任务边界</small></div>
+          <div><span>数据源失败率</span><strong>—</strong><small>按数据集统计</small></div>
+          <div><span>缓存命中率</span><strong>—</strong><small>新鲜/降级缓存</small></div>
+          <div><span>模型 Token</span><strong>—</strong><small>仅记录用量</small></div>
+        </div>
+        <div class="reliability-grid">
+          <aside class="trace-index">
+            <div><strong>最近分析</strong><small>选择一条查看完整链路</small></div>
+            <div id="trace-list"><p class="trace-empty">完成一次客户分析后，这里会出现追踪记录。</p></div>
+          </aside>
+          <div class="trace-detail">
+            <div class="trace-detail-head">
+              <div><span>TRACE WATERFALL</span><h3 id="trace-title">等待分析记录</h3></div>
+              <div><strong id="trace-status">—</strong><small id="trace-duration">—</small></div>
+            </div>
+            <div class="waterfall-scale"><span>开始</span><span>链路实际耗时</span><span>结束</span></div>
+            <div class="waterfall" id="trace-waterfall"><p class="trace-empty">瀑布图只展示运行元数据，不保存密钥、完整请求或原始行情。</p></div>
+            <div class="slow-spans"><strong>全局慢节点</strong><div id="slow-spans"><span>暂无数据</span></div></div>
+          </div>
+        </div>
+      </section>
     </main>
 
     <footer>

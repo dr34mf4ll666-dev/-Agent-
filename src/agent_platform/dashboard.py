@@ -21,6 +21,13 @@ from urllib.parse import parse_qs, urlparse
 from zoneinfo import ZoneInfo
 
 from .analysis_jobs import AnalysisJobError, AnalysisJobRuntime
+from .analysis_observability import (
+    AnalysisObservabilityError,
+    AnalysisObservabilityRuntime,
+    JsonAnalysisTraceStore,
+    TraceSpan,
+    safe_observation_text,
+)
 from .analysis_repository import (
     AnalysisRepository,
     AnalysisRepositoryError,
@@ -479,6 +486,7 @@ class DashboardRuntime:
         analysis_jobs: AnalysisJobRuntime | None = None,
         analysis_repository: AnalysisRepository | None = None,
         report_view_runtime: ReportViewRuntime | None = None,
+        observability: AnalysisObservabilityRuntime | None = None,
         timeout_seconds: float = 180.0,
     ) -> None:
         self.project_root = project_root.resolve()
@@ -497,13 +505,23 @@ class DashboardRuntime:
         self.report_view_runtime = report_view_runtime or ReportViewRuntime(
             self.analysis_repository
         )
-        self.analysis_jobs = analysis_jobs or AnalysisJobRuntime.from_client_runtime(
-            self.client_runtime,
-            storage_path=self.project_root / ".runtime" / "analysis_jobs" / "jobs.json",
-            checkpoint_root=self.project_root / ".runtime" / "analysis_jobs" / "checkpoints",
-            repository=self.analysis_repository,
-            timeout_seconds=180.0,
-        )
+        if analysis_jobs is None:
+            self.observability = observability or AnalysisObservabilityRuntime(
+                JsonAnalysisTraceStore(
+                    self.project_root / ".runtime" / "observability" / "analysis_traces.json"
+                )
+            )
+            self.analysis_jobs = AnalysisJobRuntime.from_client_runtime(
+                self.client_runtime,
+                storage_path=self.project_root / ".runtime" / "analysis_jobs" / "jobs.json",
+                checkpoint_root=self.project_root / ".runtime" / "analysis_jobs" / "checkpoints",
+                repository=self.analysis_repository,
+                observability=self.observability,
+                timeout_seconds=180.0,
+            )
+        else:
+            self.analysis_jobs = analysis_jobs
+            self.observability = observability or analysis_jobs.observability
         self._debate_contexts: OrderedDict[
             str, tuple[Mapping[str, Any], str | None]
         ] = OrderedDict()
@@ -588,9 +606,29 @@ class DashboardRuntime:
 
     def submit_client_analysis(self, value: Mapping[str, Any]) -> dict[str, Any]:
         try:
+            started_at = self._timestamp()
             request = ClientAnalysisRequest.from_mapping(value)
-            return self.analysis_jobs.submit(request)
+            result = self.analysis_jobs.submit(request)
+            finished_at = self._timestamp()
+            self.observability.span(
+                result["trace_id"],
+                TraceSpan(
+                    "http", "dashboard_api", "POST /api/client/jobs", "succeeded",
+                    started_at, finished_at,
+                    attributes={"status_code": 202},
+                ),
+            )
+            return result
         except (ClientAnalysisError, AnalysisJobError) as error:
+            raise DashboardError(str(error)) from error
+
+    def get_observability_overview(self) -> dict[str, Any]:
+        return self.observability.overview(limit=16)
+
+    def get_observability_trace(self, trace_id: str) -> dict[str, Any]:
+        try:
+            return self.observability.trace(trace_id)
+        except AnalysisObservabilityError as error:
             raise DashboardError(str(error)) from error
 
     def get_client_analysis_job(self, job_id: str) -> dict[str, Any]:
@@ -667,6 +705,7 @@ class DashboardRuntime:
             cleanup_warning = None
             try:
                 job_removed = self.analysis_jobs.delete_completed(deleted["job_id"])
+                self.observability.remove_job(deleted["job_id"])
             except AnalysisJobError as error:
                 job_removed = False
                 cleanup_warning = str(error)
@@ -692,6 +731,7 @@ class DashboardRuntime:
             for item in deleted:
                 try:
                     removed_jobs += int(self.analysis_jobs.delete_completed(item["job_id"]))
+                    self.observability.remove_job(item["job_id"])
                 except AnalysisJobError as error:
                     cleanup_warnings.append({"job_id": item["job_id"], "message": str(error)})
             return {
@@ -766,7 +806,34 @@ class DashboardRuntime:
             or safety.get("real_trading_allowed") is not False
         ):
             raise DashboardError("分析结果没有通过研究安全边界校验。")
-        output = self.market_assistant.explain(analysis)
+        trace_id = analysis.get("trace_id")
+        started_at = self._timestamp()
+        try:
+            output = self.market_assistant.explain(analysis)
+        except Exception as error:
+            if isinstance(trace_id, str) and trace_id:
+                self.observability.span(
+                    trace_id,
+                    TraceSpan(
+                        "model", "market_assistant", "explain_report", "failed",
+                        started_at, self._timestamp(), detail=safe_observation_text(error),
+                        attributes={"provider": self.market_assistant.provider, "model": self.market_assistant.model},
+                    ),
+                )
+            raise
+        if isinstance(trace_id, str) and trace_id:
+            self.observability.span(
+                trace_id,
+                TraceSpan(
+                    "model", "market_assistant", "explain_report", "succeeded",
+                    started_at, self._timestamp(),
+                    attributes={
+                        "provider": str(output.get("provider", "unknown")),
+                        "model": str(output.get("model", "unknown")),
+                        "total_tokens": int(output.get("usage", {}).get("total_tokens", 0) or 0),
+                    },
+                ),
+            )
         report_id = analysis.get("report_id")
         if isinstance(report_id, str) and report_id:
             try:
@@ -786,6 +853,10 @@ class DashboardRuntime:
             except AnalysisRepositoryError as error:
                 raise DashboardError(f"解读已生成，但调用记录保存失败: {error}") from error
         return output
+
+    @staticmethod
+    def _timestamp() -> str:
+        return datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(timespec="milliseconds")
 
     def run_action(self, action_id: str, *, mode: str = "offline") -> dict[str, Any]:
         spec = ACTION_BY_ID.get(action_id)
@@ -882,6 +953,21 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/overview":
             self._send_json(HTTPStatus.OK, self.server.runtime.overview())
+            return
+        if path == "/api/observability/overview":
+            self._send_json(
+                HTTPStatus.OK, self.server.runtime.get_observability_overview()
+            )
+            return
+        trace_id = _match_observability_trace_path(path)
+        if trace_id is not None:
+            try:
+                self._send_json(
+                    HTTPStatus.OK,
+                    self.server.runtime.get_observability_trace(trace_id),
+                )
+            except DashboardError as error:
+                self._send_json(HTTPStatus.NOT_FOUND, {"error": str(error)})
             return
         if path == "/api/client/overview":
             self._send_json(HTTPStatus.OK, self.server.runtime.client_overview())
@@ -1110,6 +1196,14 @@ def serve_dashboard(*, port: int = 8765, open_browser: bool = True) -> None:
         print("\n控制台已停止。")
     finally:
         server.server_close()
+
+
+def _match_observability_trace_path(path: str) -> str | None:
+    prefix = "/api/observability/traces/"
+    if not path.startswith(prefix):
+        return None
+    trace_id = path[len(prefix):].strip("/")
+    return trace_id if trace_id and "/" not in trace_id else None
 
 
 def _match_client_job_path(path: str) -> tuple[str, str] | None:

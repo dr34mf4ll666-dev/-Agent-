@@ -79,6 +79,14 @@ class AnalysisJobRuntimeTests(unittest.TestCase):
         failed = _wait_for(runtime, submitted["job_id"], {"failed"})
 
         self.assertIn("database failure", failed["error"]["message"])
+        self.assertEqual(failed["error"]["trace_id"], submitted["trace_id"])
+        self.assertIn("只重试失败步骤", failed["error"]["user_action"])
+        trace = runtime.observability.trace(submitted["trace_id"])
+        self.assertEqual(trace["status"], "failed")
+        self.assertTrue(any(
+            span["layer"] == "database" and span["status"] == "failed"
+            for span in trace["spans"]
+        ))
         with self.assertRaisesRegex(AnalysisJobError, "尚无可用结果"):
             runtime.result(submitted["job_id"])
 
@@ -125,8 +133,10 @@ class AnalysisJobRuntimeTests(unittest.TestCase):
         result = runtime.result(submitted["job_id"])
 
         self.assertEqual(len(submitted["job_id"]), 32)
+        self.assertEqual(len(submitted["trace_id"]), 32)
         self.assertEqual(completed["progress"]["percent"], 100)
         self.assertEqual(completed["status"], "succeeded")
+        self.assertEqual(result.to_mapping()["trace_id"], submitted["trace_id"])
         self.assertEqual(result.to_mapping()["symbol"], "sz000001")
         self.assertEqual(completed["persistence"], "memory_only")
 
