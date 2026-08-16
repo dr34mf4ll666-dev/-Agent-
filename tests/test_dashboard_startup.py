@@ -71,6 +71,11 @@ class DashboardDeepSeekStartupTests(unittest.TestCase):
 
         self.assertTrue(arguments.no_key_prompt)
 
+    def test_cli_exposes_deployment_check(self):
+        arguments = build_cli_parser().parse_args(["deployment-check"])
+
+        self.assertEqual(arguments.command, "deployment-check")
+
 
 if __name__ == "__main__":
     unittest.main()

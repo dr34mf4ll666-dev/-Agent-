@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import tempfile
 import threading
@@ -36,6 +37,7 @@ from agent_platform.research_workspace import (  # noqa: E402
     InMemoryResearchWorkspaceStore,
     ResearchWorkspaceRuntime,
 )
+from agent_platform.security import SecurityRuntime  # noqa: E402
 
 
 class _FakeRunner:
@@ -280,7 +282,11 @@ class DashboardHTTPTests(unittest.TestCase):
             observability=observability,
         )
         cls.runtime = runtime
-        cls.server = create_server(port=0, runtime=runtime)
+        cls.server = create_server(
+            port=0,
+            runtime=runtime,
+            security=SecurityRuntime.disabled(PROJECT_ROOT),
+        )
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
         cls.base_url = f"http://127.0.0.1:{cls.server.server_port}"
@@ -304,6 +310,12 @@ class DashboardHTTPTests(unittest.TestCase):
             client_overview = json.loads(response.read().decode("utf-8"))
         with urlopen(f"{self.base_url}/api/governance", timeout=2) as response:
             governance = json.loads(response.read().decode("utf-8"))
+        with urlopen(f"{self.base_url}/api/health", timeout=2) as response:
+            health = json.loads(response.read().decode("utf-8"))
+        with urlopen(f"{self.base_url}/api/version", timeout=2) as response:
+            version = json.loads(response.read().decode("utf-8"))
+        with urlopen(f"{self.base_url}/api/readiness", timeout=2) as response:
+            readiness = json.loads(response.read().decode("utf-8"))
 
         self.assertIn("看懂一只股票", client_html)
         self.assertNotIn("Harness", client_html)
@@ -311,9 +323,32 @@ class DashboardHTTPTests(unittest.TestCase):
         self.assertIn("DeepSeek 助手", admin_html)
         self.assertIn('id="model-governance"', admin_html)
         self.assertIn('id="governance-quality-gate"', admin_html)
+        self.assertIn('id="runtime-health"', admin_html)
+        self.assertIn('id="runtime-health-label"', client_html)
         self.assertEqual(len(overview["stages"]), 4)
         self.assertEqual(governance["quality_gate"]["offline_mock"], "blocked")
         self.assertIn("K 线与技术指标", client_overview["capabilities"])
+        self.assertEqual(health["status"], "ok")
+        self.assertEqual(version["version"], "0.1.0")
+        self.assertTrue(readiness["ready"])
+
+    def test_remote_binding_is_rejected_before_socket_creation(self):
+        with self.assertRaises(DashboardError):
+            create_server(host="0.0.0.0", port=0, runtime=self.runtime)
+
+    def test_invalid_deployment_environment_is_reported_as_dashboard_error(self):
+        variable = "AGENT_PLATFORM_MAX_REQUEST_BYTES"
+        previous = os.environ.get(variable)
+        os.environ[variable] = "not-a-number"
+        try:
+            with self.assertRaises(DashboardError) as context:
+                create_server(port=0, runtime=self.runtime)
+        finally:
+            if previous is None:
+                os.environ.pop(variable, None)
+            else:
+                os.environ[variable] = previous
+        self.assertIn(variable, str(context.exception))
 
     def test_workspace_http_supports_snapshot_and_watchlist_toggle(self):
         with urlopen(f"{self.base_url}/api/client/workspace", timeout=2) as response:

@@ -255,4 +255,4 @@ python -m unittest discover -s tests -v
 
 ## 12. 下一步
 
-当前 A–D 正式任务与 P1–P7 均已完成，下一项产品化主线为 P8。P7 已接入模型/Prompt/Schema 版本、调用与 Token 预算、成功缓存、安全降级、客户解释反馈，以及固定评测质量门禁和候选版本回滚；模型不可用时确定性报告仍可正常工作。真实 DeepSeek 固定评测已通过并留存逐次原始结果，离线 Mock 仍只作为链路回归，不替代真实质量结论。
+当前 A–D 正式任务与 P1–P8 均已完成。P8 使用 `DeploymentRuntime` 统一版本、健康、就绪和启动阻断，使用 `SecurityRuntime` 统一登录、客户/管理员权限、CSRF、分级限流、安全审计和按会话保存的 DeepSeek Key；Dashboard 暴露状态、认证与安全管理接口。Docker 镜像以非 root 用户运行，Compose 只映射本机端口、使用只读根文件系统和持久卷。CI 覆盖 Linux/Windows、Ruff、mypy、覆盖率、密钥与依赖扫描、真实 Chromium、镜像构建和容器重启恢复。真实容器已验证已提交任务在停止并启动后仍可完成，真实交易始终关闭。下一步进入证券主数据与跨行业扩展。

@@ -16,6 +16,7 @@ from agent_platform.dashboard_startup import configure_deepseek_for_dashboard  #
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="启动通用 Agent 平台 Web 控制台")
+    parser.add_argument("--host", default="127.0.0.1", help="监听地址，默认仅本机")
     parser.add_argument("--port", type=int, default=8765, help="本机端口，默认 8765")
     parser.add_argument("--no-browser", action="store_true", help="不自动打开浏览器")
     parser.add_argument(
@@ -34,7 +35,11 @@ def main() -> int:
     )
     print(selection.message)
     try:
-        serve_dashboard(port=args.port, open_browser=not args.no_browser)
+        serve_dashboard(
+            host=args.host,
+            port=args.port,
+            open_browser=not args.no_browser,
+        )
     except DashboardError as error:
         print(f"启动失败: {error}", file=sys.stderr)
         return 2

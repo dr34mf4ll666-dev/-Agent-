@@ -8,13 +8,31 @@ const clientState = {
   reportView: savedReportView === "professional" ? "professional" : "basic",
   chartPeriod: "daily", chartRange: 40, chartIndicators: { sma5: true, sma20: true, volume: true },
   chartHoverIndex: null, chartGeometry: null,
+  auth: null, csrfToken: "",
 };
 const $ = (selector) => document.querySelector(selector);
 
+async function loadRuntimeStatus() {
+  try {
+    const [health, version] = await Promise.all([clientApi("/api/health"), clientApi("/api/version")]);
+    const dot = $("#runtime-health-dot");
+    dot.className = health.status === "ok" ? "" : "fail";
+    setText("#runtime-health-label", health.maintenance_message ? `维护提示：${health.maintenance_message}` : "服务正常 · 只读研究");
+    setText("#runtime-version", `v${version.version}`);
+  } catch (error) {
+    $("#runtime-health-dot").className = "fail";
+    setText("#runtime-health-label", "服务状态不可用");
+    setText("#runtime-version", "版本不可用");
+  }
+}
+
 async function clientApi(path, options = {}) {
+  const method = String(options.method || "GET").toUpperCase();
+  const securityHeaders = method === "GET" || method === "HEAD" || !clientState.csrfToken
+    ? {} : { "X-CSRF-Token": clientState.csrfToken };
   const response = await fetch(path, {
     ...options,
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    headers: { "Content-Type": "application/json", ...securityHeaders, ...(options.headers || {}) },
   });
   let body;
   const contentType = response.headers.get("Content-Type") || "";
@@ -30,6 +48,41 @@ async function clientApi(path, options = {}) {
   }
   if (!response.ok) throw new Error(body.error || `请求失败 (${response.status})`);
   return body;
+}
+
+async function loadClientSession() {
+  try {
+    const session = await clientApi("/api/auth/session");
+    clientState.auth = session;
+    clientState.csrfToken = session.csrf_token || "";
+    setText("#account-summary", `${session.username} · ${session.role === "admin" ? "管理员" : "客户账户"}`);
+    setText("#account-key-status", session.model_key?.configured ? "DeepSeek：已使用本次会话 Key" : "DeepSeek：未设置会话 Key，将使用启动配置或本地解释");
+    $("#account-button").textContent = session.username;
+    return session;
+  } catch (error) {
+    window.location.assign("/login");
+    throw error;
+  }
+}
+
+async function saveSessionModelKey(apiKey) {
+  const status = await clientApi("/api/auth/model-key", {
+    method: "POST", body: JSON.stringify({ api_key: apiKey }),
+  });
+  setText("#account-key-status", status.configured ? "DeepSeek：本次会话已启用" : "DeepSeek：未启用");
+  $("#session-model-key").value = "";
+  showClientToast("DeepSeek Key 已启用，只在本次登录会话中有效。");
+}
+
+async function clearSessionModelKey() {
+  await clientApi("/api/auth/model-key", { method: "DELETE" });
+  setText("#account-key-status", "DeepSeek：会话 Key 已清除");
+  showClientToast("会话 Key 已清除。");
+}
+
+async function logoutClient() {
+  await clientApi("/api/auth/logout", { method: "POST", body: "{}" });
+  window.location.assign("/login");
 }
 
 function setText(selector, value) { $(selector).textContent = value ?? "—"; }
@@ -977,9 +1030,23 @@ $("#kline-chart").addEventListener("keydown", (event) => {
 });
 window.addEventListener("resize", () => { if (clientState.projection) drawKline(clientState.projection.shared.chart); });
 window.addEventListener("afterprint", () => { delete document.body.dataset.printTarget; });
+$("#account-button").addEventListener("click", () => $("#account-dialog").showModal());
+$(".account-close").addEventListener("click", () => $("#account-dialog").close());
+$("#model-key-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const value = $("#session-model-key").value.trim();
+  if (!value) { showClientToast("请先输入 DeepSeek API Key。"); return; }
+  saveSessionModelKey(value).catch((error) => showClientToast(error.message));
+});
+$("#clear-model-key").addEventListener("click", () => clearSessionModelKey().catch((error) => showClientToast(error.message)));
+$("#logout-button").addEventListener("click", () => logoutClient().catch((error) => showClientToast(error.message)));
 
 applyReportViewVisibility();
 
-clientApi("/api/client/overview")
+loadRuntimeStatus();
+window.setInterval(loadRuntimeStatus, 10000);
+
+loadClientSession()
+  .then(() => clientApi("/api/client/overview"))
   .then((overview) => { populateOverview(overview); loadRecentAnalyses(); return resumeOrStartAnalysis(); })
   .catch((error) => { $("#loading-state").hidden = true; $("#error-state").hidden = false; setText("#error-message", error.message); });

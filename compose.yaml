@@ -1,0 +1,29 @@
+services:
+  agent-platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: agent-platform-finance:local
+    init: true
+    read_only: true
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      AGENT_PLATFORM_CONTAINER_MODE: "true"
+      AGENT_PLATFORM_AUTH_ENABLED: "true"
+      AGENT_PLATFORM_CLIENT_USERNAME: "${AGENT_PLATFORM_CLIENT_USERNAME:-client}"
+      AGENT_PLATFORM_CLIENT_PASSWORD: "${AGENT_PLATFORM_CLIENT_PASSWORD:-}"
+      AGENT_PLATFORM_ADMIN_USERNAME: "${AGENT_PLATFORM_ADMIN_USERNAME:-admin}"
+      AGENT_PLATFORM_ADMIN_PASSWORD: "${AGENT_PLATFORM_ADMIN_PASSWORD:-}"
+      AGENT_PLATFORM_MAINTENANCE_MESSAGE: "${AGENT_PLATFORM_MAINTENANCE_MESSAGE:-}"
+      ALLOW_LIVE_TRADING: "false"
+    volumes:
+      - agent-runtime:/app/.runtime
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  agent-runtime:

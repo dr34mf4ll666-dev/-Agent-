@@ -9,6 +9,8 @@ const state = {
   observability: null,
   governance: null,
   selectedTraceId: null,
+  auth: null,
+  csrfToken: "",
 };
 
 const elements = {
@@ -19,6 +21,8 @@ const elements = {
   stageDescription: document.querySelector("#stage-description"),
   modeNote: document.querySelector("#mode-note"),
   modelStatus: document.querySelector("#model-status"),
+  runtimeHealth: document.querySelector("#runtime-health"),
+  runtimeVersion: document.querySelector("#runtime-version"),
   assistantBadge: document.querySelector("#assistant-badge"),
   assistantThread: document.querySelector("#assistant-thread"),
   assistantForm: document.querySelector("#assistant-form"),
@@ -43,15 +47,88 @@ const elements = {
   governanceGateNote: document.querySelector("#governance-gate-note"),
 };
 
+async function loadDeploymentStatus() {
+  try {
+    const [health, version] = await Promise.all([api("/api/health"), api("/api/version")]);
+    const label = health.maintenance_message ? `维护提示：${health.maintenance_message}` : "服务正常";
+    elements.runtimeHealth.innerHTML = `<i class="status-dot safe"></i><span>${label}</span>`;
+    elements.runtimeVersion.textContent = `v${version.version}`;
+  } catch (error) {
+    elements.runtimeHealth.innerHTML = `<i class="status-dot fail"></i><span>服务异常</span>`;
+    elements.runtimeVersion.textContent = "版本不可用";
+  }
+}
+
 async function api(path, options = {}) {
+  const method = String(options.method || "GET").toUpperCase();
+  const securityHeaders = method === "GET" || method === "HEAD" || !state.csrfToken
+    ? {} : { "X-CSRF-Token": state.csrfToken };
   const response = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,
+    headers: { "Content-Type": "application/json", ...securityHeaders, ...(options.headers || {}) },
   });
   let payload;
   try { payload = await response.json(); } catch { payload = { error: "服务返回了无法识别的内容。" }; }
   if (!response.ok) throw new Error(payload.error || `请求失败 (${response.status})`);
   return payload;
+}
+
+async function loadAdminSession() {
+  try {
+    const session = await api("/api/auth/session");
+    if (session.role !== "admin") throw new Error("当前账户不是管理员。");
+    state.auth = session;
+    state.csrfToken = session.csrf_token || "";
+    return session;
+  } catch (error) {
+    window.location.assign("/login");
+    throw error;
+  }
+}
+
+async function loadSecurityOverview() {
+  const overview = await api("/api/admin/security");
+  const summary = document.querySelector("#security-summary");
+  summary.replaceChildren();
+  [
+    [overview.account.username, "当前管理员"],
+    [String(overview.audit.active_sessions), "活动会话"],
+    [String(overview.audit.denied_count), "已拒绝事件"],
+    [`${overview.limits.requests_per_minute}/分`, "读取上限"],
+    [`${overview.limits.mutations_per_minute}/分`, "修改上限"],
+    [overview.model_key.configured ? "已启用" : "未设置", "会话模型 Key"],
+  ].forEach(([value, label]) => {
+    const card = el("div"); card.append(el("strong", "", value), el("span", "", label)); summary.append(card);
+  });
+  const auditList = document.querySelector("#audit-list");
+  auditList.replaceChildren(el("strong", "", `最近安全事件 · ${overview.audit.event_count} 条`));
+  overview.audit.recent.forEach((item) => {
+    const row = el("div", "audit-row");
+    row.append(
+      el("span", "", String(item.timestamp || "").slice(5, 19).replace("T", " ")),
+      el("strong", "", `${item.event} / ${item.status}`),
+      el("span", "", `${item.username} · ${item.path || item.detail || "—"}`),
+    );
+    auditList.append(row);
+  });
+}
+
+async function saveAdminModelKey(value) {
+  await api("/api/auth/model-key", { method: "POST", body: JSON.stringify({ api_key: value }) });
+  document.querySelector("#admin-session-model-key").value = "";
+  await loadSecurityOverview();
+  showToast("DeepSeek Key 已启用，只在本次管理员会话中有效。");
+}
+
+async function clearAdminModelKey() {
+  await api("/api/auth/model-key", { method: "DELETE" });
+  await loadSecurityOverview();
+  showToast("管理员会话 Key 已清除。");
+}
+
+async function logoutAdmin() {
+  await api("/api/auth/logout", { method: "POST", body: "{}" });
+  window.location.assign("/login");
 }
 
 function showToast(message) {
@@ -382,21 +459,34 @@ document.querySelector("#explain-result").addEventListener("click", () => {
 const dialog = document.querySelector("#about-dialog");
 document.querySelector("#about-button").addEventListener("click", () => dialog.showModal());
 document.querySelector(".dialog-close").addEventListener("click", () => dialog.close());
+const securityDialog = document.querySelector("#security-dialog");
+document.querySelector("#security-button").addEventListener("click", () => {
+  loadSecurityOverview().catch((error) => showToast(error.message)); securityDialog.showModal();
+});
+document.querySelector("#security-dialog .dialog-close").addEventListener("click", () => securityDialog.close());
+document.querySelector("#admin-model-key-form").addEventListener("submit", (event) => {
+  event.preventDefault(); const value = document.querySelector("#admin-session-model-key").value.trim();
+  if (!value) { showToast("请先输入 DeepSeek API Key。"); return; }
+  saveAdminModelKey(value).catch((error) => showToast(error.message));
+});
+document.querySelector("#admin-clear-model-key").addEventListener("click", () => clearAdminModelKey().catch((error) => showToast(error.message)));
+document.querySelector("#admin-logout-button").addEventListener("click", () => logoutAdmin().catch((error) => showToast(error.message)));
 document.querySelector("#refresh-reliability").addEventListener("click", loadReliability);
 document.querySelector("#refresh-governance").addEventListener("click", loadGovernance);
 elements.traceList.addEventListener("click", (event) => {
   const row = event.target.closest("[data-trace-id]"); if (row) loadTrace(row.dataset.traceId);
 });
 
-api("/api/overview")
-  .then((overview) => { state.overview = overview; renderOverview(); })
+loadAdminSession()
+  .then(() => Promise.all([api("/api/overview"), loadReliability(), loadGovernance()]))
+  .then(([overview]) => { state.overview = overview; renderOverview(); })
   .catch((error) => {
     elements.stageTitle.textContent = "控制台未能读取项目状态";
     elements.stageDescription.textContent = error.message;
     showToast(error.message);
   });
 
-loadReliability();
-loadGovernance();
+loadDeploymentStatus();
 window.setInterval(loadReliability, 10000);
 window.setInterval(loadGovernance, 10000);
+window.setInterval(loadDeploymentStatus, 10000);

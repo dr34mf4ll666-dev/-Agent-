@@ -10,6 +10,7 @@ from typing import Any, Protocol
 from .client_app import ClientAnalysisRequest, ClientAnalysisRuntime, SECURITIES
 from .dashboard import ACTIONS
 from .final_delivery import FinalDeliveryRuntime
+from .p8_acceptance import P8AcceptanceRuntime
 
 
 class FinalDeliveryPort(Protocol):
@@ -29,6 +30,7 @@ class ProductAcceptanceReport:
     admin_console: dict[str, Any]
     model_assistance: dict[str, Any]
     safety: dict[str, Any]
+    deployment: dict[str, Any]
 
     @property
     def passed(self) -> bool:
@@ -38,6 +40,7 @@ class ProductAcceptanceReport:
             and self.admin_console["passed"]
             and self.model_assistance["passed"]
             and self.safety["passed"]
+            and self.deployment["passed"]
         )
 
     def to_mapping(self) -> dict[str, Any]:
@@ -48,6 +51,7 @@ class ProductAcceptanceReport:
             "admin_console": dict(self.admin_console),
             "model_assistance": dict(self.model_assistance),
             "safety": dict(self.safety),
+            "deployment": dict(self.deployment),
             "passed": self.passed,
         }
 
@@ -128,6 +132,19 @@ class ProductAcceptanceRuntime:
             "启动命令支持隐藏输入DeepSeek Key": self._dashboard_key_prompt_ready(),
             "未输入Key时保留本地固定格式": self._dashboard_key_prompt_ready(),
         }
+        p8_report = P8AcceptanceRuntime.from_project(self._root).run()
+        deployment_report = p8_report.readiness
+        deployment_checks = {
+            "部署前配置与安全检查": bool(deployment_report["ready"]),
+            "版本健康和就绪接口存在": self._deployment_http_surface_ready(),
+            "客户前台显示服务状态": self._deployment_client_surface_ready(),
+            "团队后台显示版本和服务状态": self._deployment_admin_surface_ready(),
+            "客户与管理员身份权限隔离": all(
+                p8_report.identity_and_access.values()
+            ),
+            "非root容器和重启恢复契约齐全": all(p8_report.container.values()),
+            "跨平台自动质量门禁齐全": all(p8_report.quality_gates.values()),
+        }
         return ProductAcceptanceReport(
             core_delivery={
                 "passed": final.passed,
@@ -159,7 +176,34 @@ class ProductAcceptanceRuntime:
                 "passed": all(safety_checks.values()),
                 "checks": safety_checks,
             },
+            deployment={
+                "passed": all(deployment_checks.values()),
+                "checks": deployment_checks,
+                "status": deployment_report["status"],
+                "version": deployment_report["version"],
+            },
         )
+
+    def _deployment_http_surface_ready(self) -> bool:
+        dashboard = (self._root / "src" / "agent_platform" / "dashboard.py").read_text(
+            encoding="utf-8"
+        )
+        return all(
+            token in dashboard
+            for token in ("/api/health", "/api/readiness", "/api/version")
+        )
+
+    def _deployment_client_surface_ready(self) -> bool:
+        web_root = self._root / "src" / "agent_platform" / "web"
+        html = (web_root / "client.html").read_text(encoding="utf-8")
+        javascript = (web_root / "client.js").read_text(encoding="utf-8")
+        return 'id="runtime-health-label"' in html and "loadRuntimeStatus" in javascript
+
+    def _deployment_admin_surface_ready(self) -> bool:
+        web_root = self._root / "src" / "agent_platform" / "web"
+        html = (web_root / "index.html").read_text(encoding="utf-8")
+        javascript = (web_root / "app.js").read_text(encoding="utf-8")
+        return 'id="runtime-health"' in html and "loadDeploymentStatus" in javascript
 
     def _check_assets(self, *names: str) -> dict[str, bool]:
         web_root = self._root / "src" / "agent_platform" / "web"
@@ -365,6 +409,12 @@ def print_product_acceptance(report: ProductAcceptanceReport) -> None:
     print("\n【5. 安全边界】")
     for name, passed in value["safety"]["checks"].items():
         print(f"- {'通过' if passed else '失败'}: {name}")
+
+    deployment = value["deployment"]
+    print("\n【6. P8 部署、安全和质量门禁】")
+    for name, passed in deployment["checks"].items():
+        print(f"- {'通过' if passed else '失败'}: {name}")
+    print(f"- 版本: {deployment['version']}，状态: {deployment['status']}")
 
     print("\n【最终结论】")
     print("整体验收通过。" if report.passed else "整体验收失败，请查看失败项。")

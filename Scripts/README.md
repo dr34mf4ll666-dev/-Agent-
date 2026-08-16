@@ -38,6 +38,14 @@ D:\Anaconda\python.exe Scripts\demo_product_acceptance.py
 
 该入口对应安装后的 `agent-platform verify-all`，统一检查 A–D 核心交付、客户前台、团队后台、智能解释层和真实交易关闭边界。默认离线运行，不生成报告文件。
 
+## P8 正式部署、安全和质量门禁验收
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_deployment_readiness.py
+```
+
+该入口对应安装后的 `agent-platform deployment-check`。它一次检查版本与 readiness、客户/管理员登录和角色隔离、CSRF、模型限流、会话 Key、审计脱敏、非 root Docker/Compose 契约，以及 Linux/Windows、Ruff、mypy、覆盖率、真实浏览器、密钥/依赖扫描和镜像重启 CI 门禁；不通过时返回非零状态。命令本身不联网、不调用 DeepSeek、不创建订单，也不生成验收文件。
+
 ## 受约束动态辩论固定评测
 
 ```powershell
@@ -45,7 +53,7 @@ D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py
 D:\Anaconda\python.exe Scripts\demo_dynamic_debate_evaluation.py --live
 ```
 
-该入口对应安装后的 `agent-platform debate-eval`。离线模式用可重复的脚本化 Mock 验证证据拒绝、语义重试、统计和安全边界；`--live` 使用真实 DeepSeek 运行同一固定评测集。默认只输出到终端，显式添加 `--output PATH` 才保存逐次原始结果。
+该入口对应安装后的 `agent-platform debate-eval`。离线模式用可重复的脚本化 Mock 验证证据拒绝、语义重试、统计和安全边界；`--live` 使用真实 DeepSeek 运行同一固定评测集。真实评测默认覆盖保存唯一固定结果文件；如需另存一份再显式添加 `--output PATH`。
 
 ## P7 模型治理演示
 

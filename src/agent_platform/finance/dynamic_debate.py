@@ -386,13 +386,16 @@ def _validate_text_numbers(
         raise DynamicDebateError(f"candidate text contains unsupported numbers: {', '.join(invented)}")
 
 
-def build_default_dynamic_debate_runtime() -> DynamicDebateRuntime:
-    if not os.environ.get("DEEPSEEK_API_KEY", "").strip():
+def build_default_dynamic_debate_runtime(
+    *, env: Mapping[str, str] | None = None
+) -> DynamicDebateRuntime:
+    environment = os.environ if env is None else env
+    if not environment.get("DEEPSEEK_API_KEY", "").strip():
         return DynamicDebateRuntime(gateway=None)
-    model = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
+    model = environment.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
     try:
         gateway = ModelGateway(
-            DeepSeekChatAdapter.from_env(model=model),
+            DeepSeekChatAdapter.from_env(model=model, env=environment),
             retry_policy=ModelRetryPolicy(
                 max_attempts=2,
                 timeout_seconds=30,

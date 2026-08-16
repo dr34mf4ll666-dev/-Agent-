@@ -728,10 +728,13 @@ class DeepSeekMarketAssistant:
         }
 
     @classmethod
-    def from_env(cls) -> "DeepSeekMarketAssistant":
-        model = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
+    def from_env(
+        cls, *, env: Mapping[str, str] | None = None
+    ) -> "DeepSeekMarketAssistant":
+        environment = os.environ if env is None else env
+        model = environment.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
         gateway = ModelGateway(
-            DeepSeekChatAdapter.from_env(model=model),
+            DeepSeekChatAdapter.from_env(model=model, env=environment),
             retry_policy=ModelRetryPolicy(
                 max_attempts=2,
                 timeout_seconds=30,
@@ -845,11 +848,14 @@ def _safe_governance_reason(error: Exception) -> str:
     return "DeepSeek 暂时不可用，已切换为本地确定性解释。"
 
 
-def build_default_market_assistant() -> MarketAssistant:
-    if not os.environ.get("DEEPSEEK_API_KEY", "").strip():
+def build_default_market_assistant(
+    *, env: Mapping[str, str] | None = None
+) -> MarketAssistant:
+    environment = os.environ if env is None else env
+    if not environment.get("DEEPSEEK_API_KEY", "").strip():
         return LocalMarketAssistant()
     try:
-        return DeepSeekMarketAssistant.from_env()
+        return DeepSeekMarketAssistant.from_env(env=environment)
     except ModelGatewayConfigurationError:
         return LocalMarketAssistant()
 

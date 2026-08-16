@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
 from .d2_engineering import D2EngineeringRuntime
 from .dashboard import DashboardError, serve_dashboard
 from .dashboard_startup import configure_deepseek_for_dashboard
+from .deployment import DeploymentConfigurationError
 from .final_delivery import FinalDeliveryRuntime
 from .finance import DynamicDebateEvaluationRuntime, print_dynamic_debate_evaluation
+from .p8_acceptance import P8AcceptanceRuntime, print_p8_acceptance
 from .product_acceptance import ProductAcceptanceRuntime, print_product_acceptance
 
 
@@ -26,6 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     d3.add_argument("--dataset", type=Path, default=None, help="可选固定评估数据集")
     subparsers.add_parser("d4-verify", help="运行最终交付离线总验收")
     dashboard = subparsers.add_parser("dashboard", help="启动 A-D 一体化 Web 控制台")
+    dashboard.add_argument("--host", default="127.0.0.1", help="监听地址，默认仅本机")
     dashboard.add_argument("--port", type=int, default=8765, help="本机端口，默认 8765")
     dashboard.add_argument("--no-browser", action="store_true", help="不自动打开浏览器")
     dashboard.add_argument(
@@ -34,6 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="不询问 DeepSeek API Key，直接使用已有环境变量或固定格式",
     )
     subparsers.add_parser("verify-all", help="验收 A-D、客户前台和团队后台")
+    subparsers.add_parser("deployment-check", help="运行 P8 部署前安全与就绪检查")
     debate = subparsers.add_parser("debate-eval", help="运行受约束动态多空辩论固定评测")
     debate.add_argument("--live", action="store_true", help="使用真实 DeepSeek")
     debate.add_argument("--model", default="deepseek-v4-flash", help="DeepSeek 模型名")
@@ -75,7 +80,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(selection.message)
         try:
-            serve_dashboard(port=args.port, open_browser=not args.no_browser)
+            serve_dashboard(
+                host=args.host,
+                port=args.port,
+                open_browser=not args.no_browser,
+            )
         except DashboardError as error:
             print(f"启动失败: {error}", file=sys.stderr)
             return 2
@@ -87,6 +96,21 @@ def main(argv: list[str] | None = None) -> int:
             print(f"项目整体验收失败: {error}", file=sys.stderr)
             return 2
         print_product_acceptance(report)
+        return 0 if report.passed else 1
+    if args.command == "deployment-check":
+        try:
+            report = P8AcceptanceRuntime.from_project(
+                Path(
+                    os.environ.get(
+                        "AGENT_PLATFORM_PROJECT_ROOT",
+                        str(Path(__file__).resolve().parents[2]),
+                    )
+                )
+            ).run()
+        except DeploymentConfigurationError as error:
+            print(f"部署配置检查失败: {error}", file=sys.stderr)
+            return 2
+        print_p8_acceptance(report)
         return 0 if report.passed else 1
     if args.command == "debate-eval":
         if args.live:

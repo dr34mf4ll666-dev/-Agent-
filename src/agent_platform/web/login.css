@@ -1,0 +1,25 @@
+:root { --ink:#10263d; --blue:#1749bd; --mint:#9fe0c1; --line:rgba(16,38,61,.16); }
+* { box-sizing:border-box; }
+body { margin:0; min-height:100vh; color:var(--ink); font-family:"Microsoft YaHei UI","PingFang SC",sans-serif; background:linear-gradient(135deg,#eef3f9 0 52%,#e7e2d8 52%); }
+body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity:.24; background-image:radial-gradient(#10263d 0.55px,transparent .55px); background-size:7px 7px; }
+.login-shell { position:relative; min-height:100vh; display:grid; grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr); }
+.login-story { padding:clamp(38px,7vw,100px); display:flex; flex-direction:column; justify-content:center; }
+.login-brand { position:absolute; top:32px; display:flex; align-items:center; gap:12px; color:inherit; text-decoration:none; }
+.login-brand span { display:grid; place-items:center; width:42px; height:42px; color:white; background:var(--ink); border-radius:50%; font-family:serif; font-size:22px; }
+.login-brand strong { letter-spacing:.08em; }
+.eyebrow,.card-kicker { color:var(--blue); font:700 11px Consolas,monospace; letter-spacing:.19em; }
+h1 { margin:20px 0; font:650 clamp(42px,5.7vw,78px)/1.08 Georgia,"Microsoft YaHei UI",serif; letter-spacing:-.05em; }
+h1 em { color:var(--blue); font-style:normal; }
+.intro { max-width:720px; color:#536578; font-size:16px; line-height:1.9; }
+.trust-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:38px; }
+.trust-grid div { padding:18px; border-top:2px solid var(--ink); background:rgba(255,255,255,.36); }
+.trust-grid strong,.trust-grid span { display:block; }.trust-grid span { margin-top:8px; color:#647487; font-size:12px; line-height:1.6; }
+.login-card { align-self:center; width:min(470px,calc(100% - 48px)); margin:auto; padding:42px; background:#fff; box-shadow:0 30px 90px rgba(16,38,61,.18); border-top:5px solid var(--blue); }
+.login-card h2 { margin:8px 0 10px; font-size:32px; }.login-card>p { color:#687789; line-height:1.7; font-size:13px; }
+form { display:grid; gap:10px; margin-top:28px; } label { margin-top:8px; font-size:12px; font-weight:700; }
+input { width:100%; padding:14px 15px; border:1px solid var(--line); color:var(--ink); background:#f8fafc; font:inherit; outline:none; }
+input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(23,73,189,.12); }
+form button { display:flex; justify-content:space-between; margin-top:15px; padding:15px 18px; border:0; color:white; background:var(--blue); font-weight:700; cursor:pointer; }
+form button:disabled { opacity:.55; cursor:wait; }.login-error { padding:11px 13px; color:#a42b2b!important; background:#fff1f1; border-left:3px solid #b92e2e; }
+.login-note { display:flex; gap:9px; margin-top:24px; padding-top:18px; border-top:1px solid var(--line); color:#6b7885; font-size:11px; line-height:1.6; }.login-note i { flex:0 0 8px; height:8px; margin-top:4px; border-radius:50%; background:var(--mint); }
+@media (max-width:850px) { .login-shell{grid-template-columns:1fr}.login-story{padding:100px 28px 34px}.login-brand{top:24px}.trust-grid{grid-template-columns:1fr}.login-card{margin:20px auto 50px;padding:30px} }

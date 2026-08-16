@@ -19,7 +19,7 @@
       <a href="#dimensions">多维观察</a>
       <a href="#risk">风险边界</a>
     </nav>
-    <div class="header-trust"><i></i><span>只读研究模式</span></div>
+    <div class="header-trust"><i id="runtime-health-dot"></i><span id="runtime-health-label">服务检查中</span><small id="runtime-version">v—</small><button type="button" id="account-button">我的账户</button></div>
   </header>
 
   <main>
@@ -350,6 +350,20 @@
     <p>仅供研究与教学，不构成投资建议。系统不连接券商，不创建真实订单。</p>
     <a href="/admin">团队验收后台</a>
   </footer>
+  <dialog class="account-dialog" id="account-dialog">
+    <button class="account-close" type="button" aria-label="关闭">×</button>
+    <p class="panel-kicker">ACCOUNT & MODEL</p>
+    <h2>账户与模型设置</h2>
+    <p id="account-summary">正在读取登录信息…</p>
+    <div class="account-key-status" id="account-key-status">DeepSeek：检查中</div>
+    <form id="model-key-form">
+      <label for="session-model-key">本次会话的 DeepSeek API Key</label>
+      <input id="session-model-key" type="password" autocomplete="off" maxlength="256" placeholder="输入后只保存在当前登录会话">
+      <div><button type="submit">启用 DeepSeek</button><button type="button" id="clear-model-key">清除 Key</button></div>
+    </form>
+    <p class="account-note">关闭服务、退出登录或清除后，Key 会立即失效，不会写入数据库和审计日志。</p>
+    <button class="logout-button" type="button" id="logout-button">退出登录</button>
+  </dialog>
   <div class="toast" id="client-toast" role="status" aria-live="polite"></div>
   <script src="/client.js" defer></script>
 </body>

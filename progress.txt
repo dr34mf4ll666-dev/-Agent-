@@ -737,3 +737,27 @@
 - 动态辩论专项与质量门禁测试共 11 项通过；`DYNAMIC_LLM_DEBATE` 和 P7 已更新为 `done`。下一条产品化主线为 P8。
 - 回归中发现正式真实评测文件会污染“无评测时应阻断晋级”的单元测试；为 Dashboard 增加可注入的评测目录，测试改用独立临时目录，生产默认路径和真实评测留证不变。
 - 最终验证：完整回归 384 项通过；Python 编译、JavaScript 语法、离线动态辩论评测和产品整体验收通过；运行中的 `/api/governance` 已返回 `fixed_evaluation=passed`、`promotion=eligible`、`raw_result_count=4`，确定性金融控制仍为安全状态。
+
+[2026-08-14] P8 部署前安全底座完成
+- 新增 `DeploymentRuntime` 深模块，统一提供 `version()`、`health()`、`readiness()` 和 `assert_startable()`；检查 Python、静态资源、本机绑定、请求体上限、任务超时、模型预算和真实交易开关。
+- Dashboard 新增 `/api/version`、`/api/health`、`/api/readiness`、`/healthz`；就绪检查失败返回 503，并在创建 Socket 前拒绝远程绑定或打开真实交易的配置。
+- 客户前台和团队后台顶部新增版本、服务状态和维护提示；响应继续保留 CSP、nosniff、DENY，并增加 no-referrer 与 Permissions-Policy。
+- 新增 `Scripts/demo_deployment_readiness.py` 与 `agent-platform deployment-check`，产品整体验收纳入 P8 部署前检查。
+- P8 仍为 `in_progress`：登录/角色权限、Docker 非 root、CI 扩展、完整限流/审计和容器重启验收留待后续切片。
+- P8 相关专项验证 38 项、完整回归 393 项通过；部署前演示、产品整体验收、Python 编译和前后台 JavaScript 语法检查均通过。
+
+[2026-08-16] P8 正式部署、安全和质量门禁完成
+- 新增 `SecurityRuntime` 深模块。客户与管理员账户使用 PBKDF2-SHA256 哈希校验，登录后得到有期限的 HttpOnly 会话；`/admin` 由后端角色门禁保护，客户账号越权返回 403。写操作必须通过 CSRF 校验，读取、修改和模型调用使用不同限流桶。
+- 新增登录页、客户“账户”和管理员“账户与安全”界面。管理员可以查看活动会话、拒绝事件、限流配置、会话模型状态和最近审计；客户只能操作研究前台。
+- DeepSeek Key 增加按会话内存保存。会话 Key 优先于进程备用 Key，退出登录或服务重启后失效；Key 不进入 SQLite、任务 JSON、审计日志、Dockerfile 或镜像。
+- 登录、登出、越权、CSRF、限流、模型 Key 设置/清除和关键业务修改写入可轮转 JSONL 审计。审计只记录时间、用户、角色、方法、路径、状态和短说明，不保存密码、Key、Prompt、授权头或完整输入输出。
+- 新增非 root Docker 镜像和 Compose：容器使用 UID/GID 10001，宿主端口只映射 `127.0.0.1:8765`，根文件系统只读，禁止新增权限，`.runtime` 使用命名卷持久化，并提供 `/healthz` 健康检查。
+- 真实容器首次验收暴露“安装后的前端资源仍按源码路径查找”问题。修正为从已安装 Python 包定位 Web 资源，并通过 `AGENT_PLATFORM_PROJECT_ROOT=/app` 明确容器项目根；新增安装布局回归测试。
+- 真实 Docker 最终验收通过：镜像构建成功，容器用户为 10001；提交离线分析任务后停止并启动同一容器，原任务编号仍可查询，最终状态为 `succeeded`，报告继续保持 `real_trading_allowed=false`。
+- 最终 `docker compose up -d --build` 也在只读根文件系统、持久卷和本机端口配置下实际启动，`/healthz` 返回 200；验收结束后只删除本次创建的临时容器、网络和空数据卷。
+- CI 扩展为 Linux/Windows 完整测试、稳定 CLI、Ruff、mypy、60% 覆盖率、密钥模式扫描、依赖漏洞扫描、真实 Chromium、镜像构建、非 root 和容器重启恢复。真实 Chromium 已通过未登录跳转、客户前台、客户 `/admin` 403 和管理员安全界面。
+- 依赖扫描发现 `setuptools 78.1.1` 的已知安全公告，运行锁文件已更新为 `83.0.0`。Windows 杀毒软件对 `pip-audit` 的 CycloneDX 漏洞模型字节码产生启发式 HackTool 告警；官方 PyPI wheel SHA256、安装 RECORD 和本机源码逐项一致，相关审计包随后从日常 Anaconda 卸载，只保留在隔离 CI 中使用。
+- 新增 `P8AcceptanceRuntime`、完整中文验收命令和产品总验收集成。P8 在 ROADMAP、SPEC 和 checklist 标记为 `done`；真实交易继续硬关闭，公网 TLS、集中式身份和云托管不在当前完成范围内。
+
+下一步
+- 进入 P9 证券主数据与跨行业扩展：把 20 只银行股硬编码目录迁移为版本化主数据，并至少完成一个非银行行业的真实端到端验证。

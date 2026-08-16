@@ -30,6 +30,39 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-ra"
 
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "B", "UP", "S"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S"]
+"src/agent_platform/deployment.py" = ["S104"]
+"src/agent_platform/security.py" = ["S106"]
+"Scripts/e2e_dashboard.py" = ["S310", "S603"]
+"Scripts/verify_container_restart.py" = ["S310", "S603", "S607"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+warn_redundant_casts = true
+check_untyped_defs = true
+no_implicit_optional = true
+ignore_missing_imports = true
+
+[tool.coverage.run]
+branch = true
+source = ["agent_platform"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 60
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

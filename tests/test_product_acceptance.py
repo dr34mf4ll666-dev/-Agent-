@@ -86,6 +86,15 @@ class ProductAcceptanceTests(unittest.TestCase):
             value["model_assistance"]["checks"]["启动命令支持隐藏输入DeepSeek Key"]
         )
         self.assertTrue(value["safety"]["passed"])
+        self.assertTrue(value["deployment"]["passed"])
+        self.assertEqual(value["deployment"]["status"], "ready")
+        self.assertTrue(
+            value["deployment"]["checks"]["客户与管理员身份权限隔离"]
+        )
+        self.assertTrue(
+            value["deployment"]["checks"]["非root容器和重启恢复契约齐全"]
+        )
+        self.assertTrue(value["deployment"]["checks"]["跨平台自动质量门禁齐全"])
         self.assertEqual(value["admin_console"]["path"], "/admin")
         self.assertIsInstance(client.requests[0], ClientAnalysisRequest)
 

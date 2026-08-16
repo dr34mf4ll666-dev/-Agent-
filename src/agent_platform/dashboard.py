@@ -10,16 +10,19 @@ import sys
 import time
 import webbrowser
 from collections import OrderedDict
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from http import HTTPStatus
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Lock, Timer
-from typing import Any, Mapping, Protocol, Sequence
+from typing import Any, Protocol
 from urllib.parse import parse_qs, urlparse
 from zoneinfo import ZoneInfo
 
+from . import __version__
 from .analysis_jobs import AnalysisJobError, AnalysisJobRuntime
 from .analysis_observability import (
     AnalysisObservabilityError,
@@ -66,6 +69,8 @@ from .llm_governance import (
     ModelGovernanceRuntime,
     local_fallback_metadata,
 )
+from .deployment import DeploymentConfigurationError, DeploymentRuntime
+from .security import Principal, SecurityError, SecurityRuntime
 from uuid import uuid4
 
 
@@ -131,7 +136,7 @@ class SubprocessDashboardCommandRunner:
     ) -> CommandExecution:
         started = time.perf_counter()
         try:
-            completed = subprocess.run(
+            completed = subprocess.run(  # noqa: S603 - command comes from ACTIONS allowlist
                 list(command),
                 cwd=cwd,
                 capture_output=True,
@@ -466,9 +471,12 @@ class DeepSeekProjectAssistant:
         }
 
     @classmethod
-    def from_env(cls) -> "DeepSeekProjectAssistant":
-        model = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
-        adapter = DeepSeekChatAdapter.from_env(model=model)
+    def from_env(
+        cls, *, env: Mapping[str, str] | None = None
+    ) -> DeepSeekProjectAssistant:
+        environment = os.environ if env is None else env
+        model = environment.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
+        adapter = DeepSeekChatAdapter.from_env(model=model, env=environment)
         gateway = ModelGateway(
             adapter,
             retry_policy=ModelRetryPolicy(
@@ -637,7 +645,7 @@ class DashboardRuntime:
                 checkpoint_root=self.project_root / ".runtime" / "analysis_jobs" / "checkpoints",
                 repository=self.analysis_repository,
                 observability=self.observability,
-                timeout_seconds=180.0,
+                timeout_seconds=timeout_seconds,
             )
         else:
             self.analysis_jobs = analysis_jobs
@@ -653,7 +661,7 @@ class DashboardRuntime:
         cls,
         project_root: Path | None = None,
         **kwargs: Any,
-    ) -> "DashboardRuntime":
+    ) -> DashboardRuntime:
         root = project_root or Path(__file__).resolve().parents[2]
         return cls(project_root=root, **kwargs)
 
@@ -662,7 +670,7 @@ class DashboardRuntime:
             "project": {
                 "name": "通用 Agent 平台 · 金融分析应用",
                 "description": "从通用 Agent 底座，到真实金融数据、多 Agent 决策与工程验收的一体化控制台。",
-                "version": "0.1.0",
+                "version": __version__,
             },
             "stages": list(STAGES),
             "actions": [action.to_mapping() for action in ACTIONS],
@@ -1021,7 +1029,12 @@ class DashboardRuntime:
             response["analysis_id"] = analysis_id
         return response
 
-    def debate_client(self, analysis_id: str) -> dict[str, Any]:
+    def debate_client(
+        self,
+        analysis_id: str,
+        *,
+        model_environment: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
         if not isinstance(analysis_id, str) or not analysis_id.strip():
             raise DashboardError("缺少可用于动态辩论的分析编号。")
         with self._debate_context_lock:
@@ -1029,7 +1042,12 @@ class DashboardRuntime:
         if entry is None:
             raise DashboardError("分析编号已失效，请重新完成一次股票分析。")
         context, report_id = entry
-        output = self.dynamic_debate_runtime.run(
+        debate_runtime = (
+            build_default_dynamic_debate_runtime(env=model_environment)
+            if model_environment
+            else self.dynamic_debate_runtime
+        )
+        output = debate_runtime.run(
             StructuredDebateQuery(context, rounds=2)
         ).to_mapping()
         if report_id and output.get("mode") == "dynamic":
@@ -1051,7 +1069,12 @@ class DashboardRuntime:
                 raise DashboardError(f"辩论已生成，但调用记录保存失败: {error}") from error
         return output
 
-    def explain_client(self, analysis: Mapping[str, Any]) -> dict[str, Any]:
+    def explain_client(
+        self,
+        analysis: Mapping[str, Any],
+        *,
+        model_environment: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
         if not isinstance(analysis, Mapping):
             raise DashboardError("缺少可解释的分析结果。")
         safety = analysis.get("safety")
@@ -1063,8 +1086,13 @@ class DashboardRuntime:
             raise DashboardError("分析结果没有通过研究安全边界校验。")
         trace_id = analysis.get("trace_id")
         started_at = self._timestamp()
+        market_assistant = self.market_assistant
         try:
-            output = self.market_assistant.explain(analysis)
+            if model_environment:
+                market_assistant = build_default_market_assistant(
+                    env=model_environment
+                )
+            output = market_assistant.explain(analysis)
         except Exception as error:
             if isinstance(trace_id, str) and trace_id:
                 self.observability.span(
@@ -1072,7 +1100,7 @@ class DashboardRuntime:
                     TraceSpan(
                         "model", "market_assistant", "explain_report", "failed",
                         started_at, self._timestamp(), detail=safe_observation_text(error),
-                        attributes={"provider": self.market_assistant.provider, "model": self.market_assistant.model},
+                        attributes={"provider": market_assistant.provider, "model": market_assistant.model},
                     ),
                 )
             raise
@@ -1198,12 +1226,18 @@ class DashboardRuntime:
         message: str,
         *,
         context: Mapping[str, Any] | None = None,
+        model_environment: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
         if not isinstance(message, str) or not message.strip():
             raise DashboardError("请先输入你想让助手解释的问题。")
         if len(message) > 1200:
             raise DashboardError("问题过长，请控制在 1200 字以内。")
-        return self.assistant.answer(message.strip(), context)
+        assistant = (
+            DeepSeekProjectAssistant.from_env(env=model_environment)
+            if model_environment
+            else self.assistant
+        )
+        return assistant.answer(message.strip(), context)
 
 
 def _extract_summary(stdout: str, prefixes: Sequence[str]) -> list[str]:
@@ -1216,17 +1250,23 @@ def _extract_summary(stdout: str, prefixes: Sequence[str]) -> list[str]:
     return selected[:16]
 
 
-def build_default_assistant() -> ProjectAssistant:
-    if not os.environ.get("DEEPSEEK_API_KEY", "").strip():
+def build_default_assistant(
+    *, env: Mapping[str, str] | None = None
+) -> ProjectAssistant:
+    environment = os.environ if env is None else env
+    if not environment.get("DEEPSEEK_API_KEY", "").strip():
         return LocalProjectAssistant()
     try:
-        return DeepSeekProjectAssistant.from_env()
+        return DeepSeekProjectAssistant.from_env(env=environment)
     except ModelGatewayConfigurationError:
         return LocalProjectAssistant()
 
 
 class DashboardHTTPServer(ThreadingHTTPServer):
     runtime: DashboardRuntime
+    deployment: DeploymentRuntime
+    security: SecurityRuntime
+    daemon_threads = True
 
     def server_close(self) -> None:
         self.runtime.close()
@@ -1236,13 +1276,64 @@ class DashboardHTTPServer(ThreadingHTTPServer):
 class DashboardRequestHandler(BaseHTTPRequestHandler):
     server: DashboardHTTPServer
     static_root = Path(__file__).with_name("web")
-    max_body_bytes = 32_768
+    server_version = f"AgentPlatform/{__version__}"
+    sys_version = ""
 
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         path = parsed.path
-        if path == "/api/health":
-            self._send_json(HTTPStatus.OK, {"status": "ok"})
+        if path in {"/api/health", "/healthz"}:
+            self._send_json(HTTPStatus.OK, self.server.deployment.health())
+            return
+        if path in {"/api/readiness", "/readyz"}:
+            readiness = self.server.deployment.readiness()
+            status = (
+                HTTPStatus.OK
+                if readiness["ready"]
+                else HTTPStatus.SERVICE_UNAVAILABLE
+            )
+            self._send_json(status, readiness)
+            return
+        if path == "/api/version":
+            self._send_json(HTTPStatus.OK, self.server.deployment.version())
+            return
+        public_static = {
+            "/login": ("login.html", "text/html; charset=utf-8"),
+            "/login/": ("login.html", "text/html; charset=utf-8"),
+            "/login.css": ("login.css", "text/css; charset=utf-8"),
+            "/login.js": ("login.js", "text/javascript; charset=utf-8"),
+        }
+        if path in public_static:
+            self._send_static(*public_static[path])
+            return
+        try:
+            principal = self._require(path, "GET")
+        except SecurityError as error:
+            self._send_security_error(error, browser_path=not path.startswith("/api/"))
+            return
+        if path == "/api/auth/session":
+            self._send_json(
+                HTTPStatus.OK,
+                {
+                    **principal.to_mapping(),
+                    "model_key": self.server.security.model_key_status(principal),
+                },
+            )
+            return
+        if path == "/api/admin/security":
+            self._send_json(
+                HTTPStatus.OK,
+                {
+                    "account": principal.to_mapping(),
+                    "limits": {
+                        "requests_per_minute": self.server.security.config.request_limit,
+                        "mutations_per_minute": self.server.security.config.mutation_limit,
+                        "model_calls_per_minute": self.server.security.config.model_limit,
+                    },
+                    "audit": self.server.security.audit_summary(limit=16),
+                    "model_key": self.server.security.model_key_status(principal),
+                },
+            )
             return
         if path == "/api/overview":
             self._send_json(HTTPStatus.OK, self.server.runtime.overview())
@@ -1373,51 +1464,110 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         if item is None:
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "页面不存在。"})
             return
-        filename, content_type = item
-        try:
-            payload = (self.static_root / filename).read_bytes()
-        except OSError:
-            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "前端资源缺失。"})
-            return
-        self._send_bytes(HTTPStatus.OK, payload, content_type)
+        self._send_static(*item)
 
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         try:
             body = self._read_json()
+            if path == "/api/auth/login":
+                result = self.server.security.login(
+                    str(body.get("username", "")),
+                    str(body.get("password", "")),
+                    remote_address=self.client_address[0],
+                    user_agent=self.headers.get("User-Agent", ""),
+                )
+                destination = "/admin" if result.principal.role == "admin" else "/"
+                self._send_json(
+                    HTTPStatus.OK,
+                    {**result.principal.to_mapping(), "destination": destination},
+                    headers={
+                        "Set-Cookie": (
+                            f"agent_session={result.session_token}; Path=/; "
+                            f"HttpOnly; SameSite=Strict; Max-Age={result.max_age}"
+                        )
+                    },
+                )
+                return
+            model_operation = path in {
+                "/api/assistant",
+                "/api/client/explain",
+                "/api/client/debate",
+            }
+            principal = self._require(
+                path,
+                "POST",
+                model_operation=model_operation,
+            )
+            if path == "/api/auth/logout":
+                self.server.security.logout(
+                    self._session_token(), remote_address=self.client_address[0]
+                )
+                self._send_json(
+                    HTTPStatus.OK,
+                    {"logged_out": True},
+                    headers={
+                        "Set-Cookie": (
+                            "agent_session=; Path=/; HttpOnly; SameSite=Strict; "
+                            "Max-Age=0"
+                        )
+                    },
+                )
+                return
+            if path == "/api/auth/model-key":
+                self._send_json(
+                    HTTPStatus.OK,
+                    self.server.security.set_model_key(
+                        principal, str(body.get("api_key", ""))
+                    ),
+                )
+                return
             if path == "/api/run":
                 result = self.server.runtime.run_action(
                     str(body.get("action_id", "")),
                     mode=str(body.get("mode", "offline")),
                 )
+                self._audit_operation(principal, path, detail="admin_action")
                 self._send_json(HTTPStatus.OK, result)
                 return
             if path == "/api/assistant":
                 result = self.server.runtime.ask_assistant(
                     body.get("message", ""),
                     context=body.get("context"),
+                    model_environment=self.server.security.model_environment(principal),
                 )
+                self._audit_operation(principal, path, detail="model_assistance")
                 self._send_json(HTTPStatus.OK, result)
                 return
             if path == "/api/client/analyze":
                 result = self.server.runtime.analyze_client(body)
+                self._audit_operation(principal, path, detail="synchronous_analysis")
                 self._send_json(HTTPStatus.OK, result)
                 return
             if path == "/api/client/jobs":
                 result = self.server.runtime.submit_client_analysis(body)
+                self._audit_operation(
+                    principal, path, detail=str(result.get("job_id", ""))
+                )
                 self._send_json(HTTPStatus.ACCEPTED, result)
                 return
             client_job = _match_client_job_path(path)
             if client_job is not None and client_job[1] == "cancel":
                 result = self.server.runtime.cancel_client_analysis_job(client_job[0])
+                self._audit_operation(principal, path, detail=client_job[0])
                 self._send_json(HTTPStatus.OK, result)
                 return
             if client_job is not None and client_job[1] == "retry":
                 result = self.server.runtime.retry_client_analysis_job(client_job[0])
+                self._audit_operation(principal, path, detail=client_job[0])
                 self._send_json(HTTPStatus.ACCEPTED, result)
                 return
             if path == "/api/client/explain":
-                result = self.server.runtime.explain_client(body.get("analysis", {}))
+                result = self.server.runtime.explain_client(
+                    body.get("analysis", {}),
+                    model_environment=self.server.security.model_environment(principal),
+                )
+                self._audit_operation(principal, path, detail="model_explanation")
                 self._send_json(HTTPStatus.OK, result)
                 return
             if path == "/api/client/feedback":
@@ -1429,24 +1579,29 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                     model=str(body.get("model", "unknown")),
                     governance=body.get("governance"),
                 )
+                self._audit_operation(principal, path, detail="client_feedback")
                 self._send_json(HTTPStatus.OK, result)
                 return
             if path == "/api/client/debate":
                 result = self.server.runtime.debate_client(
-                    str(body.get("analysis_id", ""))
+                    str(body.get("analysis_id", "")),
+                    model_environment=self.server.security.model_environment(principal),
                 )
+                self._audit_operation(principal, path, detail="dynamic_debate")
                 self._send_json(HTTPStatus.OK, result)
                 return
             if path == "/api/client/workspace/watchlist":
                 result = self.server.runtime.toggle_client_watchlist(
                     str(body.get("symbol", ""))
                 )
+                self._audit_operation(principal, path, detail="watchlist_changed")
                 self._send_json(HTTPStatus.OK, result)
                 return
             if path == "/api/client/workspace/favorites":
                 result = self.server.runtime.toggle_client_report_favorite(
                     str(body.get("report_id", ""))
                 )
+                self._audit_operation(principal, path, detail="favorite_changed")
                 self._send_json(HTTPStatus.OK, result)
                 return
             if path == "/api/client/workspace/compare":
@@ -1455,9 +1610,12 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                     str(body.get("right_report_id", "")),
                     view=str(body.get("view", "basic")),
                 )
+                self._audit_operation(principal, path, detail="reports_compared")
                 self._send_json(HTTPStatus.OK, result)
                 return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "接口不存在。"})
+        except SecurityError as error:
+            self._send_security_error(error)
         except DashboardError as error:
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
         except ModelGatewayExecutionError as error:
@@ -1474,26 +1632,122 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
     def do_DELETE(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         try:
+            principal = self._require(path, "DELETE")
+            if path == "/api/auth/model-key":
+                self._send_json(
+                    HTTPStatus.OK,
+                    self.server.security.clear_model_key(principal),
+                )
+                return
             report_id = _match_client_report_path(path)
             if report_id is not None:
                 if self.headers.get("X-Confirm-Delete") != "delete-one":
                     raise DashboardError("删除历史报告需要明确确认。")
+                result = self.server.runtime.delete_client_historical_report(report_id)
+                self._audit_operation(principal, path, detail=report_id)
                 self._send_json(
                     HTTPStatus.OK,
-                    self.server.runtime.delete_client_historical_report(report_id),
+                    result,
                 )
                 return
             if path == "/api/client/history":
                 if self.headers.get("X-Confirm-Delete") != "clear-all":
                     raise DashboardError("清空全部历史需要明确确认。")
+                result = self.server.runtime.clear_client_analysis_history()
+                self._audit_operation(principal, path, detail="history_cleared")
                 self._send_json(
                     HTTPStatus.OK,
-                    self.server.runtime.clear_client_analysis_history(),
+                    result,
                 )
                 return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "接口不存在。"})
+        except SecurityError as error:
+            self._send_security_error(error)
         except DashboardError as error:
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+
+    def _require(
+        self,
+        path: str,
+        method: str,
+        *,
+        model_operation: bool = False,
+    ) -> Principal:
+        role = "admin" if _is_admin_path(path) else "client"
+        return self.server.security.require(
+            self._session_token(),
+            role=role,
+            method=method,
+            path=path,
+            csrf_token=self.headers.get("X-CSRF-Token"),
+            remote_address=self.client_address[0],
+            model_operation=model_operation,
+        )
+
+    def _session_token(self) -> str | None:
+        raw = self.headers.get("Cookie", "")
+        if not raw:
+            return None
+        cookie = SimpleCookie()
+        try:
+            cookie.load(raw)
+        except Exception:
+            return None
+        value = cookie.get("agent_session")
+        return value.value if value is not None else None
+
+    def _audit_operation(
+        self,
+        principal: Principal,
+        path: str,
+        *,
+        detail: str = "",
+    ) -> None:
+        if not self.server.security.config.enabled:
+            return
+        self.server.security.audit(
+            "operation",
+            "succeeded",
+            username=principal.username,
+            role=principal.role,
+            method=self.command,
+            path=path,
+            remote_address=self.client_address[0],
+            detail=detail,
+        )
+
+    def _send_security_error(
+        self,
+        error: SecurityError,
+        *,
+        browser_path: bool = False,
+    ) -> None:
+        if browser_path and error.status == 401:
+            self._send_redirect("/login")
+            return
+        self._send_json(
+            HTTPStatus(error.status),
+            {"error": str(error), "code": error.code},
+            headers={"Retry-After": "60"} if error.status == 429 else None,
+        )
+
+    def _send_redirect(self, location: str) -> None:
+        self._send_bytes(
+            HTTPStatus.SEE_OTHER,
+            b"",
+            "text/plain; charset=utf-8",
+            headers={"Location": location},
+        )
+
+    def _send_static(self, filename: str, content_type: str) -> None:
+        try:
+            payload = (self.static_root / filename).read_bytes()
+        except OSError:
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "前端资源缺失。"}
+            )
+            return
+        self._send_bytes(HTTPStatus.OK, payload, content_type)
 
     def _read_json(self) -> dict[str, Any]:
         raw_length = self.headers.get("Content-Length", "0")
@@ -1501,16 +1755,27 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             length = int(raw_length)
         except ValueError as error:
             raise DashboardError("Content-Length 无效。") from error
-        if length <= 0 or length > self.max_body_bytes:
-            raise DashboardError("请求体为空或超过 32 KB。")
+        max_body_bytes = self.server.deployment.config.max_request_bytes
+        if length <= 0 or length > max_body_bytes:
+            raise DashboardError(
+                f"请求体为空或超过 {max_body_bytes // 1024} KB。"
+            )
         value = json.loads(self.rfile.read(length).decode("utf-8"))
         if not isinstance(value, dict):
             raise DashboardError("请求 JSON 必须是对象。")
         return value
 
-    def _send_json(self, status: HTTPStatus, value: Mapping[str, Any]) -> None:
+    def _send_json(
+        self,
+        status: HTTPStatus,
+        value: Mapping[str, Any],
+        *,
+        headers: Mapping[str, str] | None = None,
+    ) -> None:
         payload = json.dumps(value, ensure_ascii=False).encode("utf-8")
-        self._send_bytes(status, payload, "application/json; charset=utf-8")
+        self._send_bytes(
+            status, payload, "application/json; charset=utf-8", headers=headers
+        )
 
     def _send_download(
         self,
@@ -1547,6 +1812,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
         self.send_header(
             "Content-Security-Policy",
             "default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:",
@@ -1565,9 +1832,29 @@ def create_server(
     host: str = "127.0.0.1",
     port: int = 8765,
     runtime: DashboardRuntime | None = None,
+    deployment: DeploymentRuntime | None = None,
+    security: SecurityRuntime | None = None,
 ) -> DashboardHTTPServer:
-    if host not in {"127.0.0.1", "localhost"}:
-        raise DashboardError("控制台默认只允许绑定本机地址。")
+    project_root = (
+        runtime.project_root
+        if runtime is not None
+        else Path(
+            os.environ.get(
+                "AGENT_PLATFORM_PROJECT_ROOT",
+                str(Path(__file__).resolve().parents[2]),
+            )
+        ).resolve()
+    )
+    try:
+        deployment_runtime = deployment or DeploymentRuntime.from_environment(
+            project_root,
+            host=host,
+            port=port,
+        )
+        deployment_runtime.assert_startable()
+        security_runtime = security or SecurityRuntime(project_root)
+    except (DeploymentConfigurationError, SecurityError) as error:
+        raise DashboardError(str(error)) from error
     if port:
         try:
             with socket.create_connection((host, port), timeout=0.25):
@@ -1580,15 +1867,34 @@ def create_server(
                 "避免浏览器混用新旧版本；也可以换一个端口启动。"
             )
     server = DashboardHTTPServer((host, port), DashboardRequestHandler)
-    server.runtime = runtime or DashboardRuntime.from_project()
+    server.deployment = deployment_runtime
+    server.security = security_runtime
+    server.runtime = runtime or DashboardRuntime.from_project(
+        project_root,
+        timeout_seconds=deployment_runtime.config.request_timeout_seconds,
+    )
     return server
 
 
-def serve_dashboard(*, port: int = 8765, open_browser: bool = True) -> None:
-    server = create_server(port=port)
+def serve_dashboard(
+    *,
+    host: str = "127.0.0.1",
+    port: int = 8765,
+    open_browser: bool = True,
+) -> None:
+    server = create_server(host=host, port=port)
     url = f"http://127.0.0.1:{server.server_port}/"
     print("=== 通用 Agent 平台 Web 控制台 ===")
     print(f"访问地址: {url}")
+    print(f"版本: {server.deployment.version()['version']}")
+    print("健康检查: /api/health；就绪检查: /api/readiness")
+    credentials = server.security.bootstrap_credentials()
+    if credentials:
+        print("首次登录账户（仅本次进程显示，可用环境变量固定密码）:")
+        for username, password in credentials.items():
+            print(f"- {username}: {password}")
+    if server.deployment.config.maintenance_message:
+        print(f"维护提示: {server.deployment.config.maintenance_message}")
     print("安全边界: 仅监听本机；真实数据只读；交易仅本地模拟。")
     if open_browser:
         Timer(0.5, lambda: webbrowser.open(url)).start()
@@ -1606,6 +1912,20 @@ def _match_observability_trace_path(path: str) -> str | None:
         return None
     trace_id = path[len(prefix):].strip("/")
     return trace_id if trace_id and "/" not in trace_id else None
+
+
+def _is_admin_path(path: str) -> bool:
+    if path in {"/admin", "/admin/", "/index.html", "/styles.css", "/app.js"}:
+        return True
+    return path == "/api/overview" or path.startswith(
+        (
+            "/api/run",
+            "/api/assistant",
+            "/api/governance",
+            "/api/observability",
+            "/api/admin/",
+        )
+    )
 
 
 def _match_client_job_path(path: str) -> tuple[str, str] | None:
