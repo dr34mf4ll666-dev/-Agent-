@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
-from .client_app import ClientAnalysisRequest, ClientAnalysisRuntime, SECURITIES
+from .client_app import ClientAnalysisRequest, ClientAnalysisRuntime
 from .dashboard import ACTIONS
 from .final_delivery import FinalDeliveryRuntime
 from .p8_acceptance import P8AcceptanceRuntime
+from .security_master import DEFAULT_SECURITY_MASTER
 
 
 class FinalDeliveryPort(Protocol):
@@ -102,9 +104,18 @@ class ProductAcceptanceRuntime:
             "实际耗时和可操作错误入口存在": self._client_observability_ready(),
             "研究工作台收藏比较打印导出入口存在": self._research_workspace_ready(),
             "模型治理信息和解释反馈入口存在": self._llm_governance_ready(),
-            "客户股票池不少于20只": len(SECURITIES) >= 20,
-            "客户股票池覆盖沪深两市": {item["exchange"] for item in SECURITIES.values()}
+            "证券主数据版本可读取": bool(DEFAULT_SECURITY_MASTER.catalog_version),
+            "客户股票池不少于20只": len(DEFAULT_SECURITY_MASTER.customer_records()) >= 20,
+            "客户股票池覆盖沪深两市": {item.exchange for item in DEFAULT_SECURITY_MASTER.customer_records()}
             == {"上交所", "深交所"},
+            "客户目录包含已验证非银行行业": any(
+                item.industry != "银行" and item.verified and item.customer_visible
+                for item in DEFAULT_SECURITY_MASTER.customer_records()
+            ),
+            "证券能力和快照状态可见": all(
+                item.capabilities and isinstance(item.snapshot, Mapping)
+                for item in DEFAULT_SECURITY_MASTER.customer_records()
+            ),
             "四个研究维度齐全": len(client.get("dimensions", [])) == 4,
             "K线可视数据不少于30根": len(client.get("data", {}).get("bars", [])) >= 30,
             "综合观点可读": bool(client.get("verdict", {}).get("label")),

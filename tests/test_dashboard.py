@@ -135,10 +135,13 @@ class DashboardRuntimeTests(unittest.TestCase):
             "blocked_until_live_pass",
         )
 
-    def test_client_overview_exposes_twenty_stocks_and_mode_availability(self):
+    def test_client_overview_exposes_catalog_industries_and_mode_availability(self):
         overview = self.runtime.client_overview()
 
-        self.assertEqual(len(overview["securities"]), 20)
+        self.assertGreaterEqual(len(overview["securities"]), 20)
+        self.assertEqual(overview["catalog"]["visible_count"], len(overview["securities"]))
+        self.assertIn("银行", overview["catalog"]["industries"])
+        self.assertIn("酿酒", overview["catalog"]["industries"])
         self.assertEqual(
             next(item for item in overview["securities"] if item["symbol"] == "sz000001")["modes"],
             ["offline", "live"],
@@ -146,6 +149,10 @@ class DashboardRuntimeTests(unittest.TestCase):
         self.assertEqual(
             next(item for item in overview["securities"] if item["symbol"] == "sh600000")["modes"],
             ["live"],
+        )
+        self.assertEqual(
+            next(item for item in overview["securities"] if item["symbol"] == "sz000858")["industry"],
+            "酿酒",
         )
 
     def test_research_workspace_watchlist_is_available_through_dashboard_interface(self):
@@ -640,6 +647,8 @@ class DashboardAssetTests(unittest.TestCase):
         self.assertIn('id="clear-history-button"', client_html)
         self.assertIn('id="history-confirm"', client_html)
         self.assertIn('id="research-workspace"', client_html)
+        self.assertIn('id="security-search"', client_html)
+        self.assertIn('id="industry-filter"', client_html)
         self.assertIn('id="watchlist-toggle"', client_html)
         self.assertIn('id="compare-left"', client_html)
         self.assertIn('id="compare-right"', client_html)
@@ -687,6 +696,7 @@ class DashboardAssetTests(unittest.TestCase):
         self.assertIn('api("/api/governance")', javascript)
         self.assertIn('clientApi("/api/client/overview")', client_javascript)
         self.assertIn("syncModeAvailability", client_javascript)
+        self.assertIn("renderSecurityOptions", client_javascript)
         self.assertIn("renderResearchBalance", client_javascript)
         self.assertIn("localizeDebateText", client_javascript)
         self.assertIn('clientApi("/api/client/debate"', client_javascript)

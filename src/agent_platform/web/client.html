@@ -30,7 +30,11 @@
         <span>行情、经营、行业与市场环境在同一份报告里交叉验证。</span>
       </div>
       <form class="stock-form" id="stock-form">
-        <label for="stock-select">选择研究标的 <small>20 只沪深银行股</small></label>
+        <label for="stock-select">选择研究标的 <small id="catalog-summary">正在读取证券目录…</small></label>
+        <div class="catalog-filter-row" aria-label="筛选证券目录">
+          <label class="catalog-search"><span>搜索</span><input id="security-search" type="search" placeholder="名称或代码" autocomplete="off"></label>
+          <label class="catalog-industry"><span>行业</span><select id="industry-filter" aria-label="按行业筛选"><option value="">全部行业</option></select></label>
+        </div>
         <div class="stock-search-row">
           <div class="stock-select-wrap">
             <span aria-hidden="true">⌕</span>

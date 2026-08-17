@@ -761,3 +761,18 @@
 
 下一步
 - 进入 P9 证券主数据与跨行业扩展：把 20 只银行股硬编码目录迁移为版本化主数据，并至少完成一个非银行行业的真实端到端验证。
+
+[2026-08-17] P9 证券主数据与跨行业扩展完成第一轮验收
+- 新增 `SecurityMasterRuntime` 深模块和 `src/agent_platform/resources/security_master.v1.json`。主数据版本为 `2026-08-17.v1`，每条记录保存代码、交易所、名称、客户行业、上市状态、数据源、可用模式、能力、快照状态以及 `verified/customer_visible` 边界。
+- `client_app.py` 中原本硬编码的 20 只证券目录已迁移为版本化主数据；旧 `SECURITIES` 只保留兼容视图。`DashboardRuntime.client_overview()` 现在返回目录版本、行业列表、数量、来源、能力和快照状态。
+- 客户前台新增名称/代码搜索和行业筛选，股票选项同时显示交易所和客户行业。当前客户正式目录为 21 只沪深 A 股：20 只银行股和五粮液（`sz000858`）1 只酿酒行业标的。
+- 真实验证命令 `D:\Anaconda\python.exe Scripts\demo_security_master.py --verify-non-bank` 已通过。五粮液使用真实行情、财务、行业、宏观数据完成四 Agent、C3 Graph、Trader、条件路由和 Risk Manager；最终 `status=financial_graph_completed`，真实交易继续关闭，未生成报告文件。
+- 为跨行业数据差异补充了财报同义字段：股东权益支持“归属于母公司股东权益合计”等写法，资本开支支持“所支付的现金”等写法；新增酿酒行业产业链规则。计算仍由确定性代码完成，LLM 不参与字段映射和数值修改。
+- 新增 `CONTEXT.md` 记录证券主数据、客户行业、分析行业标签、验证标的、数据能力和快照能力的领域词义；新增 `docs/security-master.md`、`Scripts/demo_security_master.py` 和专项测试。
+- 验证结果：证券主数据/客户 App/Dashboard/研究工作台/产品验收相关 unittest 46 项通过；新模块和演示脚本 Ruff 检查通过；相关 Python 文件编译通过；真实非银行完整 Graph 通过；Chromium P8/P9 浏览器验收已通过未登录跳转、客户前台、行业筛选显示五粮液和客户访问 `/admin` 返回 403。
+- 下一步：如继续扩展，优先按同一主数据格式增加第二个非银行行业或其他资产，并为每个新标的保留独立真实验证证据；不把未验证候选放入客户目录。
+
+[2026-08-17] P9 正式关闭
+- 复核结果：P9 的证券主数据、客户搜索与行业筛选、未验证标的隔离、跨行业字段兼容、五粮液真实完整 Graph、产品验收和 Chromium 前台验收均已完成，`ROADMAP.md` 与 `checklist.json` 均保持 `done`。
+- 本次不再把“扩展第二个行业或新增资产”作为 P9 的未完成项；它们属于后续独立扩展任务，必须继续复用 `SecurityMasterRuntime` 的主数据校验和真实链路验证规则。
+- P9 当前交付边界：21 只已验证沪深 A 股、银行与酿酒两个客户行业、真实交易关闭、未验证标的不进入客户目录。

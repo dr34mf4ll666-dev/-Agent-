@@ -13,8 +13,8 @@ from threading import RLock
 from typing import Any, Callable, Mapping, Protocol
 from zoneinfo import ZoneInfo
 
-from .client_app import SECURITIES
 from .report_views import ReportViewRuntime
+from .security_master import DEFAULT_SECURITY_MASTER, SecurityMasterError
 
 
 class ResearchWorkspaceError(ValueError):
@@ -169,8 +169,10 @@ class ResearchWorkspaceRuntime:
 
     def toggle_watchlist(self, symbol: str) -> dict[str, Any]:
         normalized = str(symbol).strip().lower()
-        if normalized not in SECURITIES:
-            raise ResearchWorkspaceError("当前股票不在已验证的客户分析目录中。")
+        try:
+            DEFAULT_SECURITY_MASTER.get(normalized)
+        except SecurityMasterError as error:
+            raise ResearchWorkspaceError("当前股票不在已验证的客户分析目录中。") from error
         with self._lock:
             preferences = self._clean_preferences(self._store.load())
             symbols = list(preferences.watchlist)
@@ -313,7 +315,11 @@ class ResearchWorkspaceRuntime:
         output: list[str] = []
         for value in values:
             normalized = str(value).strip().lower()
-            if normalized in SECURITIES and normalized not in output:
+            try:
+                DEFAULT_SECURITY_MASTER.get(normalized)
+            except SecurityMasterError:
+                continue
+            if normalized not in output:
                 output.append(normalized)
         return output[: cls.MAX_WATCHLIST_SIZE]
 
@@ -387,12 +393,13 @@ class ResearchWorkspaceRuntime:
 
     @staticmethod
     def _security(symbol: str) -> dict[str, str]:
-        value = SECURITIES[symbol]
+        value = DEFAULT_SECURITY_MASTER.get(symbol)
         return {
             "symbol": symbol,
-            "code": symbol[2:],
-            "name": str(value["name"]),
-            "exchange": str(value["exchange"]),
+            "code": value.code,
+            "name": value.name,
+            "exchange": value.exchange,
+            "industry": value.industry,
         }
 
     def _comparison_card(self, projection: Mapping[str, Any]) -> dict[str, Any]:

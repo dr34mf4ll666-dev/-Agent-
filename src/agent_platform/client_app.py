@@ -24,6 +24,7 @@ from .llm_governance import (
     ModelGovernanceRuntime,
     local_fallback_metadata,
 )
+from .security_master import DEFAULT_SECURITY_MASTER, SecurityMasterError
 
 from .finance import (
     AnalysisSnapshot,
@@ -47,32 +48,8 @@ class ClientAnalysisError(ValueError):
     """A customer analysis request or projection is invalid."""
 
 
-SECURITIES = {
-    "sz000001": {
-        "name": "平安银行",
-        "exchange": "深交所",
-        "sectors": {"offline": "玻璃行业", "live": "金融行业"},
-    },
-    "sh600000": {"name": "浦发银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh600015": {"name": "华夏银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh600016": {"name": "民生银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh600036": {"name": "招商银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh601009": {"name": "南京银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh601166": {"name": "兴业银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh601169": {"name": "北京银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh601229": {"name": "上海银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh601288": {"name": "农业银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh601328": {"name": "交通银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh601398": {"name": "工商银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh601658": {"name": "邮储银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh601818": {"name": "光大银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh601838": {"name": "成都银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh601939": {"name": "建设银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh601988": {"name": "中国银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sh601998": {"name": "中信银行", "exchange": "上交所", "sectors": {"live": "金融行业"}},
-    "sz002142": {"name": "宁波银行", "exchange": "深交所", "sectors": {"live": "金融行业"}},
-    "sz002807": {"name": "江阴银行", "exchange": "深交所", "sectors": {"live": "金融行业"}},
-}
+# Compatibility view for older callers. The versioned JSON master is the source of truth.
+SECURITIES = DEFAULT_SECURITY_MASTER.legacy_mapping()
 
 
 LABELS = {
@@ -108,15 +85,20 @@ class ClientAnalysisRequest:
     mode: str = "offline"
 
     def __post_init__(self) -> None:
-        if self.symbol not in SECURITIES:
-            raise ClientAnalysisError("当前股票不在已验证的客户分析目录中。")
         if self.mode not in {"offline", "live"}:
             raise ClientAnalysisError("数据模式必须是 offline 或 live。")
-        if self.mode not in SECURITIES[self.symbol]["sectors"]:
-            raise ClientAnalysisError(
-                f"{SECURITIES[self.symbol]['name']}当前只支持最新数据，"
-                "没有可独立复现的离线全量样本。"
-            )
+        try:
+            security = DEFAULT_SECURITY_MASTER.get(self.symbol)
+        except SecurityMasterError as error:
+            raise ClientAnalysisError(str(error)) from error
+        if self.mode not in security.available_modes:
+            if "live" in security.available_modes:
+                message = f"{security.name}当前只支持最新数据，没有可独立复现的离线全量样本。"
+            else:
+                message = f"{security.name}当前不支持{self.mode}数据模式。"
+            raise ClientAnalysisError(message)
+        if self.symbol not in SECURITIES:
+            raise ClientAnalysisError("当前股票不在已验证的客户分析目录中。")
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "ClientAnalysisRequest":
@@ -297,8 +279,9 @@ class ClientAnalysisRuntime:
         resume: bool = False,
     ) -> ClientAnalysisResult:
         report_progress = progress or (lambda *_event: None)
-        security = SECURITIES[request.symbol]
-        sector = security["sectors"][request.mode]
+        security_record = DEFAULT_SECURITY_MASTER.get(request.symbol)
+        security = security_record.to_legacy_mapping()
+        sector = security_record.analysis_sectors[request.mode]
         now = self._now()
         if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
             raise ClientAnalysisError("分析时钟必须包含时区。")
@@ -871,5 +854,6 @@ __all__ = [
     "LocalMarketAssistant",
     "MarketAssistant",
     "SECURITIES",
+    "DEFAULT_SECURITY_MASTER",
     "build_default_market_assistant",
 ]

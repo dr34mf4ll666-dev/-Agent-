@@ -175,7 +175,13 @@ class FundamentalAnalysisEngine:
         liabilities = _field(balance, ("负债合计",), label="total liabilities")
         equity = _field(
             balance,
-            ("归属于母公司股东的权益", "归属于母公司所有者权益"),
+            (
+                "归属于母公司股东的权益",
+                "归属于母公司所有者权益",
+                "归属于母公司股东权益合计",
+                "归属于母公司所有者权益合计",
+                "所有者权益（或股东权益）合计",
+            ),
             label="shareholder equity",
         )
         if assets <= 0 or equity <= 0:
@@ -212,6 +218,8 @@ class FundamentalAnalysisEngine:
                 (
                     "购建固定资产、无形资产和其他长期资产支付的现金",
                     "购建固定资产、无形资产及其他长期资产支付的现金",
+                    "购建固定资产、无形资产和其他长期资产所支付的现金",
+                    "购建固定资产、无形资产及其他长期资产所支付的现金",
                 ),
                 label="capital expenditure",
             )

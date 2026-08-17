@@ -283,6 +283,9 @@ def derive_indicators_from_statements(
         balance,
         "归属于母公司股东的权益",
         "归属于母公司所有者权益",
+        "归属于母公司股东权益合计",
+        "归属于母公司所有者权益合计",
+        "所有者权益（或股东权益）合计",
     )
     net_profit = _record_decimal(income, "归属于母公司的净利润", "净利润")
     if assets <= 0 or equity <= 0:

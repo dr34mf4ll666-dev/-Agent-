@@ -1,8 +1,8 @@
 {
   "project": "通用 Agent 平台及证券金融分析应用",
-  "version": "3.6.0",
-  "updated_at": "2026-08-16",
-  "current_focus": "P8 正式部署、安全和质量门禁已完成；下一项为P9证券主数据与跨行业扩展",
+  "version": "3.7.1",
+  "updated_at": "2026-08-17",
+  "current_focus": "P9 证券主数据与跨行业扩展已完成并关闭；后续新增行业或资产作为独立扩展任务",
   "tracking_model": "official_tasks_and_final_acceptance",
   "status": "done",
   "items": [
@@ -609,7 +609,7 @@
         "tests/test_dashboard.py",
         "docs/client-app.md"
       ],
-      "scope_note": "客户股票池为20只已真实批量验证的沪深银行股；仅平安银行支持独立离线快照，其余股票只使用最新只读数据；研究天平只投影四个Agent既有分数；DeepSeek不改变确定性结果；真实交易关闭"
+      "scope_note": "客户股票池由版本化证券主数据维护；当前已包含20只银行股和1只通过真实完整Graph验证的酿酒行业标的；仅平安银行支持独立离线快照，其余股票只使用最新只读数据；研究天平只投影四个Agent既有分数；DeepSeek不改变确定性结果；真实交易关闭"
     }
   ],
   "in_progress_product_enhancements": [
@@ -905,6 +905,54 @@
         "progress.txt"
       ],
       "scope_note": "当前完成本机和容器化的受控部署，不宣称已完成公网TLS、集中式身份系统或云托管；真实交易继续硬关闭"
+    },
+    {
+      "id": "P9_SECURITY_MASTER",
+      "status": "done",
+      "result": "已将客户证券目录迁移到版本化证券主数据，前台支持名称/代码搜索和行业筛选，并完成五粮液真实非银行完整 Graph 验收",
+      "completed_slices": [
+        "新增 SecurityMasterRuntime 深模块，统一加载、校验、查询和生成客户目录",
+        "新增 security_master.v1.json，记录代码、交易所、名称、行业、上市状态、分析行业标签、数据源、能力和快照状态",
+        "移除 client_app.py 中的硬编码证券主数据；旧 SECURITIES 仅保留为兼容视图",
+        "客户前台新增名称/代码搜索、行业筛选、目录版本和能力可见性",
+        "新增酿酒行业产业链映射，并兼容非银行财报中的股东权益和资本开支字段差异",
+        "五粮液 sz000858 通过真实行情、财务、行业、宏观、四 Agent、C3 Graph、Trader、条件路由和 Risk Manager 验收",
+        "未验证标的不能通过客户目录、分析请求或自选入口"
+      ],
+      "remaining": [],
+      "acceptance": [
+        "新证券只需新增主数据记录，不需要修改客户业务源码",
+        "目录行业不再统一写成金融行业；至少存在银行和酿酒两个客户行业",
+        "至少一个非银行行业完成真实端到端和行业匹配验收",
+        "客户前台可以按行业筛选并选中五粮液",
+        "客户目录继续只包含 verified=true 且 customer_visible=true 的标的",
+        "真实交易仍关闭，验证命令不生成报告文件"
+      ],
+      "evidence": [
+        "CONTEXT.md",
+        "src/agent_platform/security_master.py",
+        "src/agent_platform/resources/security_master.v1.json",
+        "src/agent_platform/client_app.py",
+        "src/agent_platform/dashboard.py",
+        "src/agent_platform/research_workspace.py",
+        "src/agent_platform/finance/fundamental.py",
+        "src/agent_platform/finance/fundamental_runtime.py",
+        "src/agent_platform/finance/industry.py",
+        "src/agent_platform/web/client.html",
+        "src/agent_platform/web/client.css",
+        "src/agent_platform/web/client.js",
+        "Scripts/demo_security_master.py",
+        "Scripts/e2e_dashboard.py",
+        "tests/test_security_master.py",
+        "tests/test_client_app.py",
+        "tests/test_dashboard.py",
+        "docs/security-master.md",
+        "README.md",
+        "ROADMAP.md",
+        "SPEC.md",
+        "progress.txt"
+      ],
+      "scope_note": "当前完成沪深 A 股目录的第一轮跨行业扩展；仍不接入真实交易，也不把未完成验证的候选标的展示给客户"
     }
   ],
   "enhancements_to_preserve": [

@@ -42,9 +42,9 @@ from .client_app import (
     ClientAnalysisResult,
     ClientAnalysisRuntime,
     MarketAssistant,
-    SECURITIES,
     build_default_market_assistant,
 )
+from .security_master import DEFAULT_SECURITY_MASTER
 from .core import (
     DeepSeekChatAdapter,
     ModelGateway,
@@ -763,16 +763,14 @@ class DashboardRuntime:
                 "name": "研判 · 多维证券研究助手",
                 "description": "把行情、经营、行业和市场环境放在一张报告里。",
             },
-            "securities": [
-                {
-                    "symbol": symbol,
-                    "code": symbol[2:],
-                    "name": value["name"],
-                    "exchange": value["exchange"],
-                    "modes": list(value["sectors"]),
-                }
-                for symbol, value in SECURITIES.items()
-            ],
+            "catalog": {
+                "version": DEFAULT_SECURITY_MASTER.catalog_version,
+                "visible_count": len(DEFAULT_SECURITY_MASTER.customer_records()),
+                "pending_count": len(DEFAULT_SECURITY_MASTER.search(include_unverified=True))
+                - len(DEFAULT_SECURITY_MASTER.customer_records()),
+                "industries": list(DEFAULT_SECURITY_MASTER.industries()),
+            },
+            "securities": DEFAULT_SECURITY_MASTER.overview_records(),
             "capabilities": [
                 "K 线与技术指标",
                 "经营质量与估值",

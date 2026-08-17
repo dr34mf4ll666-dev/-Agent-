@@ -9,6 +9,7 @@ const clientState = {
   chartPeriod: "daily", chartRange: 40, chartIndicators: { sma5: true, sma20: true, volume: true },
   chartHoverIndex: null, chartGeometry: null,
   auth: null, csrfToken: "",
+  catalogQuery: "", catalogIndustry: "",
 };
 const $ = (selector) => document.querySelector(selector);
 
@@ -98,15 +99,41 @@ function formatJobDuration(milliseconds) {
 
 function populateOverview(overview) {
   clientState.overview = overview;
-  const select = $("#stock-select"); select.replaceChildren();
-  overview.securities.forEach((security) => {
-    const option = document.createElement("option"); option.value = security.symbol;
-    option.dataset.modes = security.modes.join(",");
-    option.textContent = `${security.name}  ${security.code} · ${security.exchange}`; select.append(option);
+  const industryFilter = $("#industry-filter"); industryFilter.replaceChildren();
+  const allOption = document.createElement("option"); allOption.value = ""; allOption.textContent = "全部行业"; industryFilter.append(allOption);
+  (overview.catalog?.industries || [...new Set(overview.securities.map((item) => item.industry).filter(Boolean))]).forEach((industry) => {
+    const option = document.createElement("option"); option.value = industry; option.textContent = industry; industryFilter.append(option);
   });
+  industryFilter.value = clientState.catalogIndustry;
+  const catalog = overview.catalog || {};
+  setText("#catalog-summary", `${catalog.visible_count || overview.securities.length} 只可研究 · ${catalog.industries?.length || 1} 个行业`);
+  renderSecurityOptions();
   const strip = $("#capability-strip"); strip.replaceChildren();
   overview.capabilities.forEach((item) => { const span = document.createElement("span"); span.textContent = item; strip.append(span); });
-  syncModeAvailability(); syncWatchlistButton();
+  syncWatchlistButton();
+}
+
+function renderSecurityOptions() {
+  const select = $("#stock-select");
+  const previous = select.value || "sz000001";
+  const query = clientState.catalogQuery.toLowerCase();
+  const securities = (clientState.overview?.securities || []).filter((security) => {
+    const matchesQuery = !query || `${security.name} ${security.code} ${security.symbol}`.toLowerCase().includes(query);
+    const matchesIndustry = !clientState.catalogIndustry || security.industry === clientState.catalogIndustry;
+    return matchesQuery && matchesIndustry;
+  });
+  select.replaceChildren();
+  securities.forEach((security) => {
+    const option = document.createElement("option"); option.value = security.symbol;
+    option.dataset.modes = security.modes.join(",");
+    option.textContent = `${security.name}  ${security.code} · ${security.exchange} · ${security.industry}`; select.append(option);
+  });
+  if (!securities.length) {
+    const option = document.createElement("option"); option.value = ""; option.textContent = "没有匹配的已验证标的"; option.disabled = true; select.append(option);
+  } else {
+    select.value = securities.some((item) => item.symbol === previous) ? previous : securities[0].symbol;
+  }
+  syncModeAvailability();
 }
 
 function selectedSecurity() {
@@ -982,6 +1009,8 @@ $("#print-report-button").addEventListener("click", () => printResearch("report"
 $("#confirm-cancel").addEventListener("click", closeHistoryConfirmation);
 $("#confirm-delete").addEventListener("click", confirmHistoryDeletion);
 $("#stock-select").addEventListener("change", () => { syncModeAvailability(); syncWatchlistButton(); });
+$("#security-search").addEventListener("input", (event) => { clientState.catalogQuery = event.target.value.trim(); renderSecurityOptions(); syncWatchlistButton(); });
+$("#industry-filter").addEventListener("change", (event) => { clientState.catalogIndustry = event.target.value; renderSecurityOptions(); syncWatchlistButton(); });
 document.addEventListener("click", (event) => {
   const favoriteReport = event.target.closest("[data-favorite-report-id]");
   if (favoriteReport) { toggleReportFavorite(favoriteReport.dataset.favoriteReportId); return; }
@@ -993,6 +1022,9 @@ document.addEventListener("click", (event) => {
   if (printTarget) { printResearch(printTarget.dataset.printTarget); return; }
   const watchlist = event.target.closest("[data-watchlist-symbol]");
   if (watchlist) {
+    clientState.catalogQuery = ""; clientState.catalogIndustry = "";
+    $("#security-search").value = ""; $("#industry-filter").value = "";
+    renderSecurityOptions();
     $("#stock-select").value = watchlist.dataset.watchlistSymbol;
     syncModeAvailability(); syncWatchlistButton();
     document.querySelector(".research-entry").scrollIntoView({ behavior: "smooth", block: "center" }); return;

@@ -14,6 +14,7 @@ from agent_platform.client_app import (  # noqa: E402
     ClientAnalysisRequest,
     ClientAnalysisRuntime,
     DeepSeekMarketAssistant,
+    DEFAULT_SECURITY_MASTER,
     LocalMarketAssistant,
     SECURITIES,
 )
@@ -108,14 +109,20 @@ class ClientAnalysisTests(unittest.TestCase):
         with self.assertRaises(ClientAnalysisError):
             ClientAnalysisRequest(mode="unknown")
 
-    def test_customer_catalog_contains_twenty_verified_bank_symbols(self):
-        self.assertEqual(len(SECURITIES), 20)
+    def test_customer_catalog_contains_verified_bank_and_non_bank_symbols(self):
+        self.assertGreaterEqual(len(SECURITIES), 20)
         self.assertEqual(
             {item["exchange"] for item in SECURITIES.values()},
             {"上交所", "深交所"},
         )
         self.assertEqual(set(SECURITIES["sz000001"]["sectors"]), {"offline", "live"})
         self.assertEqual(set(SECURITIES["sh600000"]["sectors"]), {"live"})
+        self.assertEqual(SECURITIES["sz000858"]["name"], "五粮液")
+        self.assertEqual(DEFAULT_SECURITY_MASTER.get("sz000858").industry, "酿酒")
+        self.assertNotEqual(
+            DEFAULT_SECURITY_MASTER.get("sz000858").analysis_sectors["live"],
+            DEFAULT_SECURITY_MASTER.get("sz000001").analysis_sectors["live"],
+        )
 
     def test_non_ping_an_symbols_do_not_reuse_its_offline_fixture(self):
         with self.assertRaisesRegex(ClientAnalysisError, "只支持最新数据"):

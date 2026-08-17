@@ -80,6 +80,9 @@ def main() -> int:
             page.get_by_label("密码").fill("reader-password-123")
             page.get_by_role("button", name="安全登录").click()
             page.wait_for_url(base_url + "/")
+            page.get_by_label("按行业筛选").select_option("酿酒")
+            if page.get_by_label("选择研究标的").input_value() != "sz000858":
+                raise AssertionError("industry filter did not expose the verified non-bank symbol")
             page.get_by_role("button", name="reader").click()
             page.get_by_text("账户与模型设置").wait_for()
             response = page.goto(base_url + "/admin", wait_until="domcontentloaded")
@@ -99,9 +102,10 @@ def main() -> int:
             page.get_by_text("当前管理员").wait_for()
             admin.close()
             browser.close()
-        print("=== P8 Chromium 端到端验收 ===")
+        print("=== P8/P9 Chromium 端到端验收 ===")
         print("- 通过：未登录访问会进入登录页")
         print("- 通过：客户账户进入研究前台")
+        print("- 通过：客户前台按行业筛选并显示已验证非银行标的")
         print("- 通过：客户账户访问 /admin 返回 403")
         print("- 通过：管理员进入安全审计界面")
         return 0
