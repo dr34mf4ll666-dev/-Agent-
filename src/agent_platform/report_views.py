@@ -9,6 +9,8 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping, Protocol
 
+from .analysis_provenance import unknown_provenance
+
 
 class ReportViewError(ValueError):
     """A frozen report cannot be projected into the requested customer view."""
@@ -42,13 +44,15 @@ class ReportViewRuntime:
             raise ReportViewError("冻结报告的数据结构无效。")
 
         shared = self._shared_projection(archive, result)
+        basic = self._basic_projection(result, task)
+        basic["credibility"] = _basic_credibility(shared["provenance"])
         output: dict[str, Any] = {
             "view": normalized_view,
             "report_id": str(archive["report_id"]),
             "report_version": int(archive["report_version"]),
             "projection_fingerprint": _fingerprint(shared),
             "shared": shared,
-            "basic": self._basic_projection(result, task),
+            "basic": basic,
         }
         if normalized_view == "professional":
             output["professional"] = self._professional_projection(
@@ -56,6 +60,7 @@ class ReportViewRuntime:
                 agents=agents,
                 task=task,
                 snapshot=archive.get("snapshot"),
+                provenance=shared["provenance"],
             )
         return output
 
@@ -86,6 +91,7 @@ class ReportViewRuntime:
                 "safety": deepcopy(result["safety"]),
                 "chart": _chart_projection(data["bars"]),
                 "archived_at": archive.get("archived_at"),
+                "provenance": _provenance_projection(archive, result),
             }
         except (KeyError, TypeError) as error:
             raise ReportViewError(f"冻结报告缺少共享展示字段: {error}") from error
@@ -168,6 +174,7 @@ class ReportViewRuntime:
         agents: Mapping[str, Any],
         task: Mapping[str, Any],
         snapshot: Any,
+        provenance: Mapping[str, Any],
     ) -> dict[str, Any]:
         dimensions = {
             str(item["id"]): item for item in result.get("dimensions", [])
@@ -226,6 +233,7 @@ class ReportViewRuntime:
                 {"name": "市场环境", "weight_percent": 25},
             ],
             "calculation_note": "指标、评分、价格区间、仓位和风控均来自冻结的确定性计算。",
+            "provenance": deepcopy(dict(provenance)),
         }
 
 
@@ -482,6 +490,70 @@ def _snapshot_health_projection(value: Any) -> dict[str, Any] | None:
         "degraded_count": sum(
             status in {"backup", "cache_stale", "not_available"}
             for status in statuses
+        ),
+    }
+
+
+def _provenance_projection(
+    archive: Mapping[str, Any], result: Mapping[str, Any]
+) -> dict[str, Any]:
+    value = archive.get("provenance")
+    if not isinstance(value, Mapping):
+        value = result.get("provenance")
+    if not isinstance(value, Mapping):
+        security = result.get("security")
+        symbol = security.get("symbol", "") if isinstance(security, Mapping) else ""
+        return unknown_provenance(symbol=str(symbol))
+    quality = value.get("quality")
+    identity = value.get("identity")
+    if not isinstance(quality, Mapping) or not isinstance(identity, Mapping):
+        security = result.get("security")
+        symbol = security.get("symbol", "") if isinstance(security, Mapping) else ""
+        return unknown_provenance(symbol=str(symbol))
+    return {
+        "schema_version": int(value.get("schema_version", 1)),
+        "quality": deepcopy(dict(quality)),
+        "identity": deepcopy(dict(identity)),
+        "fingerprint": value.get("fingerprint"),
+    }
+
+
+def _basic_credibility(provenance: Mapping[str, Any]) -> dict[str, Any]:
+    quality = provenance.get("quality", {})
+    if not isinstance(quality, Mapping):
+        quality = {}
+    status = str(quality.get("overall_status", "unknown"))
+    labels = {
+        "complete": "数据完整",
+        "degraded": "数据部分降级",
+        "blocked": "数据不可用",
+        "unknown": "历史报告，来源版本未知",
+    }
+    summaries = {
+        "complete": "关键数据都有来源和对应时间，本次结果适合与同样完整的历史报告比较。",
+        "degraded": "部分数据使用了备用来源、缓存或未返回，结论可以查看，但比较时要先看数据状态。",
+        "blocked": "关键数据不完整，本次结果不适合直接作为比较依据。",
+        "unknown": "这份历史报告生成时还没有保存数据质量和运行指纹。",
+    }
+    items = quality.get("items", [])
+    items = [item for item in items if isinstance(item, Mapping)]
+    used_fallback = any(
+        str(item.get("source_status")) in {"backup", "cache_stale"}
+        for item in items
+    )
+    return {
+        "status": status,
+        "label": labels.get(status, "数据状态未知"),
+        "summary": str(quality.get("comparison_note") or summaries.get(status, "请先核对数据状态。")),
+        "comparison_ready": bool(quality.get("comparison_ready", False)),
+        "as_of": quality.get("as_of"),
+        "available_count": quality.get("available_count", 0),
+        "dataset_count": quality.get("dataset_count", 0),
+        "used_fallback": used_fallback,
+        "action": (
+            "可以直接查看"
+            if status == "complete"
+            else "查看专业版中的数据状态"
         ),
     }
 

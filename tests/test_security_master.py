@@ -15,20 +15,27 @@ from agent_platform.security_master import (  # noqa: E402
 
 class SecurityMasterTests(unittest.TestCase):
     def test_versioned_catalog_has_visible_industries_and_capabilities(self):
-        self.assertEqual(DEFAULT_SECURITY_MASTER.catalog_version, "2026-08-17.v1")
-        self.assertGreaterEqual(len(DEFAULT_SECURITY_MASTER.customer_records()), 21)
-        self.assertEqual(set(DEFAULT_SECURITY_MASTER.industries()), {"银行", "酿酒"})
+        self.assertEqual(DEFAULT_SECURITY_MASTER.catalog_version, "2026-08-20.v2")
+        self.assertGreaterEqual(len(DEFAULT_SECURITY_MASTER.customer_records()), 22)
+        self.assertEqual(set(DEFAULT_SECURITY_MASTER.industries()), {"银行", "酿酒", "电力"})
         record = DEFAULT_SECURITY_MASTER.get("sz000858")
         self.assertTrue(record.verified)
         self.assertTrue(record.customer_visible)
         self.assertEqual(record.analysis_sectors["live"], "酿酒行业")
         self.assertTrue(record.capabilities["full_graph"])
+        electric = DEFAULT_SECURITY_MASTER.get("sh600744")
+        self.assertEqual(electric.industry, "电力")
+        self.assertEqual(electric.analysis_sectors["live"], "电力行业")
+        self.assertEqual(electric.available_modes, ("live",))
+        self.assertTrue(electric.capabilities["full_graph"])
 
     def test_search_filters_customer_catalog_without_source_code_changes(self):
         result = DEFAULT_SECURITY_MASTER.search(industry="酿酒")
         self.assertEqual([record.symbol for record in result], ["sz000858"])
         result = DEFAULT_SECURITY_MASTER.search(query="000858")
         self.assertEqual([record.name for record in result], ["五粮液"])
+        result = DEFAULT_SECURITY_MASTER.search(industry="电力")
+        self.assertEqual([record.symbol for record in result], ["sh600744"])
 
     def test_unknown_symbol_is_rejected_by_the_master(self):
         catalog = SecurityMasterRuntime.from_json(

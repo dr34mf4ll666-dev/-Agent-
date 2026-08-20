@@ -46,6 +46,32 @@ D:\Anaconda\python.exe Scripts\demo_deployment_readiness.py
 
 该入口对应安装后的 `agent-platform deployment-check`。它一次检查版本与 readiness、客户/管理员登录和角色隔离、CSRF、模型限流、会话 Key、审计脱敏、非 root Docker/Compose 契约，以及 Linux/Windows、Ruff、mypy、覆盖率、真实浏览器、密钥/依赖扫描和镜像重启 CI 门禁；不通过时返回非零状态。命令本身不联网、不调用 DeepSeek、不创建订单，也不生成验收文件。
 
+## P9 证券主数据与跨行业扩展
+
+```powershell
+D:\Anaconda\python.exe Scripts/demo_security_master.py
+D:\Anaconda\python.exe Scripts/demo_security_master.py --verify-non-bank
+D:\Anaconda\python.exe Scripts/demo_security_master.py --verify-electric
+```
+
+默认命令只展示版本化客户目录；两个验证参数分别调用同一条真实只读完整 Graph 验证五粮液和华银电力。命令不保存原始行情、不生成报告文件，也不会创建订单。当前目录包含 20 只银行股、五粮液和华银电力，共三个客户行业。
+
+## P10 面试展示版可信度与可靠性演示
+
+```powershell
+D:\Anaconda\python.exe Scripts\demo_interview_showcase.py
+```
+
+该入口固定展示正常运行、数据源超时重试、缓存降级、Checkpoint 恢复和输出校验失败，并输出成功率、故障恢复率、重试/降级/缓存、重复成功节点、模型调用、Token、P50/P95/P99 和报告差异原因。默认不联网、不生成文件；管理员后台的同名入口复用这个脚本。
+
+前台 Chromium 验收：
+
+```powershell
+D:\Anaconda\python.exe Scripts/e2e_dashboard.py
+```
+
+该验收会实际完成一次离线分析，检查普通版可信度卡片、专业版运行指纹、加载区域结束状态、手机宽度布局和两份报告的“为什么不同”，同时保留客户/管理员角色隔离检查。
+
 ## 受约束动态辩论固定评测
 
 ```powershell

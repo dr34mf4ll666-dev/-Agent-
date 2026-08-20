@@ -8,10 +8,13 @@ from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 import json
 import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
+from . import __version__
+from .analysis_provenance import DataQualityRuntime, unknown_provenance
 from .core import (
     DeepSeekChatAdapter,
     ModelGateway,
@@ -101,7 +104,7 @@ class ClientAnalysisRequest:
             raise ClientAnalysisError("当前股票不在已验证的客户分析目录中。")
 
     @classmethod
-    def from_mapping(cls, value: Mapping[str, Any]) -> "ClientAnalysisRequest":
+    def from_mapping(cls, value: Mapping[str, Any]) -> ClientAnalysisRequest:
         if not isinstance(value, Mapping):
             raise ClientAnalysisError("分析请求必须是对象。")
         return cls(
@@ -232,11 +235,16 @@ class ClientAnalysisRuntime:
         graph: FinancialGraphPort,
         market_tool: FinancialDataTool,
         snapshot_runtime: AnalysisSnapshotRuntime | None = None,
+        provenance_runtime: DataQualityRuntime | None = None,
         now: Any | None = None,
     ) -> None:
         self._graph = graph
         self._market_tool = market_tool
         self._snapshot_runtime = snapshot_runtime
+        self._provenance_runtime = provenance_runtime or DataQualityRuntime(
+            catalog_version=DEFAULT_SECURITY_MASTER.catalog_version,
+            code_version=__version__,
+        )
         self._now = now or (lambda: datetime.now(ZoneInfo("Asia/Shanghai")))
 
     @classmethod
@@ -245,7 +253,7 @@ class ClientAnalysisRuntime:
         project_root: str | Path | None = None,
         *,
         policy: FinancialDataPolicy | None = None,
-    ) -> "ClientAnalysisRuntime":
+    ) -> ClientAnalysisRuntime:
         root = Path(project_root or Path(__file__).resolve().parents[2]).resolve()
         active_policy = policy or FinancialDataPolicy(
             timeout_seconds=60.0,
@@ -267,6 +275,10 @@ class ClientAnalysisRuntime:
             snapshot_runtime=build_default_analysis_snapshot_runtime(
                 project_root=root,
                 policy=active_policy,
+            ),
+            provenance_runtime=DataQualityRuntime(
+                catalog_version=DEFAULT_SECURITY_MASTER.catalog_version,
+                code_version=__version__,
             ),
         )
 
@@ -367,12 +379,23 @@ class ClientAnalysisRuntime:
             chart_output,
             name=str(security["name"]),
             exchange=str(security["exchange"]),
+            industry=str(security_record.industry),
             data_note=(
                 "已验证历史快照"
                 if request.mode == "offline"
                 else "最新只读市场数据"
             ),
             snapshot=snapshot,
+        )
+        projected["provenance"] = (
+            self._provenance_runtime.build_provenance(
+                snapshot, security_record, now
+            )
+            if snapshot is not None
+            else unknown_provenance(
+                symbol=request.symbol,
+                catalog_version=DEFAULT_SECURITY_MASTER.catalog_version,
+            )
         )
         try:
             debate_context = graph_result["report"]["research"]["report"]["combined_analysis"]
@@ -450,6 +473,7 @@ def _project_for_customer(
     *,
     name: str,
     exchange: str,
+    industry: str,
     data_note: str,
     snapshot: AnalysisSnapshot | None = None,
 ) -> dict[str, Any]:
@@ -551,6 +575,7 @@ def _project_for_customer(
             "code": report["symbol"][2:],
             "name": name,
             "exchange": exchange,
+            "industry": industry,
         },
         "data": {
             "mode": report["mode"],
@@ -713,7 +738,7 @@ class DeepSeekMarketAssistant:
     @classmethod
     def from_env(
         cls, *, env: Mapping[str, str] | None = None
-    ) -> "DeepSeekMarketAssistant":
+    ) -> DeepSeekMarketAssistant:
         environment = os.environ if env is None else env
         model = environment.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
         gateway = ModelGateway(

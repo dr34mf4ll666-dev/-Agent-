@@ -378,10 +378,26 @@ function renderBasicProjection(basic) {
     card.append(question, answer, detail); guide.append(card);
   });
   setText("#basic-risk-explanation", basic.risk_explanation);
+  renderCredibility(basic.credibility || {});
+}
+
+function renderCredibility(credibility) {
+  const card = $("#credibility-card");
+  const status = String(credibility.status || "unknown");
+  card.className = `credibility-card ${status}`;
+  setText("#credibility-status", credibility.label || "数据状态未知");
+  setText("#credibility-as-of", formatDateTime(credibility.as_of));
+  const available = credibility.dataset_count
+    ? `${credibility.available_count || 0}/${credibility.dataset_count} 类数据`
+    : "历史报告未记录";
+  setText("#credibility-source", credibility.used_fallback ? `${available} · 使用备用/缓存` : available);
+  setText("#credibility-comparison", credibility.comparison_ready ? "可以比较" : "先核对数据状态");
+  setText("#credibility-note", credibility.summary || "请在专业版查看详细数据状态。");
 }
 
 function renderProfessionalProjection(professional) {
   renderSnapshotHealth(professional.snapshot);
+  renderRunProvenance(professional.provenance || {});
   renderResearchBalance(professional.dimensions); renderDimensions(professional.dimensions);
   setText("#positive-claim", localizeDebateText(professional.debate.positive));
   setText("#positive-reasoning", localizeDebateText(professional.debate.positive_reasoning));
@@ -394,6 +410,31 @@ function renderProfessionalProjection(professional) {
   professional.sources.forEach((source) => { const item = document.createElement("li"); item.textContent = source; sourceList.append(item); });
   setText("#scope-note", `${clientState.projection.shared.safety.notice} 指标、评分、区间和风控都来自同一冻结报告。`);
   renderProfessionalNodes(professional.task_nodes); renderAgentDrilldown(professional.agent_details);
+}
+
+function renderRunProvenance(provenance) {
+  const quality = provenance.quality || {}; const identity = provenance.identity || {};
+  const statusLabels = { complete: "数据完整", degraded: "部分数据降级", blocked: "关键数据不可用", unknown: "历史报告，来源版本未知" };
+  setText("#run-quality-status", statusLabels[quality.overall_status] || "数据状态未知");
+  setText("#run-quality-note", quality.comparison_note || "—");
+  setText("#run-fingerprint", provenance.fingerprint || "历史报告没有运行指纹");
+  setText("#run-identity", [
+    `snapshot=${identity.snapshot_id || "unknown"}`,
+    `security_master=${identity.security_master_version || "unknown"}`,
+    `code=${identity.code_version || "unknown"}`,
+    `config=${identity.config_version || "unknown"}`,
+    `model_policy=${identity.model_policy_version || "unknown"}`,
+    `report=v${identity.report_version || "?"}`,
+  ].join(" · "));
+  const container = $("#quality-datasets"); container.replaceChildren();
+  (quality.items || []).forEach((dataset) => {
+    const item = document.createElement("article"); item.className = `quality-dataset ${dataset.quality_status || "unknown"}`;
+    const title = document.createElement("strong"); title.textContent = dataset.dataset || "未命名数据";
+    const status = document.createElement("span"); status.textContent = ({ complete: "完整", degraded: "降级", unavailable: "不可用", invalid: "字段无效" })[dataset.quality_status] || "未知";
+    const source = document.createElement("small"); source.textContent = `${dataset.source || "无来源"} · 数据 ${formatDateTime(dataset.as_of)} · 获取 ${formatDateTime(dataset.timestamp)}`;
+    const note = document.createElement("p"); note.textContent = dataset.reason || dataset.user_action || "—";
+    item.append(title, status, source, note); container.append(item);
+  });
 }
 
 function renderProfessionalNodes(nodes) {
@@ -560,6 +601,16 @@ function renderReportComparison(result) {
   const rail = document.createElement("div"); rail.className = "comparison-rail";
   rail.append(renderComparisonCard(result.left), renderComparisonDeltas(result.changes), renderComparisonCard(result.right));
   container.append(heading, rail);
+  const reasons = document.createElement("section"); reasons.className = "comparison-reasons";
+  const reasonsTitle = document.createElement("strong"); reasonsTitle.textContent = "为什么不同";
+  const reasonsList = document.createElement("ul");
+  (result.change_reasons || []).forEach((item) => {
+    const row = document.createElement("li");
+    const label = document.createElement("b"); label.textContent = item.label;
+    const detail = document.createElement("span"); detail.textContent = item.detail;
+    row.append(label, detail); reasonsList.append(row);
+  });
+  reasons.append(reasonsTitle, reasonsList); container.append(reasons);
   if (result.professional) {
     const professional = document.createElement("section"); professional.className = "professional-comparison";
     const label = document.createElement("strong"); label.textContent = "专业版 · 四个研究维度差值（右侧减左侧）";

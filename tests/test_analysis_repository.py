@@ -99,7 +99,7 @@ class SQLiteAnalysisRepositoryTests(unittest.TestCase):
         repository.archive(_archive())
 
         with closing(sqlite3.connect(self.path)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 3)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 4)
         restarted = SQLiteAnalysisRepository(self.path)
 
         report = restarted.get_report("report-01")
@@ -135,9 +135,14 @@ class SQLiteAnalysisRepositoryTests(unittest.TestCase):
             feedback_columns = {
                 row[1] for row in connection.execute("PRAGMA table_info(model_feedback)")
             }
-        self.assertEqual(version, 3)
+        self.assertEqual(version, 4)
         self.assertTrue({"kind", "output_json"}.issubset(columns))
         self.assertTrue({"rating", "explanation_version"}.issubset(feedback_columns))
+        with closing(sqlite3.connect(self.path)) as connection:
+            provenance_columns = {
+                row[1] for row in connection.execute("PRAGMA table_info(analysis_provenance)")
+            }
+        self.assertTrue({"quality_json", "identity_json", "fingerprint"}.issubset(provenance_columns))
 
     def test_distinct_reports_never_overwrite_each_other(self):
         repository = SQLiteAnalysisRepository(self.path)
@@ -148,6 +153,27 @@ class SQLiteAnalysisRepositoryTests(unittest.TestCase):
 
         self.assertEqual([item["report_id"] for item in reports], ["report-02", "report-01"])
         self.assertEqual(repository.get_report("report-01")["job_id"], "job-01")
+
+    def test_provenance_is_archived_separately_and_legacy_report_stays_readable(self):
+        repository = SQLiteAnalysisRepository(self.path)
+        archive = _archive(
+            provenance={
+                "schema_version": 1,
+                "quality": {
+                    "overall_status": "complete",
+                    "comparison_ready": True,
+                },
+                "identity": {"snapshot_id": "snapshot-01", "code_version": "0.1.0"},
+                "fingerprint": "a" * 64,
+            }
+        )
+        repository.archive(archive)
+        repository.archive(_archive(2))
+
+        self.assertEqual(
+            repository.get_report("report-01")["provenance"]["fingerprint"], "a" * 64
+        )
+        self.assertIsNone(repository.get_report("report-02")["provenance"])
 
     def test_concurrent_writes_all_survive(self):
         repository = SQLiteAnalysisRepository(self.path, timeout_seconds=10)

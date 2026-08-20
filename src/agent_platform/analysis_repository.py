@@ -34,6 +34,7 @@ class AnalysisArchive:
     snapshot: Mapping[str, Any] | None
     agents: Mapping[str, Any]
     graphs: Mapping[str, Any]
+    provenance: Mapping[str, Any] | None = None
 
 
 class AnalysisRepository(Protocol):
@@ -136,6 +137,28 @@ def _summary_from_result(
                 for status in statuses
             ),
         },
+        "data_quality": _quality_summary(result.get("provenance")),
+    }
+
+
+def _quality_summary(value: Any) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        return {
+            "overall_status": "unknown",
+            "comparison_ready": False,
+            "note": "历史报告未保存数据质量与运行指纹。",
+        }
+    quality = value.get("quality")
+    if not isinstance(quality, Mapping):
+        return {
+            "overall_status": "unknown",
+            "comparison_ready": False,
+            "note": "历史报告未保存数据质量与运行指纹。",
+        }
+    return {
+        "overall_status": str(quality.get("overall_status", "unknown")),
+        "comparison_ready": bool(quality.get("comparison_ready", False)),
+        "note": str(quality.get("comparison_note", "")),
     }
 
 
@@ -231,7 +254,7 @@ class InMemoryAnalysisRepository:
 class SQLiteAnalysisRepository:
     """SQLite adapter with versioned migrations and atomic report archives."""
 
-    SCHEMA_VERSION = 3
+    SCHEMA_VERSION = 4
 
     def __init__(self, path: str | Path, *, timeout_seconds: float = 5.0) -> None:
         self.path = Path(path).resolve()
@@ -352,6 +375,21 @@ class SQLiteAnalysisRepository:
                 COMMIT;
                 """
             )
+            current = 3
+        if current < 4:
+            connection.executescript(
+                """
+                BEGIN IMMEDIATE;
+                CREATE TABLE analysis_provenance (
+                    report_id TEXT PRIMARY KEY REFERENCES analysis_reports(report_id) ON DELETE CASCADE,
+                    quality_json TEXT NOT NULL,
+                    identity_json TEXT NOT NULL,
+                    fingerprint TEXT
+                );
+                PRAGMA user_version = 4;
+                COMMIT;
+                """
+            )
 
     def archive(self, value: AnalysisArchive) -> str:
         _assert_safe(value.__dict__)
@@ -361,8 +399,10 @@ class SQLiteAnalysisRepository:
         task_json = _json(value.task)
         agents_json = _json(value.agents)
         graphs_json = _json(value.graphs)
+        provenance_json = _json(value.provenance or {})
         checksum = _checksum(
-            result_json, context_json, snapshot_json, task_json, agents_json, graphs_json
+            result_json, context_json, snapshot_json, task_json, agents_json, graphs_json,
+            provenance_json,
         )
         try:
             with self._session() as connection:
@@ -397,6 +437,18 @@ class SQLiteAnalysisRepository:
                     "INSERT INTO analysis_graphs VALUES (?, ?, ?)",
                     [(value.report_id, str(name), _json(payload)) for name, payload in value.graphs.items()],
                 )
+                if value.provenance is not None:
+                    quality = value.provenance.get("quality", {})
+                    identity = value.provenance.get("identity", {})
+                    connection.execute(
+                        "INSERT INTO analysis_provenance VALUES (?, ?, ?, ?)",
+                        (
+                            value.report_id,
+                            _json(quality),
+                            _json(identity),
+                            value.provenance.get("fingerprint"),
+                        ),
+                    )
                 connection.execute("COMMIT")
                 return value.report_id
         except AnalysisRepositoryError:
@@ -433,10 +485,14 @@ class SQLiteAnalysisRepository:
         try:
             with self._session() as connection:
                 row = connection.execute(
-                    """SELECT r.*, t.status, t.payload_json, s.payload_json AS snapshot_json
+                    """SELECT r.*, t.status, t.payload_json, s.payload_json AS snapshot_json,
+                              p.quality_json AS provenance_quality_json,
+                              p.identity_json AS provenance_identity_json,
+                              p.fingerprint AS provenance_fingerprint
                        FROM analysis_reports r
                        JOIN analysis_tasks t ON t.report_id = r.report_id
                        JOIN analysis_snapshots s ON s.report_id = r.report_id
+                       LEFT JOIN analysis_provenance p ON p.report_id = r.report_id
                        WHERE r.report_id = ?""",
                     (report_id,),
                 ).fetchone()
@@ -483,10 +539,28 @@ class SQLiteAnalysisRepository:
             result = self._decode(row["result_json"], "report")
             context = self._decode(row["debate_context_json"], "debate context")
             snapshot = self._decode(row["snapshot_json"], "snapshot")
-            if _checksum(
+            provenance = None
+            if row["provenance_quality_json"] is not None:
+                provenance = {
+                    "schema_version": 1,
+                    "quality": self._decode(
+                        row["provenance_quality_json"], "provenance quality"
+                    ),
+                    "identity": self._decode(
+                        row["provenance_identity_json"], "provenance identity"
+                    ),
+                    "fingerprint": row["provenance_fingerprint"],
+                }
+            provenance_json = _json(provenance or {})
+            checksum = _checksum(
+                row["result_json"], row["debate_context_json"], row["snapshot_json"],
+                row["payload_json"], _json(agents), _json(graphs), provenance_json,
+            )
+            legacy_checksum = _checksum(
                 row["result_json"], row["debate_context_json"], row["snapshot_json"],
                 row["payload_json"], _json(agents), _json(graphs),
-            ) != row["checksum"]:
+            )
+            if row["checksum"] not in {checksum, legacy_checksum}:
                 raise AnalysisRepositoryError("历史报告完整性校验失败，数据可能已损坏。")
             return {
                 "report_id": row["report_id"], "report_version": row["report_version"],
@@ -494,7 +568,8 @@ class SQLiteAnalysisRepository:
                 "created_at": row["created_at"], "archived_at": row["archived_at"],
                 "task": self._decode(row["payload_json"], "task"), "result": result,
                 "debate_context": context or None, "snapshot": snapshot or None,
-                "agents": agents, "graphs": graphs, "model_calls": calls,
+                "agents": agents, "graphs": graphs, "provenance": provenance,
+                "model_calls": calls,
                 "model_feedback": feedback,
             }
         except AnalysisRepositoryError:

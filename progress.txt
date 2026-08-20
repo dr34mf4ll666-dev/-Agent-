@@ -776,3 +776,25 @@
 - 复核结果：P9 的证券主数据、客户搜索与行业筛选、未验证标的隔离、跨行业字段兼容、五粮液真实完整 Graph、产品验收和 Chromium 前台验收均已完成，`ROADMAP.md` 与 `checklist.json` 均保持 `done`。
 - 本次不再把“扩展第二个行业或新增资产”作为 P9 的未完成项；它们属于后续独立扩展任务，必须继续复用 `SecurityMasterRuntime` 的主数据校验和真实链路验证规则。
 - P9 当前交付边界：21 只已验证沪深 A 股、银行与酿酒两个客户行业、真实交易关闭、未验证标的不进入客户目录。
+
+[2026-08-18] P10 数据可信度、可复现与可靠性证据完成
+- 新增 `DataQualityRuntime.evaluate(snapshot, security_record, now)`，逐类检查数据集的来源状态、source、timestamp、as_of、完整性、备用源/缓存、缺失原因和用户处理建议；整体状态为 `complete`、`degraded` 或 `blocked`。
+- 新增 `AnalysisRunIdentity` 与规范化 JSON SHA-256 指纹，记录 snapshot、证券主数据、代码、配置、模型策略和报告版本；质量摘要与指纹不保存 API Key、Prompt、授权头或完整行情。
+- SQLite 从 schema v3 迁移到 v4，新增 `analysis_provenance` 表。新报告保存质量与指纹，旧报告继续可读并由前台标注“历史报告，来源版本未知”。
+- ClientAnalysisRuntime、AnalysisJobRuntime、ReportViewRuntime 和 ResearchWorkspaceRuntime 已贯通 provenance；报告比较新增 `change_reasons`，区分行情时间、数据源状态、证券主数据、确定性规则和大模型解释策略变化。
+- 客户普通版新增“本次分析可信度”卡片；专业版新增质量明细、来源/时间、版本输入和运行指纹；比较结果新增“为什么不同”；分析结束后加载区域仍只保留结果或错误。
+- 新增固定离线 `OfflineReliabilityExperimentRuntime` 与 `Scripts/demo_interview_showcase.py`，一次展示正常运行、数据源超时重试、缓存降级、Checkpoint 恢复和输出校验失败，并输出成功率、故障恢复率、重试、降级、缓存、重复节点、模型调用、Token、P50/P95/P99 和差异原因。默认不联网、不生成文件。
+- 管理员后台新增“面试展示 · 可信度与可靠性”登记入口；客户普通版不暴露 Harness、Checkpoint 和原始日志。新增 `docs/interview-showcase.md`，并同步 ROADMAP、SPEC、checklist、CONTEXT 和 README。
+- 验证结果：P10 专项 unittest 通过；数据质量/旧报告/SQLite v4/报告投影/比较/可靠性实验/CLI/后台相关回归通过；Python 编译通过；`node --check src/agent_platform/web/client.js` 通过。
+- Chromium 验证：`Scripts/e2e_dashboard.py` 已实际完成两次离线分析，确认普通版可信度卡片、专业版运行指纹、加载区域收起、手机宽度无横向溢出、比较“为什么不同”和客户/管理员角色隔离。
+- 边界说明：P10 的五类离线实验是固定工程证据，不等同于线上 SLA；性能优化继续以真实 trace 定位后再决定，不改变确定性金融计算和真实交易关闭边界。
+
+[2026-08-20] 第二个非银行行业真实验证与目录扩展完成
+- 先用最小真实请求验证华银电力（`sh600744`）腾讯日线来源可用，再用客户同一条完整金融 Graph 运行真实只读验收；没有把网络请求结果写成离线 fixture，也没有生成报告文件。
+- 新增华银电力版本化主数据记录，客户行业为“电力”，供应商分析行业映射为“电力行业”，只开放 `live` 最新只读模式；主数据版本更新为 `2026-08-20.v2`，客户目录从 21 只扩展为 22 只，行业从银行/酿酒扩展为银行/酿酒/电力。
+- `Scripts/demo_security_master.py --verify-electric` 已实际通过：华银电力完整 Graph 状态为 `financial_graph_completed`；Technical=-5、Fundamental=40、Industry=30、Macro=-30；C1 综合结论为 neutral，置信度 66/100，Trader=hold，Risk Manager=`no_action`，批准仓位 0.00%。
+- 真实来源记录包含腾讯日线、AKShare 财务/行业/宏观数据以及 Tencent/Sina 财报；所有风险检查通过，`simulation_only=true`、`order_created=false`、`real_trading_allowed=false`。
+- 客户前台行业筛选、后台跨行业真实验证按钮、目录/行业映射单元测试和 Chromium 验收入口已补齐；未验证标的仍不能进入客户正式目录。
+- 浏览器验收脚本同时修复了两个测试边界：日志管道不再阻塞本地 Dashboard，切换过只读标的后会显式恢复平安银行的“已验证快照”模式，确保离线验收不误触发网络。
+- 最终验证：全量 unittest 428 项通过，跨行业专项 38 项通过，Ruff/JavaScript 语法/JSON/编译和 diff 检查通过；Chromium 端到端验收通过客户行业筛选、普通/专业版、运行指纹、加载结束、比较差异、客户/管理员权限和电力行业标的展示。
+- 下一步若继续扩展，只能沿用同一主数据、真实只读验证和安全边界，优先考虑 ETF 或其他资产，不把新增资产误写成当前正式任务缺口。

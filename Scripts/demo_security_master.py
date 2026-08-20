@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from datetime import datetime, timedelta
 from pathlib import Path
 import sys
+from zoneinfo import ZoneInfo
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -16,11 +18,17 @@ from agent_platform.security_master import DEFAULT_SECURITY_MASTER  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="P9 证券主数据与跨行业扩展演示")
-    parser.add_argument(
+    parser = argparse.ArgumentParser(description="证券主数据与跨行业扩展演示")
+    verification = parser.add_mutually_exclusive_group()
+    verification.add_argument(
         "--verify-non-bank",
         action="store_true",
         help="调用真实只读完整 Graph 验证五粮液，不保存报告文件",
+    )
+    verification.add_argument(
+        "--verify-electric",
+        action="store_true",
+        help="调用真实只读完整 Graph 验证华银电力，不保存报告文件",
     )
     return parser
 
@@ -47,31 +55,55 @@ def main(argv: list[str] | None = None) -> int:
         )
     print("安全边界: 只有 verified=true 且 customer_visible=true 的标的进入上述目录。")
 
-    if not arguments.verify_non_bank:
-        print("提示: 加 --verify-non-bank 可重新执行五粮液真实只读完整 Graph 验收。")
+    verification = None
+    if arguments.verify_non_bank:
+        verification = {
+            "symbol": "sz000858",
+            "sector": "酿酒行业",
+            "label": "五粮液",
+        }
+    elif arguments.verify_electric:
+        verification = {
+            "symbol": "sh600744",
+            "sector": "电力行业",
+            "label": "华银电力",
+        }
+
+    if verification is None:
+        print(
+            "提示: 加 --verify-non-bank 验证五粮液，或加 "
+            "--verify-electric 验证华银电力的真实只读完整 Graph。"
+        )
         return 0
 
     from demo_financial_graph import main as run_financial_graph
 
+    now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(microsecond=0)
+    evaluation_time = (now + timedelta(minutes=5)).isoformat()
     result = run_financial_graph([
         "--live",
         "--symbol",
-        "sz000858",
+        verification["symbol"],
         "--sector",
-        "酿酒行业",
+        verification["sector"],
         "--start-date",
         "20240101",
         "--end-date",
-        "20260817",
+        now.strftime("%Y%m%d"),
+        "--evaluation-time",
+        evaluation_time,
         "--timeout",
         "60",
         "--attempts",
         "1",
     ])
     if result != 0:
-        print("P9 非银行真实端到端验收失败；该标的不应进入正式目录。")
+        print(f"{verification['label']}真实端到端验收失败；该标的不应进入正式目录。")
         return result
-    print("P9 非银行真实端到端验收通过：sz000858 / 酿酒行业。")
+    print(
+        f"第二个非银行真实端到端验收通过："
+        f"{verification['label']} / {verification['symbol']} / {verification['sector']}。"
+    )
     return 0
 
 

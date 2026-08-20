@@ -165,6 +165,19 @@
         <div class="basic-guide" id="basic-guide"></div>
       </section>
 
+      <section class="credibility-card" id="credibility-card" data-basic-only aria-labelledby="credibility-title">
+        <div class="credibility-heading">
+          <div><p class="panel-kicker">本次分析可信度</p><h3 id="credibility-title">数据状态</h3></div>
+          <strong id="credibility-status">—</strong>
+        </div>
+        <div class="credibility-grid">
+          <span>数据对应时间<strong id="credibility-as-of">—</strong></span>
+          <span>来源使用情况<strong id="credibility-source">—</strong></span>
+          <span>能否直接比较<strong id="credibility-comparison">—</strong></span>
+        </div>
+        <p id="credibility-note">—</p>
+      </section>
+
       <section class="snapshot-health" id="snapshot-health" data-professional-only hidden aria-labelledby="snapshot-title">
         <div class="snapshot-heading">
           <div><p class="panel-kicker">统一数据快照</p><h3 id="snapshot-title">本次报告只使用这一批数据</h3></div>
@@ -176,6 +189,19 @@
           <span>降级说明<strong id="snapshot-note">—</strong></span>
         </div>
         <div class="snapshot-datasets" id="snapshot-datasets"></div>
+      </section>
+
+      <section class="run-provenance" id="run-provenance" data-professional-only hidden aria-labelledby="run-provenance-title">
+        <div class="section-heading">
+          <div><p>REPRODUCIBILITY</p><h2 id="run-provenance-title">这份报告如何被复现</h2></div>
+          <span id="run-quality-status">—</span>
+        </div>
+        <p class="run-provenance-note" id="run-quality-note">—</p>
+        <div class="run-provenance-grid">
+          <div><small>运行指纹</small><code id="run-fingerprint">—</code></div>
+          <div><small>版本输入</small><code id="run-identity">—</code></div>
+        </div>
+        <div class="quality-datasets" id="quality-datasets"></div>
       </section>
 
       <div class="analysis-grid" data-professional-only hidden>

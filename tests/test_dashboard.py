@@ -142,6 +142,7 @@ class DashboardRuntimeTests(unittest.TestCase):
         self.assertEqual(overview["catalog"]["visible_count"], len(overview["securities"]))
         self.assertIn("银行", overview["catalog"]["industries"])
         self.assertIn("酿酒", overview["catalog"]["industries"])
+        self.assertIn("电力", overview["catalog"]["industries"])
         self.assertEqual(
             next(item for item in overview["securities"] if item["symbol"] == "sz000001")["modes"],
             ["offline", "live"],
@@ -154,6 +155,18 @@ class DashboardRuntimeTests(unittest.TestCase):
             next(item for item in overview["securities"] if item["symbol"] == "sz000858")["industry"],
             "酿酒",
         )
+        electric = next(
+            item for item in overview["securities"] if item["symbol"] == "sh600744"
+        )
+        self.assertEqual(electric["industry"], "电力")
+        self.assertEqual(electric["modes"], ["live"])
+
+    def test_second_non_bank_live_verification_is_allowlisted(self):
+        action = ACTION_BY_ID["cross_industry_live"]
+
+        self.assertTrue(action.supports_live)
+        self.assertEqual(action.live_arguments, ("--verify-electric",))
+        self.assertIn("跨行业", action.tags)
 
     def test_research_workspace_watchlist_is_available_through_dashboard_interface(self):
         initial = self.runtime.get_client_research_workspace()
@@ -185,6 +198,8 @@ class DashboardRuntimeTests(unittest.TestCase):
         self.assertEqual(reopened["verdict"], current["verdict"])
         self.assertEqual(reopened["history"]["task_status"], "succeeded")
         self.assertEqual(reopened["history"]["explanation"]["provider"], "local")
+        self.assertEqual(current["provenance"]["quality"]["overall_status"], "complete")
+        self.assertEqual(len(current["provenance"]["fingerprint"]), 64)
         self.assertEqual(current["trace_id"], job["trace_id"])
         self.assertTrue(
             {"http", "task", "data", "graph", "harness", "model", "database"}.issubset(layers)
@@ -666,6 +681,10 @@ class DashboardAssetTests(unittest.TestCase):
         self.assertIn('id="retry-job-button"', client_html)
         self.assertIn('id="snapshot-health"', client_html)
         self.assertIn('id="snapshot-datasets"', client_html)
+        self.assertIn('id="credibility-card"', client_html)
+        self.assertIn('id="run-provenance"', client_html)
+        self.assertIn('id="quality-datasets"', client_html)
+        self.assertIn("change_reasons", client_javascript)
         self.assertIn('data-report-view="basic"', client_html)
         self.assertIn('data-report-view="professional"', client_html)
         self.assertLess(

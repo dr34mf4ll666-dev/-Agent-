@@ -278,6 +278,14 @@ ACTIONS = (
         tags=("宏观", "市场环境"),
     ),
     ActionSpec(
+        "cross_industry_live", "B", "扩展 · 第二个非银行真实验证",
+        "使用版本化证券主数据验证电力行业标的的真实只读四维研究和完整 Graph。",
+        "demo_security_master.py",
+        live_arguments=("--verify-electric",),
+        summary_prefixes=("客户正式目录:", "第二个非银行真实端到端验收通过:", "报告状态:", "真实交易关闭"),
+        tags=("跨行业", "真实只读"),
+    ),
+    ActionSpec(
         "c1_research", "C", "C1 · 四 Agent 联合研究",
         "并行运行四类 Specialist，通过辩论与汇总形成统一研究结论。",
         "demo_combined_analysis.py",
@@ -331,6 +339,16 @@ ACTIONS = (
         "demo_harness_comparison.py",
         summary_prefixes=("幻觉率", "无效工具/API 调用", "端到端成功率", "平均耗时", "Token 总成本", "结论:"),
         tags=("对照实验", "量化指标"),
+    ),
+    ActionSpec(
+        "interview_showcase", "D", "面试展示 · 可信度与可靠性",
+        "一次展示数据来源状态、固定离线故障实验、恢复证据和报告差异解释。",
+        "demo_interview_showcase.py",
+        summary_prefixes=(
+            "模式:", "网络访问:", "成功率:", "故障恢复成功率:",
+            "耗时分位数:", "两份报告为什么不同:", "结论:",
+        ),
+        tags=("数据可信度", "恢复证据", "离线复现"),
     ),
     ActionSpec(
         "d4_paper", "D", "D4 · 持续模拟交易",
@@ -778,6 +796,7 @@ class DashboardRuntime:
                 "市场环境与资金",
                 "多观点综合研判",
                 "风险区间与智能解读",
+                "数据可信度与可复现报告",
             ],
             "assistant": {
                 "provider": self.market_assistant.provider,

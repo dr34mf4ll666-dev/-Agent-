@@ -252,6 +252,9 @@ class ResearchWorkspaceRuntime:
             "left": self._comparison_card(left),
             "right": self._comparison_card(right),
             "changes": self._changes(left, right, same_security=same_security),
+            "change_reasons": self._change_reasons(
+                left, right, same_security=same_security
+            ),
             "frozen_data_only": True,
             "model_called": False,
         }
@@ -427,6 +430,7 @@ class ResearchWorkspaceRuntime:
                 as_of=shared["data"].get("as_of"),
                 health=shared["data"].get("health"),
             ),
+            "credibility": deepcopy(projection["basic"].get("credibility", {})),
         }
 
     def _render_report_export(self, projection: Mapping[str, Any]) -> str:
@@ -437,6 +441,7 @@ class ResearchWorkspaceRuntime:
         state = self._report_state(
             mode=data.get("mode"), as_of=data.get("as_of"), health=data.get("health")
         )
+        credibility = basic.get("credibility", {})
         guide = "".join(
             "<article><small>{}</small><h3>{}</h3><p>{}</p></article>".format(
                 escape(str(item["label"])),
@@ -461,6 +466,9 @@ class ResearchWorkspaceRuntime:
                 f"<li>{escape(str(item))}</li>" for item in professional["sources"]
             )
             risk = shared["risk"]
+            provenance = professional.get("provenance", {})
+            quality = provenance.get("quality", {}) if isinstance(provenance, Mapping) else {}
+            identity = provenance.get("identity", {}) if isinstance(provenance, Mapping) else {}
             professional_html = f"""
             <section><p class="eyebrow">专业证据</p><h2>四个研究维度</h2>
               <table><thead><tr><th>维度</th><th>分数</th><th>判断</th><th>摘要</th></tr></thead>
@@ -475,6 +483,11 @@ class ResearchWorkspaceRuntime:
               </dl>
             </section>
             <section><p class="eyebrow">证据来源</p><h2>本次报告引用</h2><ul>{sources}</ul></section>
+            <section><p class="eyebrow">可复现性</p><h2>{escape(str(quality.get('overall_status', 'unknown')))}</h2>
+              <p>{escape(str(quality.get('comparison_note', '—')))}</p>
+              <p class="stamp">运行指纹 {escape(str(provenance.get('fingerprint') or '历史报告未保存'))}</p>
+              <p class="stamp">快照 {escape(str(identity.get('snapshot_id', 'unknown')))} · 证券主数据 {escape(str(identity.get('security_master_version', 'unknown')))} · 代码 {escape(str(identity.get('code_version', 'unknown')))}</p>
+            </section>
             """
         body = f"""
         <header>
@@ -486,6 +499,10 @@ class ResearchWorkspaceRuntime:
         <section class="state-line">
           <strong>{escape(state['freshness']['label'])}</strong><span>{escape(state['freshness']['note'])}</span>
           <strong>{escape(state['availability']['label'])}</strong><span>{escape(state['availability']['note'])}</span>
+        </section>
+        <section><p class="eyebrow">本次分析可信度</p><h2>{escape(str(credibility.get('label', '数据状态未知')))}</h2>
+          <p>{escape(str(credibility.get('summary', '—')))}</p>
+          <p class="stamp">数据对应时间 {escape(str(credibility.get('as_of') or '—'))}</p>
         </section>
         <section><p class="eyebrow">研究摘要</p><div class="guide">{guide}</div></section>
         <section><p class="eyebrow">价格与结论</p><h2>{escape(str(shared['verdict']['label']))} · {escape(str(shared['verdict']['action_label']))}</h2>
@@ -543,6 +560,11 @@ class ResearchWorkspaceRuntime:
             )
             for item in comparison["changes"]
         )
+        reasons = "".join(
+            f"<li><strong>{escape(str(item.get('label', '变化原因')))}</strong>"
+            f"<span>{escape(str(item.get('detail', '')))}</span></li>"
+            for item in comparison.get("change_reasons", [])
+        )
         professional_html = ""
         professional = comparison.get("professional")
         if isinstance(professional, Mapping):
@@ -566,6 +588,7 @@ class ResearchWorkspaceRuntime:
           <h1>{escape(str(comparison['kind_label']))}</h1><p class="lead">{escape(str(comparison['headline']))}</p>
         </header>
         <section class="compare-grid">{card(comparison['left'])}{card(comparison['right'])}</section>
+        <section><p class="eyebrow">为什么不同</p><ul>{reasons}</ul></section>
         <section><p class="eyebrow">主要变化</p><table><thead><tr><th>项目</th><th>左侧</th><th>右侧</th><th>差异</th></tr></thead><tbody>{changes}</tbody></table></section>
         {professional_html}
         <footer>{escape(str(comparison['notice']))} 不构成投资建议。</footer>
@@ -641,6 +664,103 @@ class ResearchWorkspaceRuntime:
                 }
             )
         return output
+
+    @staticmethod
+    def _change_reasons(
+        left: Mapping[str, Any],
+        right: Mapping[str, Any],
+        *,
+        same_security: bool,
+    ) -> list[dict[str, Any]]:
+        if not same_security:
+            return [
+                {
+                    "id": "different_security",
+                    "label": "标的不同",
+                    "detail": "两份报告属于不同证券，价格、行业和结论差异不能解释为同一股票的前后变化。",
+                }
+            ]
+
+        left_shared = left["shared"]
+        right_shared = right["shared"]
+        left_data = left_shared["data"]
+        right_data = right_shared["data"]
+        left_provenance = left_shared.get("provenance", {})
+        right_provenance = right_shared.get("provenance", {})
+        left_quality = left_provenance.get("quality", {})
+        right_quality = right_provenance.get("quality", {})
+        left_identity = left_provenance.get("identity", {})
+        right_identity = right_provenance.get("identity", {})
+        reasons: list[dict[str, Any]] = []
+
+        if (
+            left_data.get("as_of") != right_data.get("as_of")
+            or left_data.get("snapshot_id") != right_data.get("snapshot_id")
+        ):
+            reasons.append(
+                {
+                    "id": "market_data_changed",
+                    "label": "行情或数据时间变化",
+                    "detail": (
+                        f"左侧数据时间为 {left_data.get('as_of') or '未知'}，右侧为 "
+                        f"{right_data.get('as_of') or '未知'}；快照编号也会影响可比性。"
+                    ),
+                }
+            )
+        if (
+            left_quality.get("overall_status") != right_quality.get("overall_status")
+            or left_quality.get("comparison_ready") != right_quality.get("comparison_ready")
+        ):
+            reasons.append(
+                {
+                    "id": "data_source_status_changed",
+                    "label": "数据源状态变化",
+                    "detail": (
+                        f"左侧为 {left_quality.get('overall_status', '未知')}，右侧为 "
+                        f"{right_quality.get('overall_status', '未知')}；需区分真实变化和降级影响。"
+                    ),
+                }
+            )
+        if left_identity.get("security_master_version") != right_identity.get(
+            "security_master_version"
+        ):
+            reasons.append(
+                {
+                    "id": "security_master_changed",
+                    "label": "证券主数据变化",
+                    "detail": "证券名称、行业或可用数据目录可能来自不同版本。",
+                }
+            )
+        if any(
+            left_identity.get(key) != right_identity.get(key)
+            for key in ("code_version", "config_version", "report_version")
+        ):
+            reasons.append(
+                {
+                    "id": "deterministic_rules_changed",
+                    "label": "确定性规则变化",
+                    "detail": "两次运行使用的代码、配置或报告版本不同，数值差异不能只归因于行情。",
+                }
+            )
+        if left_identity.get("model_policy_version") != right_identity.get(
+            "model_policy_version"
+        ):
+            reasons.append(
+                {
+                    "id": "model_explanation_changed",
+                    "label": "大模型解释变化",
+                    "detail": "两次运行使用的模型治理策略版本不同，解释文字可能发生变化；确定性指标仍需单独核对。",
+                }
+            )
+        if not reasons:
+            reasons.append(
+                {
+                    "id": "no_known_change",
+                    "label": "未发现已记录的版本变化",
+                    "detail": "当前运行指纹没有显示输入或版本变化，建议继续查看完整报告内容。",
+                }
+            )
+        return reasons
 
     @staticmethod
     def _numeric_change(

@@ -486,6 +486,11 @@ class AnalysisJobRuntime:
                     snapshot=snapshot,
                     agents=agents,
                     graphs=graphs,
+                    provenance=(
+                        deepcopy(value.get("provenance"))
+                        if isinstance(value.get("provenance"), Mapping)
+                        else None
+                    ),
                 )
             )
         except Exception as error:

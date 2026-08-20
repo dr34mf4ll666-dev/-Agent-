@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "catalog_version": "2026-08-17.v1",
+  "catalog_version": "2026-08-20.v2",
   "description": "沪深 A 股客户研究目录；verified/customer_visible 决定是否进入正式目录。",
   "records": [
     {
@@ -315,6 +315,21 @@
       "analysis_sectors": {"live": "酿酒行业"},
       "available_modes": ["live"],
       "available_sources": ["akshare.stock_zh_a_hist_tx", "akshare.stock_financial_report_sina", "akshare.stock_sector_spot", "akshare.stock_zh_index_daily", "tencent.quote+sina.financial_report"],
+      "capabilities": {"market_daily": true, "fundamental": true, "industry": true, "macro": true, "offline_snapshot": false, "latest_read_only": true, "full_graph": true},
+      "snapshot": {"status": "live_verified", "mode": "live", "note": "已通过真实只读数据的四维研究和风控 Graph 验证；暂无离线复现快照。"}
+    },
+    {
+      "symbol": "sh600744",
+      "code": "600744",
+      "name": "华银电力",
+      "exchange": "上交所",
+      "industry": "电力",
+      "listing_status": "listed",
+      "verified": true,
+      "customer_visible": true,
+      "analysis_sectors": {"live": "电力行业"},
+      "available_modes": ["live"],
+      "available_sources": ["akshare.stock_zh_a_hist_tx", "akshare.stock_financial_analysis_indicator", "akshare.stock_financial_report_sina", "akshare.stock_sector_spot", "akshare.stock_zh_index_daily", "akshare.macro_china_gdp_yearly", "akshare.macro_china_lpr", "akshare.macro_china_shibor_all", "tencent.qt.gtimg.cn", "tencent.quote+sina.financial_report"],
       "capabilities": {"market_daily": true, "fundamental": true, "industry": true, "macro": true, "offline_snapshot": false, "latest_read_only": true, "full_graph": true},
       "snapshot": {"status": "live_verified", "mode": "live", "note": "已通过真实只读数据的四维研究和风控 Graph 验证；暂无离线复现快照。"}
     }

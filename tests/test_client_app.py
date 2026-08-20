@@ -119,6 +119,11 @@ class ClientAnalysisTests(unittest.TestCase):
         self.assertEqual(set(SECURITIES["sh600000"]["sectors"]), {"live"})
         self.assertEqual(SECURITIES["sz000858"]["name"], "五粮液")
         self.assertEqual(DEFAULT_SECURITY_MASTER.get("sz000858").industry, "酿酒")
+        self.assertEqual(DEFAULT_SECURITY_MASTER.get("sh600744").industry, "电力")
+        self.assertEqual(
+            DEFAULT_SECURITY_MASTER.get("sh600744").analysis_sectors["live"],
+            "电力行业",
+        )
         self.assertNotEqual(
             DEFAULT_SECURITY_MASTER.get("sz000858").analysis_sectors["live"],
             DEFAULT_SECURITY_MASTER.get("sz000001").analysis_sectors["live"],
@@ -142,6 +147,24 @@ class ClientAnalysisTests(unittest.TestCase):
         self.assertEqual(
             graph.query.c1_query.combined_query.industry.sector,
             "金融行业",
+        )
+
+    def test_live_customer_query_uses_second_non_bank_provider_sector_name(self):
+        graph = _CapturingGraph()
+        runtime = ClientAnalysisRuntime(
+            graph=graph,
+            market_tool=object(),
+            now=lambda: datetime(2026, 8, 20, 10, tzinfo=ZoneInfo("Asia/Shanghai")),
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "query capture"):
+            runtime.analyze(
+                ClientAnalysisRequest(symbol="sh600744", mode="live")
+            )
+
+        self.assertEqual(
+            graph.query.c1_query.combined_query.industry.sector,
+            "电力行业",
         )
 
     def test_local_explanation_uses_computed_strength_and_risk_boundary(self):

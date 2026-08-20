@@ -50,11 +50,13 @@
 | Final Delivery | `FinalDeliveryRuntime.from_project().run()`、`agent-platform d4-verify` | 环境检查、五条主流程、文档包、时间豁免和最终状态汇总 | `demo_final_delivery.py`、`test_final_delivery.py`、`docs/final-delivery.md` |
 | Client Analysis App | `ClientAnalysisRuntime.analyze()`、`MarketAssistant.explain()` | 将 C3 结构化报告投影成客户可读的 K 线、四维研究、综合观点、风险区间和安全解释 | `demo_product_acceptance.py`、`test_client_app.py`、`docs/client-app.md` |
 | Analysis Snapshot | `AnalysisSnapshotRuntime.acquire()`、`AnalysisSnapshot.tool()` | 一次收集并冻结 14 类唯一数据请求，统一主备、缓存和缺失状态，让四 Agent、Graph、K 线与报告共用 `snapshot_id` | `demo_analysis_snapshot.py`、`test_analysis_snapshot.py`、`docs/analysis-snapshot.md` |
+| Analysis Provenance | `DataQualityRuntime.evaluate(snapshot, security_record, now)`、`AnalysisRunIdentity.fingerprint` | 逐类判断来源/时间/备用/缓存/缺失，生成 `complete/degraded/blocked` 质量状态和不含敏感数据的运行指纹 | `demo_interview_showcase.py`、`test_analysis_provenance.py`、`docs/interview-showcase.md` |
+| Reliability Evidence | `OfflineReliabilityExperimentRuntime.run()` | 固定离线数据复现正常、超时重试、缓存降级、Checkpoint 恢复和输出拒绝，统一输出成功率、恢复率、分位耗时、Token 和差异原因 | `demo_interview_showcase.py`、`test_reliability_experiment.py`、`test_demo_interview_showcase.py` |
 | Product Acceptance | `ProductAcceptanceRuntime.from_project().run()`、`agent-platform verify-all` | 一条命令验收 A–D 核心、客户前台、团队后台、解释层与真实交易关闭 | `demo_product_acceptance.py`、`test_product_acceptance.py`、`docs/client-app.md` |
 | Web Admin Desk | `DashboardRuntime.overview()`、`run_action()`、`ask_assistant()` | `/admin` 的 A–D 白名单动作、localhost HTTP adapter、本地/DeepSeek 助手 adapter | `run_dashboard.py`、`test_dashboard.py`、`docs/control-desk.md` |
 
 ## 当前主线
 
-调整后交付范围已经完成。客户前台 `/` 直接展示证券研究结果，团队后台 `/admin` 统一展示 A–D 工程能力，`verify-all` 负责命令行整体验收。原 1–2 周时间等待由用户明确豁免并保留 `waived_not_proven`；后续属于增强，不再是正式任务缺口。真实交易保持关闭。
+调整后交付范围已经完成。客户前台 `/` 直接展示证券研究结果、数据可信度和报告差异原因，团队后台 `/admin` 统一展示 A–D 工程能力及 P10 离线可靠性证据，`verify-all` 负责命令行整体验收。原 1–2 周时间等待由用户明确豁免并保留 `waived_not_proven`；后续属于增强，不再是正式任务缺口。真实交易保持关闭。
 
 真实交易继续关闭。任何新外部数据都必须保留 `source`、`timestamp` 和 `as_of`，任何密钥都只能来自本地环境变量。
